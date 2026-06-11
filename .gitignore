@@ -1,12 +1,42 @@
+# Dependencies
 node_modules/
+
+# Build outputs
 dist/
+build/
+frontend/.next/
+frontend/out/
+*.tsbuildinfo
+
+# Environment & secrets — NUNCA commitar
 .env
-.env.local
-.env.docker
+.env.*
+!.env.*.example
+BackEnd/.env
+frontend/.env
+frontend/.env.local
+frontend/.env.production
+frontend/.env.development
+
+# Runtime data (usuários, tokens OAuth cifrados, relatórios de auditoria)
 BackEnd/data/
+data/
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Coverage & logs
 coverage/
-.firecrawl/
 *.log
+npm-debug.log*
+
+# OS & IDE
 .DS_Store
 Thumbs.db
-frontend/.next/
+.idea/
+.vscode/
+*.swp
+
+# Tools
+.firecrawl/

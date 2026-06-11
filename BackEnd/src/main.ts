@@ -3,17 +3,30 @@ import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
-import { isSwaggerEnabled, validateProductionEnv } from './config/env.validation';
+import { isProduction, isSwaggerEnabled, validateProductionEnv } from './config/env.validation';
 
 async function bootstrap() {
   validateProductionEnv();
 
   const app = await NestFactory.create(AppModule);
 
-  app.use(helmet({ contentSecurityPolicy: false }));
+  if (isProduction()) {
+    const express = app.getHttpAdapter().getInstance();
+    express.set('trust proxy', 1);
+  }
+
+  app.use(
+    helmet({
+      contentSecurityPolicy: false,
+      crossOriginEmbedderPolicy: false,
+      hsts: isProduction(),
+    }),
+  );
   app.enableCors({
     origin: process.env.CORS_ORIGIN ?? 'http://localhost:3001',
     credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
   });
 
   app.useGlobalPipes(

@@ -6,6 +6,7 @@
 
 | Documento | Descrição |
 |-----------|-----------|
+| [Telas da aplicação](./screenshots.md) | Screenshots das interfaces |
 | [Arquitetura](./architecture.md) | Diagramas Mermaid, camadas, fluxos |
 | [Documentação técnica](./technical.md) | Stack, env vars, endpoints, monorepo |
 | [Referência da API](./api.md) | Contratos HTTP detalhados |

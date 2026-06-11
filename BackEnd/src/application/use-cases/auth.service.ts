@@ -81,4 +81,14 @@ export class AuthService {
       githubUsername: user.githubUsername,
     };
   }
+
+  async validateAccessToken(accessToken: string) {
+    try {
+      const payload = this.jwt.verify<JwtPayload>(accessToken);
+      const user = await this.validatePayload(payload);
+      return { accessToken, user };
+    } catch {
+      throw new UnauthorizedException('Token inválido ou expirado');
+    }
+  }
 }

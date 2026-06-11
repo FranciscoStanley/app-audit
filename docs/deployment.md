@@ -12,6 +12,8 @@
 - [ ] `SWAGGER_ENABLED=false` (recomendado)
 - [ ] HTTPS via reverse proxy (nginx, Caddy, Cloudflare)
 - [ ] Volume persistente em `BackEnd/data/`
+- [ ] `npm run security:scan` sem alertas antes do push
+- [ ] Nenhum arquivo `.env` ou `data/` no repositório Git
 
 ## Criar administrador
 
@@ -19,7 +21,7 @@
 
 ```env
 ADMIN_EMAIL=admin@empresa.com
-ADMIN_PASSWORD=SenhaForteCom12+Chars
+ADMIN_PASSWORD=<defina-uma-senha-forte-12+>
 ADMIN_NAME=Administrador
 ```
 
@@ -29,7 +31,7 @@ ADMIN_NAME=Administrador
 cd BackEnd
 npm run users:create -- \
   --email admin@empresa.com \
-  --password "SenhaForteCom12+Chars" \
+  --password "<senha-forte-12+>" \
   --name "Administrador" \
   --role admin
 ```

@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Shield, Github } from 'lucide-react';
+import { Shield } from 'lucide-react';
+import { GitHubIcon } from '@/components/icons/github-icon';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth-store';
 import { Button } from '@/components/ui/button';
@@ -59,7 +60,7 @@ export default function LoginPage() {
                 className="w-full"
                 onClick={loginWithGitHub}
               >
-                <Github className="h-4 w-4" />
+                <GitHubIcon className="h-4 w-4" />
                 Entrar com GitHub
               </Button>
               <p className="text-center text-xs text-slate-500">

@@ -76,6 +76,12 @@ export const api = {
 
   githubStatus: (token: string) => request<GitHubStatus>('/auth/github/status', {}, token),
 
+  exchangeGitHubCode: (code: string) =>
+    request<{ accessToken: string; user: AuthUser }>('/auth/github/exchange', {
+      method: 'POST',
+      body: JSON.stringify({ code }),
+    }),
+
   runAudit: (token: string) =>
     request<{ report: unknown; auditId?: string }>('/audit/run?save=true', { method: 'POST' }, token),
 

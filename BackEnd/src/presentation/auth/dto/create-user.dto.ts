@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsEmail, IsEnum, IsString, MinLength } from 'class-validator';
+import { IsEmail, IsEnum, IsString, MaxLength, MinLength } from 'class-validator';
 import { UserRole } from '../../../domain/entities/user.entity';
 
 export class CreateUserDto {
@@ -10,6 +10,7 @@ export class CreateUserDto {
   @ApiProperty({ minLength: 12 })
   @IsString()
   @MinLength(12)
+  @MaxLength(128)
   password!: string;
 
   @ApiProperty({ example: 'Auditor de Segurança' })

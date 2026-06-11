@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
+import { resolveJwtSecret } from '../config/jwt-secret';
 import { UserStore } from '../infrastructure/auth/user.store';
 import { UsersService } from '../infrastructure/auth/users.service';
 import { AuthController } from '../presentation/auth/auth.controller';
@@ -10,6 +11,7 @@ import { GitHubAuthUseCase } from '../application/use-cases/github-auth.use-case
 import { GitHubTokenResolverService } from '../application/use-cases/github-token-resolver.service';
 import { GitHubConnectionStore } from '../infrastructure/auth/github-connection.store';
 import { GitHubOAuthService } from '../infrastructure/auth/github-oauth.service';
+import { OAuthCodeStore } from '../infrastructure/auth/oauth-code.store';
 import { JwtStrategy } from '../infrastructure/auth/jwt.strategy';
 import { RolesGuard } from '../infrastructure/auth/roles.guard';
 
@@ -20,7 +22,7 @@ import { RolesGuard } from '../infrastructure/auth/roles.guard';
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
-        secret: config.get('JWT_SECRET') ?? 'app-audit-dev-secret-change-in-production',
+        secret: resolveJwtSecret(config),
         signOptions: { expiresIn: config.get('JWT_EXPIRES_IN') ?? '8h' },
       }),
     }),
@@ -31,6 +33,7 @@ import { RolesGuard } from '../infrastructure/auth/roles.guard';
     GitHubAuthUseCase,
     GitHubTokenResolverService,
     GitHubOAuthService,
+    OAuthCodeStore,
     GitHubConnectionStore,
     UsersService,
     UserStore,

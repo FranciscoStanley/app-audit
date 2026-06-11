@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { GitHubConnectionStore } from '../../infrastructure/auth/github-connection.store';
 import { GitHubOAuthService } from '../../infrastructure/auth/github-oauth.service';
+import { OAuthCodeStore } from '../../infrastructure/auth/oauth-code.store';
 import { UsersService } from '../../infrastructure/auth/users.service';
 import { AuthService } from './auth.service';
 
@@ -10,6 +11,7 @@ export class GitHubAuthUseCase {
     private readonly oauth: GitHubOAuthService,
     private readonly users: UsersService,
     private readonly connections: GitHubConnectionStore,
+    private readonly oauthCodes: OAuthCodeStore,
     private readonly auth: AuthService,
   ) {}
 
@@ -55,7 +57,14 @@ export class GitHubAuthUseCase {
   }
 
   getFrontendRedirectUrl(accessToken: string): string {
+    const code = this.oauthCodes.issue(accessToken);
     const base = this.oauth.frontendCallbackUrl().replace(/\/$/, '');
-    return `${base}/login/github/callback?token=${encodeURIComponent(accessToken)}`;
+    return `${base}/login/github/callback?code=${encodeURIComponent(code)}`;
+  }
+
+  exchangeCode(code: string) {
+    if (!code?.trim()) throw new BadRequestException('Código OAuth ausente');
+    const accessToken = this.oauthCodes.exchange(code.trim());
+    return this.auth.validateAccessToken(accessToken);
   }
 }

@@ -64,6 +64,7 @@ Não há credenciais fixas. O primeiro administrador é criado via:
 | Doc | Descrição |
 |-----|-----------|
 | [docs/README.md](./docs/README.md) | Índice |
+| [docs/screenshots.md](./docs/screenshots.md) | Telas da aplicação |
 | [docs/architecture.md](./docs/architecture.md) | Arquitetura (Mermaid) |
 | [docs/technical.md](./docs/technical.md) | Referência técnica |
 | [docs/deployment.md](./docs/deployment.md) | Deploy produção |

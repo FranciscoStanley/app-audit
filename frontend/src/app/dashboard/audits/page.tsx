@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Play, ExternalLink, Github, AlertTriangle } from 'lucide-react';
+import { Play, ExternalLink, AlertTriangle } from 'lucide-react';
+import { GitHubIcon } from '@/components/icons/github-icon';
 import { api, type GitHubStatus } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth-store';
 import { Button } from '@/components/ui/button';
@@ -59,7 +60,7 @@ export default function AuditsPage() {
             </div>
             <a href={api.githubLoginUrl()}>
               <Button variant="secondary">
-                <Github className="h-4 w-4" />
+                <GitHubIcon className="h-4 w-4" />
                 Conectar GitHub
               </Button>
             </a>

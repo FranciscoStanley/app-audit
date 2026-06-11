@@ -16,9 +16,12 @@
     "docker:build": "docker compose build",
     "docker:up": "docker compose up -d --build",
     "docker:down": "docker compose down",
-    "docker:logs": "docker compose logs -f"
+    "docker:logs": "docker compose logs -f",
+    "security:scan": "node scripts/check-secrets.mjs",
+    "docs:screenshots": "node scripts/capture-screenshots.mjs"
   },
   "devDependencies": {
-    "concurrently": "^9.2.1"
+    "concurrently": "^9.2.1",
+    "playwright": "^1.52.0"
   }
 }

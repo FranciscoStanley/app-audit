@@ -2,6 +2,17 @@
 
 **Autor:** Francisco Stanley Rodrigues Albuquerque
 
+## Screenshots da documentação
+
+Para atualizar as imagens em `docs/screenshots/`:
+
+```bash
+npm run dev -w frontend
+npm run docs:screenshots
+```
+
+Ver [screenshots.md](./screenshots.md).
+
 ## Pré-requisitos
 
 - Node.js 20+

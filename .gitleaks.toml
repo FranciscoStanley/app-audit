@@ -1,0 +1,28 @@
+title = "App Audit — Gitleaks"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Padrões permitidos em exemplos, testes e documentação"
+paths = [
+  '''\.env\.example$''',
+  '''\.env\.docker\.example$''',
+  '''\.env\.production\.example$''',
+  '''token-cipher\.spec\.ts$''',
+  '''additional-security\.scanner\.ts$''',
+  '''docs/api\.md$''',
+  '''\.gitleaks\.toml$''',
+  '''check-secrets\.mjs$''',
+  '''App-Audit\.postman_collection\.json$''',
+  '''App-Audit\.insomnia_collection\.json$''',
+]
+
+regexes = [
+  '''gho_abcdefghijklmnopqrstuvwxyz123456''',
+  '''test-secret-key-for-cipher-32chars!!''',
+  '''sua-senha-segura''',
+  '''SenhaForteCom12\+''',
+  '''admin@empresa\.com''',
+  '''eyJhbG\.\.\.''',
+]

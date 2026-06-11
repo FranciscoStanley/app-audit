@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { resolveJwtSecret } from '../../config/jwt-secret';
 import { decryptToken, encryptToken } from './token-cipher';
 
 export interface GitHubConnection {
@@ -23,7 +24,7 @@ export class GitHubConnectionStore {
   constructor(private readonly config: ConfigService) {}
 
   private cipherSecret(): string {
-    return this.config.get<string>('JWT_SECRET') ?? 'app-audit-dev-secret-change-in-production';
+    return resolveJwtSecret(this.config);
   }
 
   async saveConnection(

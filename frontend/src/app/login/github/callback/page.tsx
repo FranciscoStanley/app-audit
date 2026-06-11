@@ -12,16 +12,16 @@ export default function GitHubCallbackPage() {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    const token = params.get('token');
-    if (!token) {
-      setError('Token ausente no retorno do GitHub');
+    const code = params.get('code');
+    if (!code) {
+      setError('Código OAuth ausente no retorno do GitHub');
       return;
     }
 
     api
-      .me(token)
-      .then((user) => {
-        setAuth(token, user);
+      .exchangeGitHubCode(code)
+      .then((res) => {
+        setAuth(res.accessToken, res.user);
         router.replace('/dashboard');
       })
       .catch(() => setError('Falha ao validar sessão após login GitHub'));

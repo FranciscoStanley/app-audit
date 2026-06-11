@@ -1,0 +1,9 @@
+# Dados sensíveis em runtime — nunca versionar
+data/
+
+# Ambiente local
+.env
+
+# Build
+dist/
+coverage/
