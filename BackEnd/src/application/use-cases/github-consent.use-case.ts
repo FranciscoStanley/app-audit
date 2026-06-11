@@ -2,10 +2,17 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
   DATA_PROCESSING_PURPOSES,
-  DATA_SUBJECT_RIGHTS,
   GITHUB_OAUTH_POLICY_VERSION,
+  GITHUB_OAUTH_RETENTION_SUMMARY,
   GITHUB_OAUTH_SCOPES,
+  GITHUB_OAUTH_THIRD_PARTIES,
 } from '../../domain/constants/github-oauth-consent.constants';
+import {
+  DATA_SUBJECT_RIGHTS,
+  DEFAULT_PRIVACY_CONTACT_EMAIL,
+  LEGAL_INTERNATIONAL_TRANSFER,
+  LEGAL_POLICY_VERSION,
+} from '../../domain/constants/legal-policy.constants';
 import { ConsentAcknowledgments, ConsentStore } from '../../infrastructure/auth/consent.store';
 import { GitHubOAuthService } from '../../infrastructure/auth/github-oauth.service';
 
@@ -27,25 +34,35 @@ export class GitHubConsentUseCase {
     return {
       policyVersion: GITHUB_OAUTH_POLICY_VERSION,
       controllerName: this.config.get('DATA_CONTROLLER_NAME') ?? 'App Audit',
-      contactEmail: this.config.get('PRIVACY_CONTACT_EMAIL') ?? 'privacidade@exemplo.com',
+      contactEmail: this.config.get('PRIVACY_CONTACT_EMAIL') ?? DEFAULT_PRIVACY_CONTACT_EMAIL,
+      controllerAddress: this.config.get('DATA_CONTROLLER_ADDRESS') ?? null,
       scopes: GITHUB_OAUTH_SCOPES,
       purposes: DATA_PROCESSING_PURPOSES,
       dataSubjectRights: DATA_SUBJECT_RIGHTS,
-      retentionSummary:
-        'Tokens OAuth e dados de auditoria são mantidos enquanto a conta estiver ativa ou até revogação. Você pode desconectar o GitHub a qualquer momento.',
-      thirdParties: [
-        { name: 'GitHub, Inc.', purpose: 'Autenticação OAuth e acesso à API de repositórios' },
-      ],
+      retentionSummary: GITHUB_OAUTH_RETENTION_SUMMARY,
+      thirdParties: GITHUB_OAUTH_THIRD_PARTIES,
+      internationalTransfer: LEGAL_INTERNATIONAL_TRANSFER,
       legalBasis:
-        'Consentimento do titular (LGPD art. 7º, I) para autenticação via GitHub e execução de auditorias solicitadas.',
+        'Consentimento do titular (LGPD art. 7º, I) para autenticação via GitHub, varreduras de segurança e tratamentos correlatos descritos nesta política.',
+    };
+  }
+
+  getLegalInfo() {
+    return {
+      policyVersion: LEGAL_POLICY_VERSION,
+      termsUrl: '/legal/termos',
+      privacyUrl: '/legal/privacidade',
+      controllerName: this.config.get('DATA_CONTROLLER_NAME') ?? 'App Audit',
+      contactEmail: this.config.get('PRIVACY_CONTACT_EMAIL') ?? DEFAULT_PRIVACY_CONTACT_EMAIL,
+      dpoEmail: this.config.get('DPO_CONTACT_EMAIL') ?? null,
     };
   }
 
   async acceptConsent(input: AcceptGitHubConsentInput) {
-    this.validateAcknowledgments(input.acknowledgments);
+    this.validateGitHubAcknowledgments(input.acknowledgments);
 
     const scopes = GITHUB_OAUTH_SCOPES.map((s) => s.scope);
-    const record = await this.consents.createPending(input.acknowledgments, scopes, {
+    const record = await this.consents.createPending('github_oauth', input.acknowledgments, scopes, {
       ip: input.ip,
       userAgent: input.userAgent,
     });
@@ -60,7 +77,7 @@ export class GitHubConsentUseCase {
 
   async assertConsentForCallback(consentId: string): Promise<void> {
     const record = await this.consents.getById(consentId);
-    if (!record || record.status !== 'pending') {
+    if (!record || record.status !== 'pending' || record.kind !== 'github_oauth') {
       throw new BadRequestException(
         'Consentimento inválido ou expirado. Aceite novamente os termos antes de conectar o GitHub.',
       );
@@ -72,10 +89,10 @@ export class GitHubConsentUseCase {
   }
 
   async revokeConsentForUser(userId: string): Promise<void> {
-    await this.consents.revokeByUser(userId);
+    await this.consents.revokeByUser(userId, 'github_oauth');
   }
 
-  private validateAcknowledgments(ack: ConsentAcknowledgments): void {
+  private validateGitHubAcknowledgments(ack: ConsentAcknowledgments): void {
     const required: (keyof ConsentAcknowledgments)[] = [
       'termsAccepted',
       'privacyAccepted',

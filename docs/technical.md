@@ -50,6 +50,10 @@ npm install -w frontend
 | `THREAT_INTEL_REFRESH_HOURS` | Não | Intervalo de sync (padrão: 6) |
 | `THREAT_INTEL_SYNC_ON_STARTUP` | Não | Sync ao iniciar (padrão: true) |
 | `GITHUB_ADVISORY_MAX_PAGES` | Não | Páginas de advisories (padrão: 10) |
+| `DATA_CONTROLLER_NAME` | Não | Nome do controlador exibido nos fluxos LGPD |
+| `DATA_CONTROLLER_ADDRESS` | Não | Endereço do controlador (Política de Privacidade) |
+| `PRIVACY_CONTACT_EMAIL` | Não | Canal do titular / privacidade |
+| `DPO_CONTACT_EMAIL` | Não | Encarregado de dados (DPO), quando designado |
 
 ## Variáveis de ambiente (Frontend)
 

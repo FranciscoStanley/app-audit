@@ -42,15 +42,27 @@ FRONTEND_URL=http://localhost:3001
 
 ## Consentimento LGPD (obrigatório)
 
+**Versão da política:** 1.1.0
+
+### Login por e-mail
+
+Checkboxes de Termo de Uso e Política de Privacidade no formulário de login. Aceite registrado em `data/consents.json` (`kind: email_login`).
+
+### Login GitHub OAuth
+
 Antes do redirect ao GitHub, o usuário deve:
 
-1. Ler permissões, finalidades e direitos do titular
+1. Ler permissões, finalidades, terceiros e direitos do titular
 2. Aceitar Termo de Uso, Política de Privacidade, tratamento de dados e escopos OAuth
 3. Clicar **Aceito e continuar** ou **Não aceito** (permanece no login por e-mail)
 
-O aceite é registrado em `data/consents.json` (não versionado) com IP, user-agent e versão da política.
+O aceite é registrado em `data/consents.json` (`kind: github_oauth`) com IP, user-agent e versão da política.
 
-Revogação: `DELETE /auth/github/disconnect` ou botão **Desconectar** na página de Auditorias.
+### Remediação automática
+
+Antes de aplicar correções (individual ou em lote), usuários com permissão `remediation:apply` devem aceitar consentimento específico (`kind: remediation`).
+
+Revogação GitHub: `DELETE /auth/github/disconnect` ou botão **Desconectar** na página de Auditorias.
 
 ## Scopes solicitados
 

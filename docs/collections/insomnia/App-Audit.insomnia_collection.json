@@ -52,7 +52,7 @@
       "url": "{{ _.baseUrl }}/auth/login",
       "body": {
         "mimeType": "application/json",
-        "text": "{\n  \"email\": \"{{ _.adminEmail }}\",\n  \"password\": \"{{ _.adminPassword }}\"\n}"
+        "text": "{\n  \"email\": \"{{ _.adminEmail }}\",\n  \"password\": \"{{ _.adminPassword }}\",\n  \"termsAccepted\": true,\n  \"privacyAccepted\": true\n}"
       },
       "headers": [{ "name": "Content-Type", "value": "application/json" }],
       "parentId": "fld_auth"

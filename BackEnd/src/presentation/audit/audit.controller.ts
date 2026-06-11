@@ -1,21 +1,25 @@
 import {
+  Body,
   Controller,
   Get,
   NotFoundException,
   Param,
   Post,
   Query,
+  Req,
   Res,
   StreamableFile,
   UseGuards,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { ApiBearerAuth, ApiOperation, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
-import type { Response } from 'express';
+import type { Request, Response } from 'express';
 import { access, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { RunMiasmaAuditUseCase } from '../../application/use-cases/run-miasma-audit.use-case';
 import { RemediationUseCase } from '../../application/use-cases/remediation.use-case';
+import { RemediationConsentUseCase } from '../../application/use-cases/remediation-consent.use-case';
+import { RemediationConsentAcceptDto } from '../auth/dto/auth.dto';
 import { RolesGuard } from '../../infrastructure/auth/roles.guard';
 import { PdfReportGenerator } from '../../infrastructure/report/pdf-report.generator';
 import { VulnerabilityReportGenerator } from '../../infrastructure/report/vulnerability-report.generator';
@@ -35,6 +39,7 @@ export class AuditController {
     private readonly pdfGenerator: PdfReportGenerator,
     private readonly vulnerabilityReportGenerator: VulnerabilityReportGenerator,
     private readonly remediation: RemediationUseCase,
+    private readonly remediationConsent: RemediationConsentUseCase,
   ) {}
 
   @Post('run')
@@ -169,6 +174,34 @@ export class AuditController {
       type: 'application/pdf',
       disposition: `attachment; filename="${slug}.pdf"`,
     });
+  }
+
+  @Get('remediation/consent')
+  @Permissions('remediation:preview')
+  @ApiOperation({ summary: 'Status e informações do consentimento de remediação automática (LGPD)' })
+  remediationConsentStatus(@CurrentUser() user: { id: string }) {
+    return this.remediationConsent.getConsentStatus(user.id);
+  }
+
+  @Post('remediation/consent/accept')
+  @Permissions('remediation:apply')
+  @ApiOperation({ summary: 'Registrar consentimento para remediação automática em repositórios GitHub' })
+  acceptRemediationConsent(
+    @CurrentUser() user: { id: string },
+    @Body() dto: RemediationConsentAcceptDto,
+    @Req() req: Request,
+  ) {
+    return this.remediationConsent.acceptConsent(
+      user.id,
+      {
+        termsAccepted: dto.termsAccepted,
+        privacyAccepted: dto.privacyAccepted,
+        dataProcessingAccepted: dto.termsAccepted && dto.privacyAccepted,
+        remediationAcknowledged: dto.remediationAcknowledged,
+        risksAcknowledged: dto.risksAcknowledged,
+      },
+      { ip: req.ip, userAgent: req.headers['user-agent'] },
+    );
   }
 
   @Post('reports/:id/remediate-all')

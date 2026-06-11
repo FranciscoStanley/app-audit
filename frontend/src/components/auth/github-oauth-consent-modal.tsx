@@ -135,6 +135,13 @@ export function GitHubOAuthConsentModal({ open, onClose, onAccepted }: Props) {
                 <p className="mt-2 text-slate-500">{info.retentionSummary}</p>
               </section>
 
+              {info.internationalTransfer && (
+                <section>
+                  <h3 className="mb-2 font-medium text-white">Transferência internacional</h3>
+                  <p className="text-slate-400">{info.internationalTransfer}</p>
+                </section>
+              )}
+
               <section>
                 <h3 className="mb-2 font-medium text-white">Terceiros</h3>
                 <ul className="space-y-1 text-slate-400">

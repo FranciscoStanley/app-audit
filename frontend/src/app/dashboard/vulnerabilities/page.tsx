@@ -3,7 +3,9 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Play, Wrench } from 'lucide-react';
+import { RemediationConsentModal } from '@/components/auth/remediation-consent-modal';
 import { api, type ThreatFinding } from '@/lib/api';
+import { useRemediationConsent } from '@/hooks/use-remediation-consent';
 import { useAuthStore } from '@/stores/auth-store';
 import { VulnerabilityCard } from '@/components/audit/vulnerability-card';
 import { Badge } from '@/components/ui/badge';
@@ -14,6 +16,7 @@ export default function VulnerabilitiesPage() {
   const token = useAuthStore((s) => s.token);
   const canRun = useAuthStore((s) => s.can('audit:run'));
   const canRemediate = useAuthStore((s) => s.can('remediation:apply'));
+  const { consentOpen, ensureConsent, onConsentAccepted, onConsentClose } = useRemediationConsent(token);
   const [findings, setFindings] = useState<Array<ThreatFinding & { repository: string; auditId: string }>>([]);
   const [auditId, setAuditId] = useState('');
   const [filter, setFilter] = useState('all');
@@ -47,29 +50,37 @@ export default function VulnerabilitiesPage() {
 
   async function handleRemediateAll() {
     if (!token || !auditId) return;
-    setRemediating(true);
-    setBulkResult(null);
-    try {
-      const result = await api.applyAllRemediation(token, auditId);
-      const pullRequests = result.results
-        .map((r) => r.pullRequestUrl)
-        .filter((url): url is string => Boolean(url));
-      setBulkResult({
-        message: `${result.succeeded}/${result.total} vulnerabilidades corrigidas automaticamente`,
-        pullRequests,
-      });
-    } catch (e) {
-      setBulkResult({
-        message: e instanceof Error ? e.message : 'Falha na remediação em lote',
-        pullRequests: [],
-      });
-    } finally {
-      setRemediating(false);
-    }
+    await ensureConsent(async () => {
+      setRemediating(true);
+      setBulkResult(null);
+      try {
+        const result = await api.applyAllRemediation(token, auditId);
+        const pullRequests = result.results
+          .map((r) => r.pullRequestUrl)
+          .filter((url): url is string => Boolean(url));
+        setBulkResult({
+          message: `${result.succeeded}/${result.total} vulnerabilidades corrigidas automaticamente`,
+          pullRequests,
+        });
+      } catch (e) {
+        setBulkResult({
+          message: e instanceof Error ? e.message : 'Falha na remediação em lote',
+          pullRequests: [],
+        });
+      } finally {
+        setRemediating(false);
+      }
+    });
   }
 
   return (
     <div className="space-y-6">
+      <RemediationConsentModal
+        open={consentOpen}
+        token={token}
+        onClose={onConsentClose}
+        onAccepted={onConsentAccepted}
+      />
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-white">Vulnerabilidades</h1>

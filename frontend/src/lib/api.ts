@@ -56,15 +56,58 @@ export interface GitHubConsentInfo {
   policyVersion: string;
   controllerName: string;
   contactEmail: string;
+  controllerAddress?: string | null;
   scopes: Array<{ scope: string; title: string; description: string }>;
   purposes: string[];
   dataSubjectRights: string[];
   retentionSummary: string;
   thirdParties: Array<{ name: string; purpose: string }>;
+  internationalTransfer?: string;
   legalBasis: string;
 }
 
+export interface RemediationConsentInfo {
+  policyVersion: string;
+  controllerName: string;
+  contactEmail: string;
+  actions: Array<{ action: string; title: string; description: string }>;
+  risks: string[];
+  legalBasis: string;
+  accepted: boolean;
+}
+
 export const api = {
+  legalInfo: () =>
+    request<{
+      policyVersion: string;
+      termsUrl: string;
+      privacyUrl: string;
+      controllerName: string;
+      contactEmail: string;
+      dpoEmail: string | null;
+    }>('/auth/legal/info'),
+
+  loginConsentInfo: () =>
+    request<{ policyVersion: string; legalBasis: string; purposes: string[] }>('/auth/login/consent'),
+
+  remediationConsentStatus: (token: string) =>
+    request<RemediationConsentInfo>('/audit/remediation/consent', {}, token),
+
+  acceptRemediationConsent: (
+    token: string,
+    body: {
+      termsAccepted: boolean;
+      privacyAccepted: boolean;
+      remediationAcknowledged: boolean;
+      risksAcknowledged: boolean;
+    },
+  ) =>
+    request<{ accepted: boolean; policyVersion: string }>(
+      '/audit/remediation/consent/accept',
+      { method: 'POST', body: JSON.stringify(body) },
+      token,
+    ),
+
   githubConsentInfo: () => request<GitHubConsentInfo>('/auth/github/consent'),
 
   acceptGitHubConsent: (body: {
@@ -92,10 +135,10 @@ export const api = {
     }
   },
 
-  login: (email: string, password: string) =>
+  login: (email: string, password: string, consent: { termsAccepted: boolean; privacyAccepted: boolean }) =>
     request<{ accessToken: string; user: AuthUser }>(
       '/auth/login',
-      { method: 'POST', body: JSON.stringify({ email, password }) },
+      { method: 'POST', body: JSON.stringify({ email, password, ...consent }) },
     ),
 
   me: (token: string) => request<AuthUser>('/auth/me', {}, token),

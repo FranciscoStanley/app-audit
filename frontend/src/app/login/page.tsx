@@ -20,6 +20,8 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [githubEnabled, setGithubEnabled] = useState(false);
   const [consentOpen, setConsentOpen] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(false);
+  const [privacyAccepted, setPrivacyAccepted] = useState(false);
 
   useEffect(() => {
     api.githubOAuthEnabled().then(setGithubEnabled).catch(() => setGithubEnabled(false));
@@ -37,7 +39,7 @@ export default function LoginPage() {
     setLoading(true);
     setError('');
     try {
-      const res = await api.login(email, password);
+      const res = await api.login(email, password, { termsAccepted, privacyAccepted });
       setAuth(res.accessToken, res.user);
       router.push('/dashboard');
     } catch {
@@ -120,7 +122,42 @@ export default function LoginPage() {
               className="w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-white outline-none focus:border-violet-500"
             />
             {error && <p className="text-sm text-red-400">{error}</p>}
-            <Button type="submit" className="w-full" loading={loading}>
+            <label className="flex cursor-pointer items-start gap-3 text-xs text-slate-400">
+              <input
+                type="checkbox"
+                checked={termsAccepted}
+                onChange={(e) => setTermsAccepted(e.target.checked)}
+                className="mt-0.5"
+                required
+              />
+              <span>
+                Li e aceito o{' '}
+                <Link href="/legal/termos" target="_blank" className="text-violet-400 hover:underline">
+                  Termo de Uso
+                </Link>
+              </span>
+            </label>
+            <label className="flex cursor-pointer items-start gap-3 text-xs text-slate-400">
+              <input
+                type="checkbox"
+                checked={privacyAccepted}
+                onChange={(e) => setPrivacyAccepted(e.target.checked)}
+                className="mt-0.5"
+                required
+              />
+              <span>
+                Li e aceito a{' '}
+                <Link href="/legal/privacidade" target="_blank" className="text-violet-400 hover:underline">
+                  Política de Privacidade
+                </Link>
+              </span>
+            </label>
+            <Button
+              type="submit"
+              className="w-full"
+              loading={loading}
+              disabled={!termsAccepted || !privacyAccepted}
+            >
               Entrar
             </Button>
           </form>

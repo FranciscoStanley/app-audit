@@ -6,7 +6,7 @@
 
 ## Autenticação
 
-Todas as rotas (exceto `/health`, `POST /auth/login`, `POST /auth/github/exchange`, `GET /auth/github`, `GET /auth/github/callback`, `GET /auth/github/config`) exigem header:
+Todas as rotas (exceto `/health`, `GET /auth/legal/info`, `GET /auth/login/consent`, `GET /auth/github/consent`, `POST /auth/login`, `POST /auth/github/consent/accept`, `POST /auth/github/exchange`, `GET /auth/github`, `GET /auth/github/callback`, `GET /auth/github/config`) exigem header:
 
 ```
 Authorization: Bearer <accessToken>
@@ -14,9 +14,16 @@ Authorization: Bearer <accessToken>
 
 ### POST /auth/login
 
+Exige aceite do Termo de Uso e da Política de Privacidade (registrado em `data/consents.json`).
+
 ```json
 // Request
-{ "email": "admin@empresa.com", "password": "sua-senha-segura" }
+{
+  "email": "admin@empresa.com",
+  "password": "sua-senha-segura",
+  "termsAccepted": true,
+  "privacyAccepted": true
+}
 
 // Response 200
 {
@@ -29,6 +36,22 @@ Authorization: Bearer <accessToken>
   }
 }
 ```
+
+### GET /auth/legal/info
+
+Informações legais públicas (versão de política, URLs, contatos).
+
+### GET /auth/login/consent
+
+Finalidades e base legal do login por e-mail.
+
+### GET /auth/github/consent
+
+Informações de consentimento LGPD para OAuth GitHub (escopos, terceiros, direitos do titular).
+
+### POST /auth/github/consent/accept
+
+Registra aceite e retorna `authorizeUrl` para redirect ao GitHub.
 
 ### GET /auth/github/config
 
@@ -147,13 +170,34 @@ Remediação **100% automática** via Git workspace + GitHub API:
 - Push direto ao branch padrão ou **Pull Request automático** se branch protegida
 - Alertas Dependabot fechados após atualizar manifesto + lockfile
 
+### GET /audit/remediation/consent
+
+**Auth:** JWT · Permissão: `remediation:preview`
+
+Retorna status e informações do consentimento LGPD para remediação automática (`accepted: true|false`).
+
+### POST /audit/remediation/consent/accept
+
+**Auth:** JWT · Permissão: `remediation:apply`
+
+Registra consentimento específico para alterações em repositórios GitHub.
+
+```json
+{
+  "termsAccepted": true,
+  "privacyAccepted": true,
+  "remediationAcknowledged": true,
+  "risksAcknowledged": true
+}
+```
+
 ### GET /audit/remediation/:findingId/preview
 
 Retorna plano de remediação para a vulnerabilidade (todos os passos marcados como automatizados).
 
 ### POST /audit/remediation/:findingId/apply
 
-Aplica todos os passos automaticamente no repositório GitHub. Requer token com escopo `repo` e `security_events` (Dependabot).
+Aplica todos os passos automaticamente no repositório GitHub. **Exige consentimento de remediação registrado** (v1.1.0+). Requer token com escopo `repo` e `security_events` (Dependabot).
 
 ### POST /audit/reports/:id/remediate-all
 

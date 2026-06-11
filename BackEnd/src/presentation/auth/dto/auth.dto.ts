@@ -11,6 +11,14 @@ export class LoginDto {
   @MinLength(8)
   @MaxLength(128)
   password!: string;
+
+  @ApiProperty({ description: 'Aceite do Termo de Uso (LGPD)' })
+  @IsBoolean()
+  termsAccepted!: boolean;
+
+  @ApiProperty({ description: 'Aceite da Política de Privacidade (LGPD)' })
+  @IsBoolean()
+  privacyAccepted!: boolean;
 }
 
 export class GitHubConsentAcceptDto {
@@ -29,6 +37,24 @@ export class GitHubConsentAcceptDto {
   @ApiProperty({ description: 'Ciência das permissões OAuth solicitadas ao GitHub' })
   @IsBoolean()
   scopesAcknowledged!: boolean;
+}
+
+export class RemediationConsentAcceptDto {
+  @ApiProperty({ description: 'Aceite do Termo de Uso' })
+  @IsBoolean()
+  termsAccepted!: boolean;
+
+  @ApiProperty({ description: 'Aceite da Política de Privacidade' })
+  @IsBoolean()
+  privacyAccepted!: boolean;
+
+  @ApiProperty({ description: 'Autorização para remediação automática em repositórios GitHub' })
+  @IsBoolean()
+  remediationAcknowledged!: boolean;
+
+  @ApiProperty({ description: 'Ciência dos riscos da remediação automatizada' })
+  @IsBoolean()
+  risksAcknowledged!: boolean;
 }
 
 export class GitHubExchangeDto {

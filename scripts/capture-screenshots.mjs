@@ -149,7 +149,7 @@ function handleApiRoute(route) {
     return fulfillJson(route, {
       policyVersion: '1.0.0',
       controllerName: 'App Audit',
-      contactEmail: 'privacidade@exemplo.com',
+      contactEmail: 'franciscothestanley@gmail.com',
       legalBasis:
         'Art. 7º, I e V da LGPD — consentimento do titular e execução de contrato/prestação de serviço.',
       purposes: [

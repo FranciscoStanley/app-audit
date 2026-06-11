@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { RemediationConsentUseCase } from './remediation-consent.use-case';
 import type { DeliveryResult } from '../../domain/ports/github-remediation.port';
 import { GitHubRemediationPort } from '../../domain/ports/github-remediation.port';
 import {
@@ -20,6 +21,7 @@ export class RemediationUseCase {
     private readonly auditStore: AuditReportStore,
     private readonly githubTokens: GitHubTokenResolverService,
     private readonly remediationFactory: GitHubRemediationFactory,
+    private readonly remediationConsent: RemediationConsentUseCase,
   ) {}
 
   async preview(findingId: string): Promise<RemediationPlan> {
@@ -30,6 +32,8 @@ export class RemediationUseCase {
   }
 
   async apply(findingId: string, userId: string): Promise<RemediationResult> {
+    await this.remediationConsent.assertRemediationConsent(userId);
+
     const finding = await this.auditStore.findFindingById(findingId);
     if (!finding) throw new NotFoundException('Vulnerabilidade não encontrada');
 
@@ -128,6 +132,8 @@ export class RemediationUseCase {
     failed: number;
     results: Array<{ findingId: string; message: string; success: boolean; pullRequestUrl?: string }>;
   }> {
+    await this.remediationConsent.assertRemediationConsent(userId);
+
     const stored = await this.auditStore.getById(auditId);
     if (!stored) throw new NotFoundException('Relatório não encontrado');
 

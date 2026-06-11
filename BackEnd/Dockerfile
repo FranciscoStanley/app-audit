@@ -2,9 +2,13 @@ FROM node:22-bookworm-slim AS builder
 WORKDIR /app
 ENV PUPPETEER_SKIP_DOWNLOAD=true
 COPY package.json package-lock.json* ./
-RUN npm install
+RUN npm config set fetch-retries 5 \
+  && npm config set fetch-retry-mintimeout 20000 \
+  && npm config set fetch-retry-maxtimeout 120000 \
+  && npm install
 COPY . .
-RUN npm run build
+RUN npm run build \
+  && npm prune --omit=dev
 
 FROM node:22-bookworm-slim AS runner
 WORKDIR /app
@@ -25,7 +29,7 @@ RUN apt-get update \
   && rm -rf /var/lib/apt/lists/*
 
 COPY package.json package-lock.json* ./
-RUN npm install --omit=dev
+COPY --from=builder /app/node_modules ./node_modules
 
 COPY --from=builder /app/dist ./dist
 RUN mkdir -p data

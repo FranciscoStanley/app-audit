@@ -1,4 +1,5 @@
 import { RemediationUseCase } from './remediation.use-case';
+import { RemediationConsentUseCase } from './remediation-consent.use-case';
 import { GitHubRemediationPort } from '../../domain/ports/github-remediation.port';
 import { AuditReportStore } from '../../infrastructure/storage/audit-report.store';
 import { GitHubTokenResolverService } from './github-token-resolver.service';
@@ -36,6 +37,7 @@ describe('RemediationUseCase', () => {
       | 'cleanup'
     >
   >;
+  let remediationConsent: jest.Mocked<Pick<RemediationConsentUseCase, 'assertRemediationConsent'>>;
   let useCase: RemediationUseCase;
 
   beforeEach(() => {
@@ -85,10 +87,15 @@ describe('RemediationUseCase', () => {
       createWorkspace: jest.fn().mockReturnValue(workspace),
     };
 
+    remediationConsent = {
+      assertRemediationConsent: jest.fn().mockResolvedValue(undefined),
+    };
+
     useCase = new RemediationUseCase(
       auditStore as unknown as AuditReportStore,
       githubTokens as unknown as GitHubTokenResolverService,
       remediationFactory as unknown as GitHubRemediationFactory,
+      remediationConsent as unknown as RemediationConsentUseCase,
     );
   });
 

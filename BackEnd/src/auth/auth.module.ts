@@ -9,6 +9,8 @@ import { AuthController } from '../presentation/auth/auth.controller';
 import { AuthService } from '../application/use-cases/auth.service';
 import { GitHubAuthUseCase } from '../application/use-cases/github-auth.use-case';
 import { GitHubConsentUseCase } from '../application/use-cases/github-consent.use-case';
+import { LoginConsentUseCase } from '../application/use-cases/login-consent.use-case';
+import { RemediationConsentUseCase } from '../application/use-cases/remediation-consent.use-case';
 import { ConsentStore } from '../infrastructure/auth/consent.store';
 import { GitHubTokenResolverService } from '../application/use-cases/github-token-resolver.service';
 import { GitHubConnectionStore } from '../infrastructure/auth/github-connection.store';
@@ -34,6 +36,8 @@ import { RolesGuard } from '../infrastructure/auth/roles.guard';
     AuthService,
     GitHubAuthUseCase,
     GitHubConsentUseCase,
+    LoginConsentUseCase,
+    RemediationConsentUseCase,
     GitHubTokenResolverService,
     GitHubOAuthService,
     OAuthCodeStore,
@@ -51,6 +55,7 @@ import { RolesGuard } from '../infrastructure/auth/roles.guard';
     JwtModule,
     RolesGuard,
     UsersService,
+    RemediationConsentUseCase,
   ],
 })
 export class AuthModule {}

@@ -1,7 +1,9 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { User, UserRole } from '../../domain/entities/user.entity';
+import { ConsentAcknowledgments } from '../../infrastructure/auth/consent.store';
 import { UsersService } from '../../infrastructure/auth/users.service';
+import { LoginConsentUseCase } from './login-consent.use-case';
 
 export interface JwtPayload {
   sub: string;
@@ -26,13 +28,21 @@ export class AuthService {
   constructor(
     private readonly users: UsersService,
     private readonly jwt: JwtService,
+    private readonly loginConsent: LoginConsentUseCase,
   ) {}
 
-  async login(email: string, password: string) {
+  async login(
+    email: string,
+    password: string,
+    consent: ConsentAcknowledgments,
+    meta?: { ip?: string; userAgent?: string },
+  ) {
     const user = await this.users.findByEmail(email);
     if (!user || !(await this.users.validatePassword(user, password))) {
       throw new UnauthorizedException('Credenciais inválidas');
     }
+
+    await this.loginConsent.recordLoginConsent(user.id, consent, meta ?? {});
 
     return this.buildAuthResponse(user);
   }
