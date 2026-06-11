@@ -1,0 +1,16 @@
+---
+description: Padrões NestJS para APIs e microserviços
+globs: "src/**/*.ts"
+alwaysApply: false
+---
+
+# NestJS
+
+> Skill: `~/.cursor/skills/nestjs-services/SKILL.md`
+
+- Controllers finos → use cases
+- `@ApiTags`, `@ApiOperation`, `@ApiResponse`
+- Swagger em `/api/docs`
+- `GET /health` obrigatório
+
+**Projeto:** app-audit

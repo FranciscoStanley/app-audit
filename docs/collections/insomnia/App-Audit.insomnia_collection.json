@@ -1,0 +1,253 @@
+{
+  "_type": "export",
+  "__export_format": 4,
+  "__export_date": "2026-06-10T00:00:00.000Z",
+  "__export_source": "app-audit",
+  "resources": [
+    {
+      "_id": "wrk_app_audit",
+      "_type": "workspace",
+      "name": "App Audit API",
+      "description": "API de auditoria de segurança GitHub. Autor: Francisco Stanley Rodrigues Albuquerque"
+    },
+    {
+      "_id": "env_base",
+      "_type": "environment",
+      "name": "Base Environment",
+      "data": {
+        "baseUrl": "http://localhost:3000",
+        "accessToken": "",
+        "auditId": "",
+        "findingId": "",
+        "adminEmail": "",
+        "adminPassword": ""
+      },
+      "parentId": "wrk_app_audit"
+    },
+    {
+      "_id": "fld_health",
+      "_type": "request_group",
+      "name": "Health",
+      "parentId": "wrk_app_audit"
+    },
+    {
+      "_id": "req_health",
+      "_type": "request",
+      "name": "Health Check",
+      "method": "GET",
+      "url": "{{ _.baseUrl }}/health",
+      "parentId": "fld_health"
+    },
+    {
+      "_id": "fld_auth",
+      "_type": "request_group",
+      "name": "Auth",
+      "parentId": "wrk_app_audit"
+    },
+    {
+      "_id": "req_login",
+      "_type": "request",
+      "name": "Login",
+      "method": "POST",
+      "url": "{{ _.baseUrl }}/auth/login",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"email\": \"{{ _.adminEmail }}\",\n  \"password\": \"{{ _.adminPassword }}\"\n}"
+      },
+      "headers": [{ "name": "Content-Type", "value": "application/json" }],
+      "parentId": "fld_auth"
+    },
+    {
+      "_id": "req_me",
+      "_type": "request",
+      "name": "Me",
+      "method": "GET",
+      "url": "{{ _.baseUrl }}/auth/me",
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.accessToken }}"
+      },
+      "parentId": "fld_auth"
+    },
+    {
+      "_id": "fld_audit",
+      "_type": "request_group",
+      "name": "Audit",
+      "parentId": "wrk_app_audit"
+    },
+    {
+      "_id": "req_run_audit",
+      "_type": "request",
+      "name": "Run Audit",
+      "method": "POST",
+      "url": "{{ _.baseUrl }}/audit/run?save=true",
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.accessToken }}"
+      },
+      "parentId": "fld_audit"
+    },
+    {
+      "_id": "req_list_reports",
+      "_type": "request",
+      "name": "List Reports",
+      "method": "GET",
+      "url": "{{ _.baseUrl }}/audit/reports",
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.accessToken }}"
+      },
+      "parentId": "fld_audit"
+    },
+    {
+      "_id": "req_get_report",
+      "_type": "request",
+      "name": "Get Report",
+      "method": "GET",
+      "url": "{{ _.baseUrl }}/audit/reports/{{ _.auditId }}",
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.accessToken }}"
+      },
+      "parentId": "fld_audit"
+    },
+    {
+      "_id": "req_report_md",
+      "_type": "request",
+      "name": "Download Report Markdown",
+      "method": "GET",
+      "url": "{{ _.baseUrl }}/audit/reports/{{ _.auditId }}/markdown",
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.accessToken }}"
+      },
+      "parentId": "fld_audit"
+    },
+    {
+      "_id": "req_report_pdf",
+      "_type": "request",
+      "name": "Download Report PDF",
+      "method": "GET",
+      "url": "{{ _.baseUrl }}/audit/reports/{{ _.auditId }}/pdf",
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.accessToken }}"
+      },
+      "parentId": "fld_audit"
+    },
+    {
+      "_id": "req_list_findings",
+      "_type": "request",
+      "name": "List Findings",
+      "method": "GET",
+      "url": "{{ _.baseUrl }}/audit/reports/{{ _.auditId }}/findings",
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.accessToken }}"
+      },
+      "parentId": "fld_audit"
+    },
+    {
+      "_id": "req_finding_md",
+      "_type": "request",
+      "name": "Download Finding Markdown",
+      "method": "GET",
+      "url": "{{ _.baseUrl }}/audit/reports/{{ _.auditId }}/findings/{{ _.findingId }}/markdown",
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.accessToken }}"
+      },
+      "parentId": "fld_audit"
+    },
+    {
+      "_id": "req_finding_pdf",
+      "_type": "request",
+      "name": "Download Finding PDF",
+      "method": "GET",
+      "url": "{{ _.baseUrl }}/audit/reports/{{ _.auditId }}/findings/{{ _.findingId }}/pdf",
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.accessToken }}"
+      },
+      "parentId": "fld_audit"
+    },
+    {
+      "_id": "req_remediation_preview",
+      "_type": "request",
+      "name": "Remediation Preview",
+      "method": "GET",
+      "url": "{{ _.baseUrl }}/audit/remediation/{{ _.findingId }}/preview",
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.accessToken }}"
+      },
+      "parentId": "fld_audit"
+    },
+    {
+      "_id": "req_remediation_apply",
+      "_type": "request",
+      "name": "Remediation Apply",
+      "method": "POST",
+      "url": "{{ _.baseUrl }}/audit/remediation/{{ _.findingId }}/apply",
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.accessToken }}"
+      },
+      "parentId": "fld_audit"
+    },
+    {
+      "_id": "fld_threat",
+      "_type": "request_group",
+      "name": "Threat Intel",
+      "parentId": "wrk_app_audit"
+    },
+    {
+      "_id": "req_ti_status",
+      "_type": "request",
+      "name": "Status",
+      "method": "GET",
+      "url": "{{ _.baseUrl }}/threat-intel/status",
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.accessToken }}"
+      },
+      "parentId": "fld_threat"
+    },
+    {
+      "_id": "req_ti_sync",
+      "_type": "request",
+      "name": "Sync",
+      "method": "POST",
+      "url": "{{ _.baseUrl }}/threat-intel/sync",
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.accessToken }}"
+      },
+      "parentId": "fld_threat"
+    },
+    {
+      "_id": "req_ti_packages",
+      "_type": "request",
+      "name": "List Packages",
+      "method": "GET",
+      "url": "{{ _.baseUrl }}/threat-intel/packages",
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.accessToken }}"
+      },
+      "parentId": "fld_threat"
+    },
+    {
+      "_id": "req_ti_check",
+      "_type": "request",
+      "name": "Check Package",
+      "method": "GET",
+      "url": "{{ _.baseUrl }}/threat-intel/check?reportType=package&resourceIdentifier=durabletask&ecosystem=pypi&version=1.4.1",
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.accessToken }}"
+      },
+      "parentId": "fld_threat"
+    }
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "name": "app-audit-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "App Audit — plataforma de auditoria de segurança GitHub",
+  "author": "Francisco Stanley Rodrigues Albuquerque",
+  "workspaces": [
+    "BackEnd",
+    "frontend"
+  ],
+  "scripts": {
+    "dev": "concurrently -n backend,frontend -c blue,green \"npm run start:dev -w BackEnd\" \"npm run dev -w frontend\"",
+    "build": "npm run build -w BackEnd && npm run build -w frontend",
+    "audit:miasma": "npm run audit:miasma -w BackEnd",
+    "test": "npm run test -w BackEnd && npm run test -w frontend",
+    "docker:build": "docker compose build",
+    "docker:up": "docker compose up -d --build",
+    "docker:down": "docker compose down",
+    "docker:logs": "docker compose logs -f"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  }
+}

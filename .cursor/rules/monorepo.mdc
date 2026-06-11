@@ -1,0 +1,15 @@
+---
+description: Monorepo app-audit — BackEnd + frontend
+alwaysApply: true
+---
+
+# App Audit Monorepo
+
+> Skills: `.cursor/skills/README.md`
+
+- **BackEnd/** — NestJS API (`:3000`)
+- **frontend/** — Next.js (`:3001`)
+- JWT + RBAC em todas as rotas protegidas
+- Scanners abrangentes (não só Miasma)
+
+**Autor:** Francisco Stanley Rodrigues Albuquerque

@@ -1,0 +1,204 @@
+{
+  "info": {
+    "name": "App Audit API",
+    "description": "Collection da API App Audit — auditoria de segurança GitHub.\n\nAutor: Francisco Stanley Rodrigues Albuquerque\n\n1. Execute **Auth > Login** para obter o token.\n2. O token é salvo automaticamente em `{{accessToken}}`.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:3000" },
+    { "key": "accessToken", "value": "" },
+    { "key": "auditId", "value": "" },
+    { "key": "findingId", "value": "" },
+    { "key": "adminEmail", "value": "" },
+    { "key": "adminPassword", "value": "" }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+  },
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/health"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const json = pm.response.json();",
+                  "  pm.collectionVariables.set('accessToken', json.accessToken);",
+                  "  pm.test('Token salvo', () => pm.expect(json.accessToken).to.be.a('string'));",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"{{adminPassword}}\"\n}"
+            },
+            "url": "{{baseUrl}}/auth/login"
+          }
+        },
+        {
+          "name": "Me",
+          "request": { "method": "GET", "url": "{{baseUrl}}/auth/me" }
+        },
+        {
+          "name": "List Users (admin)",
+          "request": { "method": "GET", "url": "{{baseUrl}}/auth/users" }
+        },
+        {
+          "name": "Create User (admin)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"auditor@empresa.com\",\n  \"password\": \"SenhaForteCom12+\",\n  \"name\": \"Auditor\",\n  \"role\": \"auditor\"\n}"
+            },
+            "url": "{{baseUrl}}/auth/users"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Audit",
+      "item": [
+        {
+          "name": "Run Audit",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const json = pm.response.json();",
+                  "  if (json.auditId) pm.collectionVariables.set('auditId', json.auditId);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/audit/run?save=true"
+          }
+        },
+        {
+          "name": "List Reports",
+          "request": { "method": "GET", "url": "{{baseUrl}}/audit/reports" }
+        },
+        {
+          "name": "Get Report",
+          "request": { "method": "GET", "url": "{{baseUrl}}/audit/reports/{{auditId}}" }
+        },
+        {
+          "name": "Download Report Markdown",
+          "request": { "method": "GET", "url": "{{baseUrl}}/audit/reports/{{auditId}}/markdown" }
+        },
+        {
+          "name": "Download Report PDF",
+          "request": { "method": "GET", "url": "{{baseUrl}}/audit/reports/{{auditId}}/pdf" }
+        },
+        {
+          "name": "List Findings",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const arr = pm.response.json();",
+                  "  if (arr[0]?.id) pm.collectionVariables.set('findingId', arr[0].id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": { "method": "GET", "url": "{{baseUrl}}/audit/reports/{{auditId}}/findings" }
+        },
+        {
+          "name": "Download Finding Markdown",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/audit/reports/{{auditId}}/findings/{{findingId}}/markdown"
+          }
+        },
+        {
+          "name": "Download Finding PDF",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/audit/reports/{{auditId}}/findings/{{findingId}}/pdf"
+          }
+        },
+        {
+          "name": "Remediation Preview",
+          "request": { "method": "GET", "url": "{{baseUrl}}/audit/remediation/{{findingId}}/preview" }
+        },
+        {
+          "name": "Remediation Apply",
+          "request": { "method": "POST", "url": "{{baseUrl}}/audit/remediation/{{findingId}}/apply" }
+        }
+      ]
+    },
+    {
+      "name": "Threat Intel",
+      "item": [
+        {
+          "name": "Status",
+          "request": { "method": "GET", "url": "{{baseUrl}}/threat-intel/status" }
+        },
+        {
+          "name": "Sync",
+          "request": { "method": "POST", "url": "{{baseUrl}}/threat-intel/sync" }
+        },
+        {
+          "name": "List Packages",
+          "request": { "method": "GET", "url": "{{baseUrl}}/threat-intel/packages" }
+        },
+        {
+          "name": "Check Package",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/threat-intel/check?reportType=package&resourceIdentifier=durabletask&ecosystem=pypi&version=1.4.1",
+              "host": ["{{baseUrl}}"],
+              "path": ["threat-intel", "check"],
+              "query": [
+                { "key": "reportType", "value": "package" },
+                { "key": "resourceIdentifier", "value": "durabletask" },
+                { "key": "ecosystem", "value": "pypi" },
+                { "key": "version", "value": "1.4.1" }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

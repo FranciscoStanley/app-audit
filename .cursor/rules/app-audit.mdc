@@ -1,0 +1,28 @@
+---
+description: Convenções do app-audit — auditoria Miasma e threat intelligence
+globs: "src/**/*.ts"
+alwaysApply: true
+---
+
+# App Audit
+
+> Skill: `.cursor/skills/app-audit-development/SKILL.md`
+
+## Stack
+
+NestJS 11, Clean Architecture, Swagger, GitHub CLI, GitHub Advisories API, OpenSourceMalware API.
+
+## Camadas
+
+- `domain/` — sem dependências externas
+- `application/` — use cases
+- `infrastructure/` — adapters (gh, OSM, GitHub Advisories)
+- `presentation/` — controllers + DTOs
+
+## Ao modificar
+
+1. Atualizar Swagger e DTOs
+2. Manter threat intel sincronizado (`ThreatIntelModule`)
+3. Regenerar relatório: `npm run audit:miasma`
+
+**Autor:** Francisco Stanley Rodrigues Albuquerque
