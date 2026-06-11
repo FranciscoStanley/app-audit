@@ -239,13 +239,9 @@ export class GhCliRemediationAdapter implements GitHubRemediationPort {
         `repos/${owner}/${repo}`,
         '-X',
         'PATCH',
-        '--input',
-        '-',
-      ], JSON.stringify({
-        security_and_analysis: {
-          dependabot_security_updates: { status: 'enabled' },
-        },
-      }));
+        '-f',
+        'security_and_analysis[dependabot_security_updates][status]=enabled',
+      ]);
     } catch (error) {
       this.logger.warn(`dependabot_security_updates: ${(error as Error).message}`);
     }
@@ -265,8 +261,8 @@ export class GhCliRemediationAdapter implements GitHubRemediationPort {
         '[.[] | {number, state, packageName: .dependency.package.name, manifestPath: .dependency.manifest_path, severity: .security_advisory.severity, summary: .security_advisory.summary, vulnerableVersionRange: .security_vulnerability.vulnerable_version_range, patchedVersion: (.security_vulnerability.first_patched_version.identifier // null), ghsaId: (.security_advisory.ghsa_id // null)}]',
       ]);
 
-      const parsed = JSON.parse(stdout) as DependabotAlert[] | DependabotAlert[][];
-      return Array.isArray(parsed[0]) ? parsed.flat() : parsed;
+      const parsed: unknown = JSON.parse(stdout);
+      return this.flattenDependabotAlerts(parsed);
     } catch (error) {
       this.logger.debug(`Dependabot alerts indisponíveis para ${owner}/${repo}: ${(error as Error).message}`);
       return [];
@@ -375,7 +371,13 @@ export class GhCliRemediationAdapter implements GitHubRemediationPort {
     }
   }
 
-  private async runGh(args: string[], stdin?: string): Promise<{ stdout: string; stderr: string }> {
+  private flattenDependabotAlerts(raw: unknown): DependabotAlert[] {
+    if (!Array.isArray(raw) || raw.length === 0) return [];
+    if (Array.isArray(raw[0])) return (raw as DependabotAlert[][]).flat();
+    return raw as DependabotAlert[];
+  }
+
+  private async runGh(args: string[]): Promise<{ stdout: string; stderr: string }> {
     const env = { ...process.env };
     const token = this.accessToken ?? process.env.GITHUB_TOKEN;
     if (token) env.GITHUB_TOKEN = token;
@@ -386,7 +388,6 @@ export class GhCliRemediationAdapter implements GitHubRemediationPort {
         windowsHide: true,
         env,
         timeout: 120_000,
-        input: stdin,
       });
     } catch (error: unknown) {
       const err = error as { stderr?: string; message?: string };
