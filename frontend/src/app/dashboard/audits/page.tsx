@@ -126,6 +126,12 @@ export default function AuditsPage() {
         </div>
       )}
 
+      {running && (
+        <p className="text-sm text-amber-400">
+          Auditoria em andamento — pode levar mais de 10 minutos em contas com muitos repositórios. Aguarde até concluir.
+        </p>
+      )}
+
       {auditError && <p className="text-sm text-red-400">{auditError}</p>}
 
       <div className="flex items-center justify-between">

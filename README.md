@@ -1,8 +1,17 @@
 # App Audit
 
+[![Security CI](https://github.com/FranciscoStanley/app-audit/actions/workflows/security.yml/badge.svg)](https://github.com/FranciscoStanley/app-audit/actions/workflows/security.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
+
 Plataforma de auditoria de segurança para repositórios GitHub — detecção de malware (Miasma), supply chain, secrets, CI/CD e dependências comprometidas.
 
 **Autor:** Francisco Stanley Rodrigues Albuquerque
+
+| Documento | Descrição |
+|-----------|-----------|
+| [Contributing](./CONTRIBUTING.md) | Como contribuir, PRs e padrões de código |
+| [License (MIT)](./LICENSE) | Termos de uso e redistribuição |
+| [Security](./SECURITY.md) | Reporte de vulnerabilidades e boas práticas |
 
 ## Arquitetura
 
@@ -162,6 +171,12 @@ Não há credenciais fixas. O primeiro administrador é criado via:
 | [docs/deployment.md](./docs/deployment.md) | Deploy produção |
 | [docs/api.md](./docs/api.md) | API HTTP |
 | [docs/collections/](./docs/collections/) | Postman e Insomnia |
+| [CONTRIBUTING.md](./CONTRIBUTING.md) | Guia de contribuição |
+| [SECURITY.md](./SECURITY.md) | Política de segurança |
+
+## Licença
+
+Este projeto está licenciado sob a [MIT License](./LICENSE).
 
 ## Scripts
 

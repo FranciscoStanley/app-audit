@@ -6,10 +6,23 @@ export type RemediationAction =
   | 'enable_branch_protection'
   | 'manual_review';
 
+export type RemediationStepAction =
+  | 'delete_file'
+  | 'gitignore'
+  | 'pin_actions'
+  | 'fix_dependabot'
+  | 'enable_dependabot'
+  | 'update_dependency'
+  | 'remove_dependency'
+  | 'remove_malicious_content'
+  | 'sanitize_workflow'
+  | 'security_issue';
+
 export interface RemediationStep {
   order: number;
   title: string;
   description: string;
+  action?: RemediationStepAction;
   command?: string;
   automated: boolean;
 }

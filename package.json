@@ -4,6 +4,7 @@
   "private": true,
   "description": "App Audit — plataforma de auditoria de segurança GitHub",
   "author": "Francisco Stanley Rodrigues Albuquerque",
+  "license": "MIT",
   "workspaces": [
     "BackEnd",
     "frontend"

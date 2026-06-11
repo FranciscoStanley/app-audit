@@ -45,7 +45,7 @@ export class RunMiasmaAuditUseCase {
 
     const token = await this.githubTokens.requireForAudit(input.userId);
     const github = this.githubFactory.create(token);
-    const scanner = this.scannerFactory.create(github);
+    const scanner = this.scannerFactory.create(github, token);
 
     const username = await github.getAuthenticatedUser();
     const repositories = await github.listRepositories();

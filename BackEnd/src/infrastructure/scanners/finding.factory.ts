@@ -9,6 +9,8 @@ const REMEDIATION_TYPES: ThreatFindingType[] = [
   'exposed_secret',
   'unpinned_action',
   'c2_domain',
+  'vulnerable_dependency',
+  'malware_advisory',
 ];
 
 export function createFinding(params: {

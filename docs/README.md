@@ -2,6 +2,15 @@
 
 **Autor:** Francisco Stanley Rodrigues Albuquerque
 
+## Documentação do repositório
+
+| Arquivo | Descrição |
+|---------|-----------|
+| [../README.md](../README.md) | Visão geral e início rápido |
+| [../CONTRIBUTING.md](../CONTRIBUTING.md) | Guia de contribuição |
+| [../LICENSE](../LICENSE) | Licença MIT |
+| [../SECURITY.md](../SECURITY.md) | Política de segurança |
+
 ## Índice
 
 | Documento | Descrição |

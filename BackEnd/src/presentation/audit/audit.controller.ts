@@ -171,6 +171,16 @@ export class AuditController {
     });
   }
 
+  @Post('reports/:id/remediate-all')
+  @Permissions('remediation:apply')
+  @ApiOperation({ summary: 'Aplicar remediação automática em todas as vulnerabilidades do relatório' })
+  remediateAll(
+    @CurrentUser() user: { id: string },
+    @Param('id') auditId: string,
+  ) {
+    return this.remediation.applyAll(auditId, user.id);
+  }
+
   @Get('remediation/:findingId/preview')
   @Permissions('remediation:preview')
   @ApiOperation({ summary: 'Preview do plano de remediação' })
@@ -181,8 +191,11 @@ export class AuditController {
   @Post('remediation/:findingId/apply')
   @Permissions('remediation:apply')
   @ApiOperation({ summary: 'Aplicar remediação da vulnerabilidade' })
-  applyRemediation(@Param('findingId') findingId: string) {
-    return this.remediation.apply(findingId);
+  applyRemediation(
+    @CurrentUser() user: { id: string },
+    @Param('findingId') findingId: string,
+  ) {
+    return this.remediation.apply(findingId, user.id);
   }
 
   private async resolveFindingMarkdown(auditId: string, findingId: string): Promise<string> {

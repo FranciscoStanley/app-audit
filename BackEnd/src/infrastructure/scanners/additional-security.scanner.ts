@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { ThreatFinding } from '../../domain/entities/repository-scan.entity';
 import type { GitHubRepositoryInfo, GitHubRepositoryPort } from '../../domain/ports/github-repository.port';
+import type { GitHubRemediationPort } from '../../domain/ports/github-remediation.port';
 import { ThreatIntelligenceStore } from '../threat-intel/threat-intelligence.store';
 import { createFinding } from './finding.factory';
 
@@ -27,6 +28,7 @@ const SECRET_PATTERNS = [
 export class AdditionalSecurityScanner {
   constructor(
     private readonly github: GitHubRepositoryPort,
+    private readonly remediation: GitHubRemediationPort,
     private readonly threatStore: ThreatIntelligenceStore,
   ) {}
 
@@ -73,7 +75,7 @@ export class AdditionalSecurityScanner {
               type: 'c2_domain',
               severity: 'critical',
               message: `Domínio C2/suspeito em workflow: ${domain}`,
-              evidence: workflowPath,
+              evidence: `${workflowPath}|${domain}`,
               category: 'Malware Indicators',
             }),
           );
@@ -109,7 +111,7 @@ export class AdditionalSecurityScanner {
               type: 'malware_advisory',
               severity: hit.severity === 'critical' ? 'critical' : 'high',
               message: `[GHSA] Pacote com advisory de malware: ${dep}`,
-              evidence: hit.ghsaId ?? dep,
+              evidence: dep,
               category: 'Dependency Vulnerabilities',
             }),
           );
@@ -126,6 +128,22 @@ export class AdditionalSecurityScanner {
           );
         }
       }
+    }
+
+    const dependabotAlerts = await this.remediation.listDependabotAlerts(owner, name);
+    for (const alert of dependabotAlerts) {
+      if (alert.state !== 'open') continue;
+      const severity = alert.severity === 'critical' ? 'critical' : alert.severity === 'high' ? 'high' : 'medium';
+      const patched = alert.patchedVersion ?? 'unknown';
+      findings.push(
+        createFinding({
+          type: 'vulnerable_dependency',
+          severity,
+          message: `[Dependabot] ${alert.summary}`,
+          evidence: `${alert.packageName}@${patched}@${alert.manifestPath}#dependabot-${alert.number}`,
+          category: 'Dependency Vulnerabilities',
+        }),
+      );
     }
 
     return findings;
