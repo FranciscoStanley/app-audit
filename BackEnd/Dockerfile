@@ -10,7 +10,8 @@ WORKDIR /app
 ENV NODE_ENV=production
 
 RUN apt-get update \
-  && apt-get install -y --no-install-recommends git gh \
+  && apt-get install -y --no-install-recommends ca-certificates git gh \
+  && update-ca-certificates \
   && rm -rf /var/lib/apt/lists/*
 
 COPY package.json package-lock.json* ./
