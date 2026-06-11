@@ -22,7 +22,10 @@ export default function GitHubCallbackPage() {
       .exchangeGitHubCode(code)
       .then((res) => {
         setAuth(res.accessToken, res.user);
-        router.replace('/dashboard');
+        const target = res.user.githubConnected
+          ? '/dashboard/audits?autostart=1'
+          : '/dashboard';
+        router.replace(target);
       })
       .catch(() => setError('Falha ao validar sessão após login GitHub'));
   }, [params, router, setAuth]);

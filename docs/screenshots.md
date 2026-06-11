@@ -12,6 +12,12 @@ Tela de autenticação com login por email/senha e opção **Entrar com GitHub**
 
 ![Tela de login](./screenshots/01-login.png)
 
+## Consentimento LGPD (GitHub OAuth)
+
+Modal de consentimento informado exibido antes do redirect ao GitHub: finalidades, permissões OAuth, direitos do titular e checkboxes obrigatórios.
+
+![Consentimento LGPD](./screenshots/01b-consentimento-lgpd.png)
+
 ## Dashboard
 
 Visão geral com métricas da última auditoria: repositórios, vulnerabilidades, pacotes monitorados e veredito.
@@ -44,14 +50,18 @@ Status da sincronização com GitHub Advisories e OpenSourceMalware.
 
 ## Atualizar capturas
 
-Com o frontend rodando localmente:
+Com Docker ou frontend rodando em `http://localhost:3001`:
 
 ```bash
-# Build de produção recomendado (reidratação de auth mais estável)
+docker compose up -d
+npm run docs:screenshots
+```
+
+Alternativa (build local de produção):
+
+```bash
 npm run build -w frontend
 npx next start -p 3002 -w frontend
-
-# Em outro terminal:
 SCREENSHOT_BASE_URL=http://localhost:3002 npm run docs:screenshots
 ```
 

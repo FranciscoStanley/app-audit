@@ -8,6 +8,7 @@ import { chromium } from 'playwright';
 import { mkdir } from 'node:fs/promises';
 import { resolve } from 'node:path';
 
+// Padrão: Docker Compose (frontend :3001, API :3000)
 const BASE_URL = process.env.SCREENSHOT_BASE_URL ?? 'http://localhost:3001';
 const API_URL = process.env.SCREENSHOT_API_URL ?? 'http://localhost:3000';
 const OUT_DIR = resolve(import.meta.dirname, '..', 'docs', 'screenshots');
@@ -144,6 +145,47 @@ function handleApiRoute(route) {
   const path = url.pathname;
 
   if (path === '/auth/github/config') return fulfillJson(route, { enabled: true });
+  if (path === '/auth/github/consent') {
+    return fulfillJson(route, {
+      policyVersion: '1.0.0',
+      controllerName: 'App Audit',
+      contactEmail: 'privacidade@exemplo.com',
+      legalBasis:
+        'Art. 7º, I e V da LGPD — consentimento do titular e execução de contrato/prestação de serviço.',
+      purposes: [
+        'Autenticação via GitHub OAuth',
+        'Auditoria de segurança dos repositórios autorizados',
+        'Geração de relatórios e histórico de varreduras',
+      ],
+      scopes: [
+        {
+          scope: 'read:user',
+          title: 'Perfil do usuário',
+          description: 'Nome, e-mail público e identificador da conta GitHub.',
+        },
+        {
+          scope: 'user:email',
+          title: 'E-mails da conta',
+          description: 'Endereços de e-mail associados à conta GitHub.',
+        },
+        {
+          scope: 'repo',
+          title: 'Repositórios',
+          description: 'Leitura de repositórios públicos e privados para auditoria de segurança.',
+        },
+      ],
+      dataSubjectRights: [
+        'Confirmação e acesso aos dados tratados',
+        'Correção de dados incompletos ou desatualizados',
+        'Anonimização, bloqueio ou eliminação',
+        'Portabilidade dos dados',
+        'Revogação do consentimento e desconexão do GitHub',
+      ],
+      retentionSummary:
+        'Tokens OAuth cifrados e logs de consentimento enquanto a conta estiver ativa; revogáveis a qualquer momento.',
+      thirdParties: [{ name: 'GitHub, Inc.', purpose: 'Autenticação OAuth e API de repositórios' }],
+    });
+  }
   if (path === '/auth/github/status') {
     return fulfillJson(route, {
       enabled: true,
@@ -226,6 +268,15 @@ async function main() {
   await loginPage.waitForTimeout(800);
   await loginPage.screenshot({ path: resolve(OUT_DIR, '01-login.png') });
   console.log('  ✓ 01-login.png');
+
+  await loginPage.getByRole('button', { name: /Entrar com GitHub/i }).click();
+  await loginPage
+    .getByRole('heading', { name: 'Consentimento — Login com GitHub' })
+    .waitFor({ timeout: 10_000 });
+  await loginPage.waitForTimeout(600);
+  await loginPage.screenshot({ path: resolve(OUT_DIR, '01b-consentimento-lgpd.png') });
+  console.log('  ✓ 01b-consentimento-lgpd.png');
+
   await loginContext.close();
 
   // —— Telas autenticadas ——

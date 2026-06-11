@@ -50,6 +50,9 @@ export function Sidebar() {
       <div className="border-t border-white/10 p-4">
         <div className="mb-3 rounded-xl bg-white/5 px-3 py-2">
           <p className="truncate text-sm font-medium text-slate-200">{user?.name}</p>
+          {user?.githubUsername && (
+            <p className="truncate text-xs text-emerald-400/90">@{user.githubUsername}</p>
+          )}
           <p className="truncate text-xs text-slate-500">{user?.role}</p>
         </div>
         <button

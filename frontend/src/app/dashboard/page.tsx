@@ -1,29 +1,47 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { Activity, ShieldCheck, AlertTriangle, GitBranch } from 'lucide-react';
-import { api, type AuditReport } from '@/lib/api';
+import Link from 'next/link';
+import { Activity, ShieldCheck, AlertTriangle, GitBranch, Play } from 'lucide-react';
+import { GitHubIcon } from '@/components/icons/github-icon';
+import { useSessionData } from '@/hooks/use-session-data';
 import { useAuthStore } from '@/stores/auth-store';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { formatDate } from '@/lib/utils';
 
 export default function DashboardPage() {
-  const token = useAuthStore((s) => s.token);
-  const [latest, setLatest] = useState<{ id: string; report: AuditReport } | null>(null);
+  const user = useAuthStore((s) => s.user);
+  const canRun = useAuthStore((s) => s.can('audit:run'));
+  const { github, threatIntel, latestReport, loading, error } = useSessionData();
 
-  useEffect(() => {
-    if (!token) return;
-    api.listReports(token).then((reports) => {
-      if (reports[0]) setLatest({ id: reports[0].id, report: reports[0].report as AuditReport });
-    });
-  }, [token]);
+  const githubUsername = github?.githubUsername ?? user?.githubUsername ?? null;
+  const hasAudit = Boolean(latestReport);
 
   const stats = [
-    { label: 'Repositórios', value: latest?.report.totalRepositories ?? '—', icon: GitBranch },
-    { label: 'Vulnerabilidades', value: latest?.report.totalVulnerabilities ?? '—', icon: AlertTriangle },
-    { label: 'Pacotes monitorados', value: latest?.report.threatIntel?.totalPackages ?? '—', icon: ShieldCheck },
-    { label: 'Veredito', value: latest?.report.verdict ?? '—', icon: Activity },
+    {
+      label: 'Repositórios',
+      value: hasAudit ? latestReport!.report.totalRepositories : '—',
+      icon: GitBranch,
+    },
+    {
+      label: 'Vulnerabilidades',
+      value: hasAudit ? latestReport!.report.totalVulnerabilities : '—',
+      icon: AlertTriangle,
+    },
+    {
+      label: 'Pacotes monitorados',
+      value:
+        latestReport?.report.threatIntel?.totalPackages ??
+        threatIntel?.totalPackages ??
+        '—',
+      icon: ShieldCheck,
+    },
+    {
+      label: 'Veredito',
+      value: hasAudit ? latestReport!.report.verdict : '—',
+      icon: Activity,
+    },
   ];
 
   return (
@@ -32,6 +50,39 @@ export default function DashboardPage() {
         <h1 className="text-3xl font-bold text-white">Dashboard</h1>
         <p className="text-slate-400">Visão geral da segurança dos seus repositórios GitHub</p>
       </div>
+
+      {error && <p className="text-sm text-red-400">{error}</p>}
+
+      {(github?.connected || githubUsername) && (
+        <Card>
+          <CardContent className="flex flex-wrap items-center justify-between gap-4 py-4">
+            <div className="flex items-center gap-3">
+              <div className="rounded-xl bg-white/10 p-2.5">
+                <GitHubIcon className="h-5 w-5 text-white" />
+              </div>
+              <div>
+                <p className="font-medium text-white">Conta GitHub conectada</p>
+                <p className="text-sm text-emerald-400">
+                  @{githubUsername}
+                  {github?.connectedAt ? ` · desde ${formatDate(github.connectedAt)}` : ''}
+                </p>
+              </div>
+            </div>
+            <Badge variant="success">OAuth ativo</Badge>
+          </CardContent>
+        </Card>
+      )}
+
+      {!loading && !github?.connected && github?.enabled && (
+        <Card>
+          <CardContent className="py-4">
+            <p className="text-sm text-amber-300">
+              GitHub não conectado nesta sessão. Use <strong>Entrar com GitHub</strong> no login ou
+              conecte em Auditorias.
+            </p>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {stats.map(({ label, value, icon: Icon }) => (
@@ -42,29 +93,76 @@ export default function DashboardPage() {
               </div>
               <div>
                 <p className="text-sm text-slate-500">{label}</p>
-                <p className="text-2xl font-semibold text-white capitalize">{String(value)}</p>
+                <p className="text-2xl font-semibold capitalize text-white">{String(value)}</p>
               </div>
             </CardContent>
           </Card>
         ))}
       </div>
 
-      {latest && (
+      {latestReport && (
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold text-white">Última auditoria</h2>
-              <Badge variant={latest.report.verdict === 'not_affected' ? 'success' : 'critical'}>
-                {latest.report.verdict}
+              <Badge variant={latestReport.report.verdict === 'not_affected' ? 'success' : 'critical'}>
+                {latestReport.report.verdict}
               </Badge>
             </div>
           </CardHeader>
           <CardContent className="text-sm text-slate-400">
-            <p>@{latest.report.githubUsername} · {formatDate(latest.report.auditedAt)}</p>
-            <p className="mt-2">
-              {latest.report.publicRepositories} públicos · {latest.report.privateRepositories} privados ·{' '}
-              {latest.report.totalVulnerabilities} vulnerabilidades
+            <p>
+              @{latestReport.report.githubUsername} · {formatDate(latestReport.report.auditedAt)}
             </p>
+            <p className="mt-2">
+              {latestReport.report.publicRepositories} públicos · {latestReport.report.privateRepositories}{' '}
+              privados · {latestReport.report.totalVulnerabilities} vulnerabilidades
+            </p>
+            <div className="mt-4 flex flex-wrap gap-3">
+              <Link href={`/dashboard/audits/${latestReport.id}`}>
+                <Button variant="secondary">Ver relatório</Button>
+              </Link>
+              <Link href="/dashboard/vulnerabilities">
+                <Button variant="ghost">Vulnerabilidades</Button>
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {!loading && !hasAudit && (
+        <Card>
+          <CardHeader>
+            <h2 className="text-lg font-semibold text-white">Nenhuma auditoria ainda</h2>
+          </CardHeader>
+          <CardContent className="space-y-4 text-sm text-slate-400">
+            <p>
+              Os repositórios da conta <strong className="text-slate-200">@{githubUsername ?? 'GitHub'}</strong>{' '}
+              ainda não foram varridos. Execute a primeira auditoria para preencher repositórios,
+              vulnerabilidades e veredito.
+            </p>
+            {threatIntel && (
+              <p>
+                Threat intelligence já sincronizada: {threatIntel.totalPackages} pacotes monitorados
+                {threatIntel.lastSyncedAt ? ` (última sync: ${formatDate(threatIntel.lastSyncedAt)})` : ''}.
+              </p>
+            )}
+            {canRun && github?.connected && (
+              <Link href="/dashboard/audits?autostart=1">
+                <Button>
+                  <Play className="h-4 w-4" />
+                  Executar primeira auditoria
+                </Button>
+              </Link>
+            )}
+            {canRun && !github?.connected && (
+              <Link href="/dashboard/audits">
+                <Button variant="secondary">
+                  <GitHubIcon className="h-4 w-4" />
+                  Ir para Auditorias
+                </Button>
+              </Link>
+            )}
           </CardContent>
         </Card>
       )}

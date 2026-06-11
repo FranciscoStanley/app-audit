@@ -7,11 +7,11 @@
 Para atualizar as imagens em `docs/screenshots/`:
 
 ```bash
-npm run build -w frontend
-npx next start -p 3002 -w frontend
-# Em outro terminal:
-SCREENSHOT_BASE_URL=http://localhost:3002 npm run docs:screenshots
+docker compose up -d
+npm run docs:screenshots
 ```
+
+Ou com build local: `SCREENSHOT_BASE_URL=http://localhost:3002 npm run docs:screenshots` após `npm run build -w frontend`.
 
 Ver [screenshots.md](./screenshots.md).
 

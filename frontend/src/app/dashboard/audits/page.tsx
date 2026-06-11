@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Play, ExternalLink, AlertTriangle } from 'lucide-react';
 import { GitHubIcon } from '@/components/icons/github-icon';
 import { GitHubOAuthConsentModal } from '@/components/auth/github-oauth-consent-modal';
@@ -13,7 +14,10 @@ import { Badge } from '@/components/ui/badge';
 import { formatDate } from '@/lib/utils';
 
 export default function AuditsPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const token = useAuthStore((s) => s.token);
+  const setUser = useAuthStore((s) => s.setUser);
   const canRun = useAuthStore((s) => s.can('audit:run'));
   const [reports, setReports] = useState<Array<{ id: string; createdAt: string; report: { verdict: string; githubUsername: string; totalVulnerabilities: number } }>>([]);
   const [running, setRunning] = useState(false);
@@ -21,17 +25,25 @@ export default function AuditsPage() {
   const [auditError, setAuditError] = useState('');
   const [consentOpen, setConsentOpen] = useState(false);
   const [disconnecting, setDisconnecting] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+  const autostartDone = useRef(false);
 
   async function load() {
-    if (!token) return;
+    if (!token) return [];
     const data = await api.listReports(token);
     setReports(data as typeof reports);
+    return data;
   }
 
   useEffect(() => {
-    load();
-    if (token) api.githubStatus(token).then(setGithub).catch(() => null);
-  }, [token]);
+    if (!token) return;
+    setLoaded(false);
+    Promise.all([
+      load(),
+      api.githubStatus(token).then(setGithub).catch(() => null),
+      api.me(token).then(setUser).catch(() => null),
+    ]).finally(() => setLoaded(true));
+  }, [token, setUser]);
 
   async function runAudit() {
     if (!token) return;
@@ -40,12 +52,28 @@ export default function AuditsPage() {
     try {
       await api.runAudit(token);
       await load();
+      await api.me(token).then(setUser).catch(() => null);
     } catch (e) {
       setAuditError(e instanceof Error ? e.message : 'Falha ao executar auditoria');
     } finally {
       setRunning(false);
     }
   }
+
+  useEffect(() => {
+    if (autostartDone.current) return;
+    if (searchParams.get('autostart') !== '1') return;
+    if (!loaded || !token || !canRun || !github?.connected || running) return;
+
+    router.replace('/dashboard/audits');
+    if (reports.length > 0) {
+      autostartDone.current = true;
+      return;
+    }
+
+    autostartDone.current = true;
+    void runAudit();
+  }, [searchParams, loaded, token, canRun, github, reports.length, running, router]);
 
   async function disconnectGitHub() {
     if (!token) return;
@@ -133,10 +161,22 @@ export default function AuditsPage() {
             </CardContent>
           </Card>
         ))}
-        {reports.length === 0 && (
+        {reports.length === 0 && !running && (
           <Card>
             <CardHeader>
-              <p className="text-slate-400">Nenhuma auditoria executada ainda.</p>
+              <p className="text-slate-400">
+                Nenhuma auditoria executada ainda. Clique em <strong>Nova auditoria</strong> para
+                varrer todos os repositórios da conta GitHub conectada.
+              </p>
+            </CardHeader>
+          </Card>
+        )}
+
+        {running && (
+          <Card>
+            <CardHeader>
+              <p className="text-slate-300">Auditoria em andamento — varrendo repositórios GitHub...</p>
+              <p className="mt-1 text-sm text-slate-500">Pode levar alguns minutos conforme a quantidade de repos.</p>
             </CardHeader>
           </Card>
         )}

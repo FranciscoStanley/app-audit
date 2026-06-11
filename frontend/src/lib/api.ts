@@ -108,8 +108,42 @@ export const api = {
       body: JSON.stringify({ code }),
     }),
 
-  runAudit: (token: string) =>
-    request<{ report: unknown; auditId?: string }>('/audit/run?save=true', { method: 'POST' }, token),
+  runAudit: async (token: string) => {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10 * 60 * 1000);
+    try {
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      };
+      const res = await fetch(`${API_URL}/audit/run?save=true`, {
+        method: 'POST',
+        headers,
+        signal: controller.signal,
+      });
+      if (!res.ok) {
+        const body = await res.text();
+        let message = body || res.statusText;
+        try {
+          const json = JSON.parse(body) as { message?: string | string[] };
+          if (json.message) {
+            message = Array.isArray(json.message) ? json.message.join(', ') : json.message;
+          }
+        } catch {
+          // keep raw body
+        }
+        throw new ApiError(message, res.status);
+      }
+      return (await res.json()) as { report: unknown; auditId?: string };
+    } catch (e) {
+      if (e instanceof Error && e.name === 'AbortError') {
+        throw new ApiError('Auditoria excedeu o tempo limite (10 min). Tente novamente.', 408);
+      }
+      throw e;
+    } finally {
+      clearTimeout(timeout);
+    }
+  },
 
   listReports: (token: string) => request<Array<{ id: string; createdAt: string; report: unknown }>>('/audit/reports', {}, token),
 
