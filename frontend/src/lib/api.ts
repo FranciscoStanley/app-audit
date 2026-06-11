@@ -160,6 +160,33 @@ export const api = {
   runAudit: (token: string) =>
     request<{ report: unknown; auditId?: string }>('/audit/run?save=true', { method: 'POST' }, token),
 
+  enqueueAuditJob: (token: string) =>
+    request<{ jobId: string; status: string }>('/audit/jobs/audit-run', { method: 'POST' }, token),
+
+  enqueueRemediationJob: (token: string, findingId: string) =>
+    request<{ jobId: string; status: string }>(
+      '/audit/jobs/remediation',
+      { method: 'POST', body: JSON.stringify({ findingId }) },
+      token,
+    ),
+
+  enqueueRemediationAllJob: (token: string, auditId: string) =>
+    request<{ jobId: string; status: string }>(
+      '/audit/jobs/remediation-all',
+      { method: 'POST', body: JSON.stringify({ auditId }) },
+      token,
+    ),
+
+  getBackgroundJob: (token: string, jobId: string) =>
+    request<BackgroundJobResponse>(`/audit/jobs/${jobId}`, {}, token),
+
+  listBackgroundJobs: (token: string, status?: BackgroundJobResponse['status']) =>
+    request<BackgroundJobResponse[]>(
+      `/audit/jobs${status ? `?status=${status}` : ''}`,
+      {},
+      token,
+    ),
+
   listReports: (token: string) => request<Array<{ id: string; createdAt: string; report: unknown }>>('/audit/reports', {}, token),
 
   getReport: (token: string, id: string) =>
@@ -277,4 +304,25 @@ export interface RemediationResult {
     lockfilesUpdated: string[];
     commitSha?: string;
   };
+}
+
+export interface BackgroundJobResponse {
+  id: string;
+  type: 'audit_run' | 'remediation_apply' | 'remediation_apply_all';
+  status: 'pending' | 'running' | 'completed' | 'failed';
+  label: string;
+  findingId?: string;
+  auditId?: string;
+  progress?: {
+    phase: string;
+    current: number;
+    total: number;
+    message?: string;
+  };
+  result?: Record<string, unknown>;
+  error?: string;
+  createdAt: string;
+  updatedAt: string;
+  startedAt?: string;
+  completedAt?: string;
 }

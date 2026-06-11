@@ -160,6 +160,13 @@ export class RemediationUseCase {
   async applyAll(
     auditId: string,
     userId: string,
+    options?: {
+      onProgress?: (progress: {
+        completed: number;
+        total: number;
+        currentFindingId?: string;
+      }) => void | Promise<void>;
+    },
   ): Promise<{
     total: number;
     succeeded: number;
@@ -192,6 +199,7 @@ export class RemediationUseCase {
     }> = [];
     let succeeded = 0;
     let failed = 0;
+    const total = findings.length;
 
     for (const finding of findings) {
       const result = await this.apply(finding.id, userId);
@@ -203,6 +211,11 @@ export class RemediationUseCase {
       });
       if (result.success) succeeded++;
       else failed++;
+      await options?.onProgress?.({
+        completed: results.length,
+        total,
+        currentFindingId: finding.id,
+      });
     }
 
     return { total: findings.length, succeeded, failed, results };

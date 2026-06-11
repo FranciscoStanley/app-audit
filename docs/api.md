@@ -126,9 +126,52 @@ Retorna o perfil do usuário autenticado (inclui `githubConnected`, `githubUsern
 
 ## Auditoria
 
+## Auditorias e jobs assíncronos
+
+### POST /v1/audit/jobs/audit-run
+
+Enfileira varredura completa (recomendado para UI e contas com muitos repositórios).
+
+**Permissão:** `audit:run` · **Resposta:** `202 Accepted`
+
+```json
+{ "jobId": "uuid", "status": "pending" }
+```
+
+### GET /v1/audit/jobs/:id
+
+Consulta status do job (polling). Inclui `progress` durante execução.
+
+```json
+{
+  "id": "uuid",
+  "type": "audit_run",
+  "status": "running",
+  "label": "Varredura de vulnerabilidades",
+  "progress": { "phase": "scanning", "current": 3, "total": 10, "message": "org/repo" },
+  "result": null,
+  "createdAt": "...",
+  "updatedAt": "..."
+}
+```
+
+Quando `status` = `completed`, `result` contém `auditId` (varredura) ou detalhes de remediação.
+
+### GET /v1/audit/jobs?status=running
+
+Lista jobs do usuário autenticado (filtro opcional por status).
+
+### POST /v1/audit/jobs/remediation
+
+**Permissão:** `remediation:apply` · **Body:** `{ "findingId": "uuid" }` · **Resposta:** `202`
+
+### POST /v1/audit/jobs/remediation-all
+
+**Permissão:** `remediation:apply` · **Body:** `{ "auditId": "uuid" }` · **Resposta:** `202`
+
 ### POST /v1/audit/run?save=true
 
-Executa auditoria completa de todos os repositórios GitHub da conta autenticada no `gh`.
+Executa auditoria **de forma síncrona** (legado/CLI). Preferir `POST /audit/jobs/audit-run` na UI.
 
 **Permissão:** `audit:run`
 
@@ -207,11 +250,11 @@ Retorna plano de remediação para a vulnerabilidade (todos os passos marcados c
 
 ### POST /v1/audit/remediation/:findingId/apply
 
-Aplica todos os passos automaticamente no repositório GitHub. **Exige consentimento de remediação registrado** (v1.1.0+). Requer token com escopo `repo` e `security_events` (Dependabot).
+Aplica remediação **de forma síncrona** (legado). Preferir `POST /audit/jobs/remediation` na UI.
 
 ### POST /v1/audit/reports/:id/remediate-all
 
-Aplica remediação automática em **todas** as vulnerabilidades remediativas do relatório (ex.: 47 alertas Dependabot).
+Aplica remediação em lote **de forma síncrona** (legado). Preferir `POST /audit/jobs/remediation-all` na UI.
 
 Resposta: `{ total, succeeded, failed, results[] }`
 

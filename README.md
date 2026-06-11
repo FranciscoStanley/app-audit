@@ -135,7 +135,7 @@ Métricas da última auditoria: repositórios, vulnerabilidades, pacotes monitor
 
 ### Auditorias
 
-Histórico de varredura, status da conexão GitHub e nova auditoria em todos os repositórios.
+Histórico de varredura, status da conexão GitHub e nova auditoria em todos os repositórios. Varreduras e remediações **continuam em segundo plano** — você pode navegar entre telas enquanto o job executa; o banner no topo exibe progresso e status.
 
 ![Auditorias](./docs/screenshots/03-auditorias.png)
 
@@ -147,8 +147,9 @@ Relatório Markdown, download PDF e vulnerabilidades por repositório.
 
 ## Remediação automática
 
-- **Individual:** botão *Resolver* → *Aplicar correção* no card da vulnerabilidade
-- **Em lote:** botão *Corrigir todas (N)* na página Vulnerabilidades
+- **Individual:** botão *Resolver* → *Aplicar correção* no card da vulnerabilidade (job assíncrono)
+- **Em lote:** botão *Corrigir todas (N)* na página Vulnerabilidades (job assíncrono)
+- **Segundo plano:** banner global + indicador na sidebar; polling automático ao retornar ou recarregar a página
 - **Dependabot:** alertas GitHub detectados na auditoria com tag `[Dependabot]`
 - **PR automático:** quando `main` é branch protegida
 

@@ -19,6 +19,7 @@
         "accessToken": "",
         "auditId": "",
         "findingId": "",
+        "jobId": "",
         "adminEmail": "",
         "adminPassword": ""
       },
@@ -74,6 +75,30 @@
       "_type": "request_group",
       "name": "Audit",
       "parentId": "wrk_app_audit"
+    },
+    {
+      "_id": "req_enqueue_audit_job",
+      "_type": "request",
+      "name": "Enqueue Audit Job (async)",
+      "method": "POST",
+      "url": "{{ _.baseUrl }}/v1/audit/jobs/audit-run",
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.accessToken }}"
+      },
+      "parentId": "fld_audit"
+    },
+    {
+      "_id": "req_get_job",
+      "_type": "request",
+      "name": "Get Job Status",
+      "method": "GET",
+      "url": "{{ _.baseUrl }}/v1/audit/jobs/{{ _.jobId }}",
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.accessToken }}"
+      },
+      "parentId": "fld_audit"
     },
     {
       "_id": "req_run_audit",

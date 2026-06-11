@@ -21,6 +21,11 @@ import { SyncThreatIntelligenceUseCase } from './sync-threat-intelligence.use-ca
 export interface RunMiasmaAuditInput {
   userId: string;
   saveReportPath?: string;
+  onProgress?: (progress: {
+    scanned: number;
+    total: number;
+    currentRepo?: string;
+  }) => void | Promise<void>;
 }
 
 export interface RunMiasmaAuditOutput {
@@ -68,6 +73,11 @@ export class RunMiasmaAuditUseCase {
       try {
         const scan = await scanner.scan(repo);
         scans.push(scan);
+        await input.onProgress?.({
+          scanned: scans.length,
+          total: repositories.length,
+          currentRepo: repo.fullName,
+        });
         if (scan.isAffected) {
           this.logger.warn(
             `AFETADO: ${repo.fullName} (${scan.findings.length} achados)`,

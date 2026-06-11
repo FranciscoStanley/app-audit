@@ -20,17 +20,28 @@ O App Audit v1 foi projetado como **appliance single-tenant** (uma instância Do
 | Consentimentos | `data/consents.json` | Audit trail local |
 | Tokens OAuth | `data/github-connections.json` (cifrados) | Revogação por usuário |
 | Threat intel cache | `data/threat-intel-cache.json` | Sync incremental persistido |
+| Jobs assíncronos | `data/jobs/{id}/job.json` | Varredura e remediação em fila local |
 
 **Não use NFS compartilhado entre múltiplos backends sem lock externo.**
 
-## Auditorias síncronas
+## Jobs assíncronos (v1.2+)
 
-`POST /v1/audit/run` executa varredura completa na requisição HTTP. Repositórios muitos ou grandes podem:
+Varreduras e remediações são enfileiradas via `POST /v1/audit/jobs/*`. O frontend faz polling em `GET /v1/audit/jobs/:id`.
+
+- **Single-node:** um processador in-process por instância; fila FIFO em disco
+- **Reinício:** jobs `running` são marcados como `failed` (não retomados automaticamente)
+- **UI:** banner global + sidebar; estado sobrevive navegação e recarga de página (via servidor)
+
+Endpoints síncronos (`POST /audit/run`, etc.) permanecem para CLI e compatibilidade.
+
+## Auditorias síncronas (legado)
+
+`POST /v1/audit/run` ainda executa varredura completa na requisição HTTP. Repositórios muitos ou grandes podem:
 
 - Exceder timeout de proxy (nginx, Cloudflare)
 - Bloquear worker Node por longos períodos
 
-**Mitigação v1:** aumentar timeout do reverse proxy; **v2:** fila de jobs.
+**Mitigação v1:** usar `POST /v1/audit/jobs/audit-run` + polling; **v2:** fila distribuída (BullMQ/Redis).
 
 ## Remediação
 

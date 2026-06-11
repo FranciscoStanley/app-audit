@@ -2,8 +2,9 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Shield, LayoutDashboard, FileSearch, AlertTriangle, Database, LogOut, Settings } from 'lucide-react';
+import { Shield, LayoutDashboard, FileSearch, AlertTriangle, Database, LogOut, Settings, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useBackgroundTasksStore, selectVisibleTasks } from '@/stores/background-tasks-store';
 import { useAuthStore } from '@/stores/auth-store';
 
 const links = [
@@ -16,6 +17,9 @@ const links = [
 export function Sidebar() {
   const pathname = usePathname();
   const { user, logout } = useAuthStore();
+  const runningCount = useBackgroundTasksStore(
+    (s) => selectVisibleTasks(s.tasks).filter((t) => t.status === 'running').length,
+  );
   const navLinks = [
     ...links,
     ...(user?.role === 'admin'
@@ -31,7 +35,15 @@ export function Sidebar() {
         </div>
         <div>
           <p className="font-semibold text-white">App Audit</p>
-          <p className="text-xs text-slate-400">Security Platform</p>
+          <p className="text-xs text-slate-400">
+            Security Platform
+            {runningCount > 0 && (
+              <span className="ml-2 inline-flex items-center gap-1 text-amber-400">
+                <Loader2 className="h-3 w-3 animate-spin" />
+                {runningCount} em execução
+              </span>
+            )}
+          </p>
         </div>
       </div>
 

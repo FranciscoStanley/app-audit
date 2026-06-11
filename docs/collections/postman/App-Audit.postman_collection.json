@@ -9,6 +9,7 @@
     { "key": "accessToken", "value": "" },
     { "key": "auditId", "value": "" },
     { "key": "findingId", "value": "" },
+    { "key": "jobId", "value": "" },
     { "key": "adminEmail", "value": "" },
     { "key": "adminPassword", "value": "" }
   ],
@@ -99,6 +100,53 @@
     {
       "name": "Audit",
       "item": [
+        {
+          "name": "Enqueue Audit Job (async)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 202) {",
+                  "  const json = pm.response.json();",
+                  "  if (json.jobId) pm.collectionVariables.set('jobId', json.jobId);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/v1/audit/jobs/audit-run"
+          }
+        },
+        {
+          "name": "Get Job Status",
+          "request": { "method": "GET", "url": "{{baseUrl}}/v1/audit/jobs/{{jobId}}" }
+        },
+        {
+          "name": "List Jobs (running)",
+          "request": { "method": "GET", "url": "{{baseUrl}}/v1/audit/jobs?status=running" }
+        },
+        {
+          "name": "Enqueue Remediation Job",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"findingId\": \"{{findingId}}\"\n}" },
+            "url": "{{baseUrl}}/v1/audit/jobs/remediation"
+          }
+        },
+        {
+          "name": "Enqueue Remediation All Job",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"auditId\": \"{{auditId}}\"\n}" },
+            "url": "{{baseUrl}}/v1/audit/jobs/remediation-all"
+          }
+        },
         {
           "name": "Run Audit",
           "event": [

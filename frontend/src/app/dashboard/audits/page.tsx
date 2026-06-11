@@ -7,6 +7,11 @@ import { Play, ExternalLink, AlertTriangle } from 'lucide-react';
 import { GitHubIcon } from '@/components/icons/github-icon';
 import { GitHubOAuthConsentModal } from '@/components/auth/github-oauth-consent-modal';
 import { api, type GitHubStatus } from '@/lib/api';
+import {
+  AUDIT_TASK_ID,
+  runAuditInBackground,
+  useBackgroundTasksStore,
+} from '@/stores/background-tasks-store';
 import { useAuthStore } from '@/stores/auth-store';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
@@ -20,7 +25,8 @@ export default function AuditsPage() {
   const setUser = useAuthStore((s) => s.setUser);
   const canRun = useAuthStore((s) => s.can('audit:run'));
   const [reports, setReports] = useState<Array<{ id: string; createdAt: string; report: { verdict: string; githubUsername: string; totalVulnerabilities: number } }>>([]);
-  const [running, setRunning] = useState(false);
+  const auditTask = useBackgroundTasksStore((s) => s.tasks[AUDIT_TASK_ID]);
+  const running = auditTask?.status === 'running';
   const [github, setGithub] = useState<GitHubStatus | null>(null);
   const [auditError, setAuditError] = useState('');
   const [consentOpen, setConsentOpen] = useState(false);
@@ -46,19 +52,21 @@ export default function AuditsPage() {
   }, [token, setUser]);
 
   async function runAudit() {
-    if (!token) return;
-    setRunning(true);
+    if (!token || running) return;
     setAuditError('');
-    try {
-      await api.runAudit(token);
-      await load();
-      await api.me(token).then(setUser).catch(() => null);
-    } catch (e) {
-      setAuditError(e instanceof Error ? e.message : 'Falha ao executar auditoria');
-    } finally {
-      setRunning(false);
-    }
+    void runAuditInBackground(token);
   }
+
+  useEffect(() => {
+    if (!token) return;
+    if (auditTask?.status === 'success') {
+      void load();
+      void api.me(token).then(setUser).catch(() => null);
+    }
+    if (auditTask?.status === 'error') {
+      setAuditError(auditTask.error ?? 'Falha ao executar auditoria');
+    }
+  }, [auditTask?.status, auditTask?.error, token, setUser]);
 
   useEffect(() => {
     if (autostartDone.current) return;

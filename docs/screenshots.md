@@ -20,13 +20,13 @@ Modal de consentimento informado exibido antes do redirect ao GitHub: finalidade
 
 ## Dashboard
 
-Visão geral com métricas da última auditoria: repositórios, vulnerabilidades, pacotes monitorados e veredito.
+Visão geral com métricas da última auditoria: repositórios, vulnerabilidades, pacotes monitorados e veredito. Quando há jobs em execução, um **banner amarelo** no topo indica progresso (varredura ou remediação).
 
 ![Dashboard](./screenshots/02-dashboard.png)
 
 ## Auditorias
 
-Histórico de varreduras, status da conexão GitHub e botão para executar nova auditoria em todos os repositórios.
+Histórico de varreduras, status da conexão GitHub e botão para executar nova auditoria. A varredura roda como **job assíncrono** — é possível navegar para outras telas enquanto o banner exibe o andamento.
 
 ![Auditorias](./screenshots/03-auditorias.png)
 

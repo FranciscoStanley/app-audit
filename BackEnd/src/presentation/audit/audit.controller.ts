@@ -2,6 +2,8 @@ import {
   Body,
   Controller,
   Get,
+  HttpCode,
+  HttpStatus,
   NotFoundException,
   Param,
   Post,
@@ -23,6 +25,7 @@ import type { Request, Response } from 'express';
 import { access, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { RunMiasmaAuditUseCase } from '../../application/use-cases/run-miasma-audit.use-case';
+import { BackgroundJobUseCase } from '../../application/use-cases/background-job.use-case';
 import { RemediationUseCase } from '../../application/use-cases/remediation.use-case';
 import { RemediationConsentUseCase } from '../../application/use-cases/remediation-consent.use-case';
 import { RemediationConsentAcceptDto } from '../auth/dto/auth.dto';
@@ -33,6 +36,13 @@ import { AuditReportStore } from '../../infrastructure/storage/audit-report.stor
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { Permissions } from '../auth/decorators/permissions.decorator';
 import { AuditRunResponseDto } from './dto/audit-report-response.dto';
+import {
+  BackgroundJobResponseDto,
+  CreateBackgroundJobResponseDto,
+  CreateRemediationAllJobDto,
+  CreateRemediationJobDto,
+} from './dto/background-job.dto';
+import { BackgroundJob } from '../../domain/entities/background-job.entity';
 
 @ApiTags('Security Audit')
 @ApiBearerAuth()
@@ -41,12 +51,88 @@ import { AuditRunResponseDto } from './dto/audit-report-response.dto';
 export class AuditController {
   constructor(
     private readonly auditUseCase: RunMiasmaAuditUseCase,
+    private readonly backgroundJobs: BackgroundJobUseCase,
     private readonly auditStore: AuditReportStore,
     private readonly pdfGenerator: PdfReportGenerator,
     private readonly vulnerabilityReportGenerator: VulnerabilityReportGenerator,
     private readonly remediation: RemediationUseCase,
     private readonly remediationConsent: RemediationConsentUseCase,
   ) {}
+
+  @Post('jobs/audit-run')
+  @HttpCode(HttpStatus.ACCEPTED)
+  @Permissions('audit:run')
+  @ApiOperation({
+    summary: 'Enfileirar varredura de segurança (execução assíncrona)',
+  })
+  @ApiResponse({ status: 202, type: CreateBackgroundJobResponseDto })
+  async enqueueAuditRun(
+    @CurrentUser() user: { id: string },
+  ): Promise<CreateBackgroundJobResponseDto> {
+    const job = await this.backgroundJobs.createAuditJob(user.id);
+    return { jobId: job.id, status: job.status };
+  }
+
+  @Post('jobs/remediation')
+  @HttpCode(HttpStatus.ACCEPTED)
+  @Permissions('remediation:apply')
+  @ApiOperation({
+    summary: 'Enfileirar remediação de uma vulnerabilidade (assíncrona)',
+  })
+  @ApiResponse({ status: 202, type: CreateBackgroundJobResponseDto })
+  async enqueueRemediation(
+    @CurrentUser() user: { id: string },
+    @Body() dto: CreateRemediationJobDto,
+  ): Promise<CreateBackgroundJobResponseDto> {
+    const job = await this.backgroundJobs.createRemediationJob(
+      user.id,
+      dto.findingId,
+    );
+    return { jobId: job.id, status: job.status };
+  }
+
+  @Post('jobs/remediation-all')
+  @HttpCode(HttpStatus.ACCEPTED)
+  @Permissions('remediation:apply')
+  @ApiOperation({
+    summary: 'Enfileirar remediação em lote (assíncrona)',
+  })
+  @ApiResponse({ status: 202, type: CreateBackgroundJobResponseDto })
+  async enqueueRemediationAll(
+    @CurrentUser() user: { id: string },
+    @Body() dto: CreateRemediationAllJobDto,
+  ): Promise<CreateBackgroundJobResponseDto> {
+    const job = await this.backgroundJobs.createRemediationAllJob(
+      user.id,
+      dto.auditId,
+    );
+    return { jobId: job.id, status: job.status };
+  }
+
+  @Get('jobs')
+  @Permissions('audit:read')
+  @ApiOperation({ summary: 'Listar jobs assíncronos do usuário autenticado' })
+  @ApiQuery({ name: 'status', required: false, enum: ['pending', 'running', 'completed', 'failed'] })
+  @ApiResponse({ status: 200, type: [BackgroundJobResponseDto] })
+  async listJobs(
+    @CurrentUser() user: { id: string },
+    @Query('status') status?: BackgroundJob['status'],
+  ): Promise<BackgroundJobResponseDto[]> {
+    const jobs = await this.backgroundJobs.listJobs(user.id, status);
+    return jobs.map((job) => this.toJobDto(job));
+  }
+
+  @Get('jobs/:id')
+  @Permissions('audit:read')
+  @ApiOperation({ summary: 'Status de um job assíncrono (polling)' })
+  @ApiResponse({ status: 200, type: BackgroundJobResponseDto })
+  async getJob(
+    @CurrentUser() user: { id: string },
+    @Param('id') id: string,
+  ): Promise<BackgroundJobResponseDto> {
+    const job = await this.backgroundJobs.getJob(user.id, id);
+    return this.toJobDto(job);
+  }
 
   @Post('run')
   @Permissions('audit:run')
@@ -288,5 +374,23 @@ export class AuditController {
 
   private findingFilenameSlug(auditId: string, findingId: string): string {
     return `vulnerability-${findingId.slice(0, 8)}`;
+  }
+
+  private toJobDto(job: BackgroundJob): BackgroundJobResponseDto {
+    return {
+      id: job.id,
+      type: job.type,
+      status: job.status,
+      label: job.label,
+      findingId: job.payload.findingId,
+      auditId: job.payload.auditId,
+      progress: job.progress,
+      result: job.result,
+      error: job.error,
+      createdAt: job.createdAt,
+      updatedAt: job.updatedAt,
+      startedAt: job.startedAt,
+      completedAt: job.completedAt,
+    };
   }
 }

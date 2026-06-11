@@ -21,9 +21,17 @@ frontend/src/
   app/dashboard/       # área autenticada
   components/ui/       # design system
   components/audit/    # relatórios, vulnerabilidades
-  lib/api.ts           # client HTTP
-  stores/auth-store.ts # JWT + RBAC client
+  components/layout/   # sidebar, banner de jobs
+  hooks/               # use-background-job-polling, consent
+  lib/api.ts           # client HTTP (+ jobs async)
+  stores/              # auth-store, background-tasks-store
 ```
+
+## Jobs em segundo plano
+
+- Varredura e remediação usam `POST /v1/audit/jobs/*` + polling em `GET /v1/audit/jobs/:id`
+- `background-tasks-store.ts` persiste estado local; `useBackgroundJobPolling` sincroniza com o servidor
+- Banner global em `dashboard/layout.tsx`
 
 ## Comandos
 

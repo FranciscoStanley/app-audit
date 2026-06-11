@@ -83,6 +83,11 @@ Base: `http://localhost:3000` · Prefixo versionado: **`/v1`** (exceto health)
 | GET | `/v1/auth/me` | JWT | — |
 | GET | `/v1/auth/users` | JWT | admin |
 | POST | `/v1/auth/users` | JWT | admin |
+| POST | `/v1/audit/jobs/audit-run` | JWT | audit:run |
+| POST | `/v1/audit/jobs/remediation` | JWT | remediation:apply |
+| POST | `/v1/audit/jobs/remediation-all` | JWT | remediation:apply |
+| GET | `/v1/audit/jobs` | JWT | audit:read |
+| GET | `/v1/audit/jobs/:id` | JWT | audit:read |
 | POST | `/v1/audit/run` | JWT | audit:run |
 | GET | `/v1/audit/reports` | JWT | audit:read |
 | GET | `/v1/audit/reports/:id` | JWT | audit:read |
@@ -109,7 +114,8 @@ Swagger interativo: `http://localhost:3000/api/docs`
 | Lockfiles | pnpm, npm, yarn, pip (`requirements.txt`) |
 | Branch protegida | Fallback automático para Pull Request |
 | Dependabot | Scanner lê alertas abertos; correção atualiza manifesto + lockfile |
-| Em lote | `POST /audit/reports/:id/remediate-all` |
+| Em lote | `POST /audit/jobs/remediation-all` (async) ou `POST /audit/reports/:id/remediate-all` (sync) |
+| Jobs | Persistência em `data/jobs/{id}/job.json`; processador in-process single-node |
 
 Requisitos no servidor: `git`, `gh` autenticado, `pnpm`/`npm` no PATH (Dockerfile inclui git, gh, pnpm).
 

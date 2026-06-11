@@ -5,6 +5,12 @@ import Link from 'next/link';
 import { Play, Wrench } from 'lucide-react';
 import { RemediationConsentModal } from '@/components/auth/remediation-consent-modal';
 import { api, type ThreatFinding } from '@/lib/api';
+import {
+  applyAllRemediationInBackground,
+  bulkRemediationTaskId,
+  type BulkRemediationTaskResult,
+  useBackgroundTasksStore,
+} from '@/stores/background-tasks-store';
 import { useRemediationConsent } from '@/hooks/use-remediation-consent';
 import { useAuthStore } from '@/stores/auth-store';
 import { VulnerabilityCard } from '@/components/audit/vulnerability-card';
@@ -22,8 +28,16 @@ export default function VulnerabilitiesPage() {
   const [filter, setFilter] = useState('all');
   const [hasReports, setHasReports] = useState(true);
   const [loading, setLoading] = useState(true);
-  const [remediating, setRemediating] = useState(false);
-  const [bulkResult, setBulkResult] = useState<{ message: string; pullRequests: string[] } | null>(null);
+  const bulkTask = useBackgroundTasksStore((s) =>
+    auditId ? s.tasks[bulkRemediationTaskId(auditId)] : undefined,
+  );
+  const remediating = bulkTask?.status === 'running';
+  const bulkResult =
+    bulkTask?.status === 'success' && bulkTask.result && 'message' in bulkTask.result
+      ? (bulkTask.result as BulkRemediationTaskResult)
+      : bulkTask?.status === 'error'
+        ? { message: bulkTask.error ?? 'Falha na remediação em lote', pullRequests: [] as string[] }
+        : null;
 
   useEffect(() => {
     if (!token) return;
@@ -49,27 +63,9 @@ export default function VulnerabilitiesPage() {
   const remediableCount = findings.filter((f) => f.remediationAvailable).length;
 
   async function handleRemediateAll() {
-    if (!token || !auditId) return;
+    if (!token || !auditId || remediating) return;
     await ensureConsent(async () => {
-      setRemediating(true);
-      setBulkResult(null);
-      try {
-        const result = await api.applyAllRemediation(token, auditId);
-        const pullRequests = result.results
-          .map((r) => r.pullRequestUrl)
-          .filter((url): url is string => Boolean(url));
-        setBulkResult({
-          message: `${result.succeeded}/${result.total} vulnerabilidades corrigidas automaticamente`,
-          pullRequests,
-        });
-      } catch (e) {
-        setBulkResult({
-          message: e instanceof Error ? e.message : 'Falha na remediação em lote',
-          pullRequests: [],
-        });
-      } finally {
-        setRemediating(false);
-      }
+      void applyAllRemediationInBackground(token, auditId, remediableCount);
     });
   }
 
@@ -96,7 +92,9 @@ export default function VulnerabilitiesPage() {
 
       {bulkResult && (
         <div className="space-y-1">
-          <p className="text-sm text-emerald-400">{bulkResult.message}</p>
+          <p className={`text-sm ${bulkTask?.status === 'error' ? 'text-red-400' : 'text-emerald-400'}`}>
+            {bulkResult.message}
+          </p>
           {bulkResult.pullRequests.map((url) => (
             <a key={url} href={url} target="_blank" rel="noopener noreferrer" className="block text-sm text-indigo-400 underline">
               {url}

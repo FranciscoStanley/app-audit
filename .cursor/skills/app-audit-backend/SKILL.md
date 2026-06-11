@@ -33,6 +33,13 @@ npm test
 
 Siga `change-sync-docs-tests`: Swagger (decorators + DTOs), `docs/api.md`, collections, `*.spec.ts`.
 
+## Jobs assíncronos
+
+- Store: `infrastructure/storage/background-job.store.ts` → `data/jobs/{id}/`
+- Processor: `infrastructure/jobs/background-job.processor.ts` (fila in-process)
+- Use case: `application/use-cases/background-job.use-case.ts`
+- Endpoints: `POST/GET /v1/audit/jobs/*` em `AuditController`
+
 ## Auth
 
 - `POST /auth/login` — JWT

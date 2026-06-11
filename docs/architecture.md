@@ -111,7 +111,36 @@ flowchart LR
 | **infrastructure** | Adapters e I/O | `GhCliGitHubAdapter`, scanners, storage |
 | **presentation** | HTTP, Swagger, guards | Controllers, DTOs, decorators RBAC |
 
-## Fluxo de auditoria
+## Fluxo de auditoria (jobs assíncronos)
+
+```mermaid
+sequenceDiagram
+    participant U as Usuário
+    participant F as Frontend
+    participant API as AuditController
+    participant JQ as BackgroundJobStore
+    participant WP as BackgroundJobProcessor
+    participant UC as RunMiasmaAuditUseCase
+    participant ST as AuditReportStore
+
+    U->>F: Nova auditoria
+    F->>API: POST /audit/jobs/audit-run
+    API->>JQ: create(pending)
+    API-->>F: 202 jobId
+    WP->>JQ: markRunning + execute
+    UC->>ST: save(report)
+    WP->>JQ: markCompleted(auditId)
+
+    loop polling 2.5s
+        F->>API: GET /audit/jobs/:id
+        API-->>F: status + progress
+    end
+    F-->>U: Banner + dashboard atualizado
+```
+
+> Endpoints síncronos `POST /audit/run` permanecem para CLI. Ver também fluxo legado abaixo.
+
+## Fluxo de auditoria (síncrono — legado)
 
 ```mermaid
 sequenceDiagram
@@ -229,4 +258,8 @@ BackEnd/data/audits/
     └── findings/
         ├── {findingId}.md
         └── {findingId}.pdf
+
+BackEnd/data/jobs/
+└── {jobId}/
+    └── job.json         # fila assíncrona (audit, remediação)
 ```
