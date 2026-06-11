@@ -70,7 +70,11 @@ export class GhCliGitHubAdapter implements GitHubRepositoryPort {
     }
   }
 
-  async searchFileInRepo(owner: string, repo: string, filename: string): Promise<boolean> {
+  async searchFileInRepo(
+    owner: string,
+    repo: string,
+    filename: string,
+  ): Promise<boolean> {
     try {
       const { stdout } = await this.runGh([
         'api',
@@ -84,7 +88,10 @@ export class GhCliGitHubAdapter implements GitHubRepositoryPort {
     }
   }
 
-  async getPackageJson(owner: string, repo: string): Promise<Record<string, unknown> | null> {
+  async getPackageJson(
+    owner: string,
+    repo: string,
+  ): Promise<Record<string, unknown> | null> {
     const file = await this.getFileContent(owner, repo, 'package.json');
     if (!file?.content) return null;
     try {
@@ -94,8 +101,15 @@ export class GhCliGitHubAdapter implements GitHubRepositoryPort {
     }
   }
 
-  async getRequirementsTxt(owner: string, repo: string): Promise<string | null> {
-    const paths = ['requirements.txt', 'requirements-dev.txt', 'pyproject.toml'];
+  async getRequirementsTxt(
+    owner: string,
+    repo: string,
+  ): Promise<string | null> {
+    const paths = [
+      'requirements.txt',
+      'requirements-dev.txt',
+      'pyproject.toml',
+    ];
     for (const path of paths) {
       const file = await this.getFileContent(owner, repo, path);
       if (file?.content) return file.content;
@@ -111,18 +125,27 @@ export class GhCliGitHubAdapter implements GitHubRepositoryPort {
         '--jq',
         '.[].path',
       ]);
-      return stdout.split('\n').map((l) => l.trim()).filter(Boolean);
+      return stdout
+        .split('\n')
+        .map((l) => l.trim())
+        .filter(Boolean);
     } catch {
       return [];
     }
   }
 
-  async getWorkflowContent(owner: string, repo: string, path: string): Promise<string | null> {
+  async getWorkflowContent(
+    owner: string,
+    repo: string,
+    path: string,
+  ): Promise<string | null> {
     const file = await this.getFileContent(owner, repo, path);
     return file?.content ?? null;
   }
 
-  private async runGh(args: string[]): Promise<{ stdout: string; stderr: string }> {
+  private async runGh(
+    args: string[],
+  ): Promise<{ stdout: string; stderr: string }> {
     const env = { ...process.env };
     const token = this.accessToken ?? process.env.GITHUB_TOKEN;
     if (token) env.GITHUB_TOKEN = token;

@@ -1,6 +1,9 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { LEGAL_POLICY_VERSION } from '../../domain/constants/legal-policy.constants';
-import { ConsentAcknowledgments, ConsentStore } from '../../infrastructure/auth/consent.store';
+import {
+  ConsentAcknowledgments,
+  ConsentStore,
+} from '../../infrastructure/auth/consent.store';
 
 @Injectable()
 export class LoginConsentUseCase {
@@ -25,12 +28,19 @@ export class LoginConsentUseCase {
     meta: { ip?: string; userAgent?: string },
   ): Promise<void> {
     this.validateLoginAcknowledgments(acknowledgments);
-    await this.consents.createCompleted('email_login', userId, acknowledgments, meta);
+    await this.consents.createCompleted(
+      'email_login',
+      userId,
+      acknowledgments,
+      meta,
+    );
   }
 
   private validateLoginAcknowledgments(ack: ConsentAcknowledgments): void {
     if (!ack.termsAccepted || !ack.privacyAccepted) {
-      throw new BadRequestException('É necessário aceitar o Termo de Uso e a Política de Privacidade.');
+      throw new BadRequestException(
+        'É necessário aceitar o Termo de Uso e a Política de Privacidade.',
+      );
     }
   }
 }

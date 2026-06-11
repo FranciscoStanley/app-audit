@@ -1,7 +1,15 @@
 import { ApiProperty } from '@nestjs/swagger';
 
 export class ThreatFindingDto {
-  @ApiProperty({ enum: ['malicious_file', 'malicious_pattern', 'compromised_dependency', 'compromised_action', 'cloned_affected_repo'] })
+  @ApiProperty({
+    enum: [
+      'malicious_file',
+      'malicious_pattern',
+      'compromised_dependency',
+      'compromised_action',
+      'cloned_affected_repo',
+    ],
+  })
   type!: string;
 
   @ApiProperty({ enum: ['critical', 'high', 'medium', 'low', 'info'] })

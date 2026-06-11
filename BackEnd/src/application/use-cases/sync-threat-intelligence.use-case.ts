@@ -1,10 +1,17 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
-import type { CompromisedPackage, CompromisedRepository, ThreatIntelSyncResult } from '../../domain/entities/threat-intelligence.entity';
+import type {
+  CompromisedPackage,
+  CompromisedRepository,
+  ThreatIntelSyncResult,
+} from '../../domain/entities/threat-intelligence.entity';
 import {
   GITHUB_ADVISORY_PORT,
   OPEN_SOURCE_MALWARE_PORT,
 } from '../../domain/ports/threat-intelligence.port';
-import type { GitHubAdvisoryPort, OpenSourceMalwarePort } from '../../domain/ports/threat-intelligence.port';
+import type {
+  GitHubAdvisoryPort,
+  OpenSourceMalwarePort,
+} from '../../domain/ports/threat-intelligence.port';
 import { ThreatIntelligenceStore } from '../../infrastructure/threat-intel/threat-intelligence.store';
 
 @Injectable()
@@ -12,8 +19,10 @@ export class SyncThreatIntelligenceUseCase {
   private readonly logger = new Logger(SyncThreatIntelligenceUseCase.name);
 
   constructor(
-    @Inject(GITHUB_ADVISORY_PORT) private readonly githubAdvisory: GitHubAdvisoryPort,
-    @Inject(OPEN_SOURCE_MALWARE_PORT) private readonly osm: OpenSourceMalwarePort,
+    @Inject(GITHUB_ADVISORY_PORT)
+    private readonly githubAdvisory: GitHubAdvisoryPort,
+    @Inject(OPEN_SOURCE_MALWARE_PORT)
+    private readonly osm: OpenSourceMalwarePort,
     private readonly store: ThreatIntelligenceStore,
   ) {}
 

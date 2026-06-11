@@ -1,6 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { ThreatFinding } from '../../domain/entities/repository-scan.entity';
-import type { GitHubRepositoryInfo, GitHubRepositoryPort } from '../../domain/ports/github-repository.port';
+import type {
+  GitHubRepositoryInfo,
+  GitHubRepositoryPort,
+} from '../../domain/ports/github-repository.port';
 import type { GitHubRemediationPort } from '../../domain/ports/github-remediation.port';
 import { ThreatIntelligenceStore } from '../threat-intel/threat-intelligence.store';
 import { createFinding } from './finding.factory';
@@ -53,15 +56,23 @@ export class AdditionalSecurityScanner {
 
     const workflows = await this.github.listWorkflowFiles(owner, name);
     for (const workflowPath of workflows) {
-      const content = await this.github.getWorkflowContent(owner, name, workflowPath);
+      const content = await this.github.getWorkflowContent(
+        owner,
+        name,
+        workflowPath,
+      );
       if (!content) continue;
 
-      if (/uses:\s*[\w-]+\/[\w-]+@v\d+/i.test(content) && !/@[a-f0-9]{40}/i.test(content)) {
+      if (
+        /uses:\s*[\w-]+\/[\w-]+@v\d+/i.test(content) &&
+        !/@[a-f0-9]{40}/i.test(content)
+      ) {
         findings.push(
           createFinding({
             type: 'unpinned_action',
             severity: 'medium',
-            message: 'GitHub Action referenciada por tag mutável (@v*) — risco de supply chain',
+            message:
+              'GitHub Action referenciada por tag mutável (@v*) — risco de supply chain',
             evidence: workflowPath,
             category: 'CI/CD Security',
           }),
@@ -130,10 +141,18 @@ export class AdditionalSecurityScanner {
       }
     }
 
-    const dependabotAlerts = await this.remediation.listDependabotAlerts(owner, name);
+    const dependabotAlerts = await this.remediation.listDependabotAlerts(
+      owner,
+      name,
+    );
     for (const alert of dependabotAlerts) {
       if (alert.state !== 'open') continue;
-      const severity = alert.severity === 'critical' ? 'critical' : alert.severity === 'high' ? 'high' : 'medium';
+      const severity =
+        alert.severity === 'critical'
+          ? 'critical'
+          : alert.severity === 'high'
+            ? 'high'
+            : 'medium';
       const patched = alert.patchedVersion ?? 'unknown';
       findings.push(
         createFinding({

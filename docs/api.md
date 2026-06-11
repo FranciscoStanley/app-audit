@@ -1,18 +1,28 @@
 # Referência da API
 
 **Base URL:** `http://localhost:3000`  
+**API versionada:** prefixo `/v1` em todas as rotas REST (exceto health)  
 **Swagger:** `http://localhost:3000/api/docs`  
 **Autor:** Francisco Stanley Rodrigues Albuquerque
 
+## Health (sem prefixo `/v1`)
+
+| Método | Rota | Descrição |
+|--------|------|-----------|
+| GET | `/health` | Liveness |
+| GET | `/health/ready` | Readiness (storage, JWT, GitHub, threat intel) |
+
 ## Autenticação
 
-Todas as rotas (exceto `/health`, `GET /auth/legal/info`, `GET /auth/login/consent`, `GET /auth/github/consent`, `POST /auth/login`, `POST /auth/github/consent/accept`, `POST /auth/github/exchange`, `GET /auth/github`, `GET /auth/github/callback`, `GET /auth/github/config`) exigem header:
+Rotas públicas (sem JWT): `/health`, `/health/ready`, `/v1/auth/legal/info`, `/v1/auth/login/consent`, `/v1/auth/github/consent`, `POST /v1/auth/login`, `POST /v1/auth/github/consent/accept`, `POST /v1/auth/github/exchange`, `GET /v1/auth/github`, `GET /v1/auth/github/callback`, `GET /v1/auth/github/config`.
+
+Demais rotas exigem header:
 
 ```
 Authorization: Bearer <accessToken>
 ```
 
-### POST /auth/login
+### POST /v1/auth/login
 
 Exige aceite do Termo de Uso e da Política de Privacidade (registrado em `data/consents.json`).
 
@@ -37,37 +47,37 @@ Exige aceite do Termo de Uso e da Política de Privacidade (registrado em `data/
 }
 ```
 
-### GET /auth/legal/info
+### GET /v1/auth/legal/info
 
 Informações legais públicas (versão de política, URLs, contatos).
 
-### GET /auth/login/consent
+### GET /v1/auth/login/consent
 
 Finalidades e base legal do login por e-mail.
 
-### GET /auth/github/consent
+### GET /v1/auth/github/consent
 
 Informações de consentimento LGPD para OAuth GitHub (escopos, terceiros, direitos do titular).
 
-### POST /auth/github/consent/accept
+### POST /v1/auth/github/consent/accept
 
 Registra aceite e retorna `authorizeUrl` para redirect ao GitHub.
 
-### GET /auth/github/config
+### GET /v1/auth/github/config
 
 ```json
 { "enabled": true }
 ```
 
-### GET /auth/github
+### GET /v1/auth/github
 
 Redireciona ao GitHub OAuth (`read:user`, `user:email`, `repo`).
 
-### GET /auth/github/callback
+### GET /v1/auth/github/callback
 
 Callback OAuth — redireciona ao frontend com `?code=<código-de-uso-único>` (válido por 2 minutos).
 
-### POST /auth/github/exchange
+### POST /v1/auth/github/exchange
 
 Troca o código de uso único por JWT (evita expor token na URL).
 
@@ -82,7 +92,7 @@ Troca o código de uso único por JWT (evita expor token na URL).
 }
 ```
 
-### GET /auth/github/status
+### GET /v1/auth/github/status
 
 **Auth:** JWT
 
@@ -95,11 +105,11 @@ Troca o código de uso único por JWT (evita expor token na URL).
 }
 ```
 
-### GET /auth/me
+### GET /v1/auth/me
 
 Retorna o perfil do usuário autenticado (inclui `githubConnected`, `githubUsername`).
 
-### POST /auth/users
+### POST /v1/auth/users
 
 **Permissão:** `users:manage` (admin)
 
@@ -116,7 +126,7 @@ Retorna o perfil do usuário autenticado (inclui `githubConnected`, `githubUsern
 
 ## Auditoria
 
-### POST /audit/run?save=true
+### POST /v1/audit/run?save=true
 
 Executa auditoria completa de todos os repositórios GitHub da conta autenticada no `gh`.
 
@@ -131,31 +141,31 @@ Executa auditoria completa de todos os repositórios GitHub da conta autenticada
 }
 ```
 
-### GET /audit/reports
+### GET /v1/audit/reports
 
 Lista relatórios armazenados.
 
-### GET /audit/reports/:id
+### GET /v1/audit/reports/:id
 
 Retorna relatório completo por ID.
 
-### GET /audit/reports/:id/markdown
+### GET /v1/audit/reports/:id/markdown
 
 Download do relatório consolidado em Markdown.
 
-### GET /audit/reports/:id/pdf
+### GET /v1/audit/reports/:id/pdf
 
 Download do relatório consolidado em PDF.
 
-### GET /audit/reports/:id/findings
+### GET /v1/audit/reports/:id/findings
 
 Lista todas as vulnerabilidades do relatório.
 
-### GET /audit/reports/:id/findings/:findingId/markdown
+### GET /v1/audit/reports/:id/findings/:findingId/markdown
 
 Download do relatório individual da vulnerabilidade (Markdown).
 
-### GET /audit/reports/:id/findings/:findingId/pdf
+### GET /v1/audit/reports/:id/findings/:findingId/pdf
 
 Download do relatório individual da vulnerabilidade (PDF).
 
@@ -170,13 +180,13 @@ Remediação **100% automática** via Git workspace + GitHub API:
 - Push direto ao branch padrão ou **Pull Request automático** se branch protegida
 - Alertas Dependabot fechados após atualizar manifesto + lockfile
 
-### GET /audit/remediation/consent
+### GET /v1/audit/remediation/consent
 
 **Auth:** JWT · Permissão: `remediation:preview`
 
 Retorna status e informações do consentimento LGPD para remediação automática (`accepted: true|false`).
 
-### POST /audit/remediation/consent/accept
+### POST /v1/audit/remediation/consent/accept
 
 **Auth:** JWT · Permissão: `remediation:apply`
 
@@ -191,15 +201,15 @@ Registra consentimento específico para alterações em repositórios GitHub.
 }
 ```
 
-### GET /audit/remediation/:findingId/preview
+### GET /v1/audit/remediation/:findingId/preview
 
 Retorna plano de remediação para a vulnerabilidade (todos os passos marcados como automatizados).
 
-### POST /audit/remediation/:findingId/apply
+### POST /v1/audit/remediation/:findingId/apply
 
 Aplica todos os passos automaticamente no repositório GitHub. **Exige consentimento de remediação registrado** (v1.1.0+). Requer token com escopo `repo` e `security_events` (Dependabot).
 
-### POST /audit/reports/:id/remediate-all
+### POST /v1/audit/reports/:id/remediate-all
 
 Aplica remediação automática em **todas** as vulnerabilidades remediativas do relatório (ex.: 47 alertas Dependabot).
 
@@ -209,19 +219,19 @@ Resposta: `{ total, succeeded, failed, results[] }`
 
 ## Threat Intelligence
 
-### GET /threat-intel/status
+### GET /v1/threat-intel/status
 
 Status da base local de threat intel.
 
-### POST /threat-intel/sync
+### POST /v1/threat-intel/sync
 
 Força sincronização com GitHub Advisories e OpenSourceMalware.
 
-### GET /threat-intel/packages?ecosystem=npm
+### GET /v1/threat-intel/packages?ecosystem=npm
 
 Lista pacotes comprometidos conhecidos.
 
-### GET /threat-intel/check
+### GET /v1/threat-intel/check
 
 Query params: `reportType`, `resourceIdentifier`, `ecosystem?`, `version?`
 

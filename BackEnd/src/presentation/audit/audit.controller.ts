@@ -12,7 +12,13 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
-import { ApiBearerAuth, ApiOperation, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiQuery,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 import type { Request, Response } from 'express';
 import { access, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -54,9 +60,15 @@ export class AuditController {
     const shouldSave = save === 'true' || save === '1';
     const result = await this.auditUseCase.execute({
       userId: user.id,
-      saveReportPath: shouldSave ? 'docs/security/miasma-worm-audit-report.md' : undefined,
+      saveReportPath: shouldSave
+        ? 'docs/security/miasma-worm-audit-report.md'
+        : undefined,
     });
-    return { report: result.report, savedTo: result.savedTo, auditId: result.auditId };
+    return {
+      report: result.report,
+      savedTo: result.savedTo,
+      auditId: result.auditId,
+    };
   }
 
   @Post('miasma')
@@ -88,11 +100,17 @@ export class AuditController {
   @Get('reports/:id/markdown')
   @Permissions('audit:download')
   @ApiOperation({ summary: 'Download do relatório em Markdown' })
-  async downloadMarkdown(@Param('id') id: string, @Res({ passthrough: true }) res: Response) {
+  async downloadMarkdown(
+    @Param('id') id: string,
+    @Res({ passthrough: true }) res: Response,
+  ) {
     const markdown = await this.auditStore.getMarkdown(id);
     if (!markdown) throw new NotFoundException('Relatório não encontrado');
     res.setHeader('Content-Type', 'text/markdown; charset=utf-8');
-    res.setHeader('Content-Disposition', `attachment; filename="audit-${id}.md"`);
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="audit-${id}.md"`,
+    );
     return markdown;
   }
 
@@ -127,7 +145,8 @@ export class AuditController {
     const stored = await this.auditStore.getById(id);
     if (!stored) throw new NotFoundException('Relatório não encontrado');
 
-    const repos = stored.report.allRepositories ?? stored.report.affectedRepositories;
+    const repos =
+      stored.report.allRepositories ?? stored.report.affectedRepositories;
     return repos.flatMap((repo) =>
       repo.findings.map((f) => ({
         ...f,
@@ -178,14 +197,20 @@ export class AuditController {
 
   @Get('remediation/consent')
   @Permissions('remediation:preview')
-  @ApiOperation({ summary: 'Status e informações do consentimento de remediação automática (LGPD)' })
+  @ApiOperation({
+    summary:
+      'Status e informações do consentimento de remediação automática (LGPD)',
+  })
   remediationConsentStatus(@CurrentUser() user: { id: string }) {
     return this.remediationConsent.getConsentStatus(user.id);
   }
 
   @Post('remediation/consent/accept')
   @Permissions('remediation:apply')
-  @ApiOperation({ summary: 'Registrar consentimento para remediação automática em repositórios GitHub' })
+  @ApiOperation({
+    summary:
+      'Registrar consentimento para remediação automática em repositórios GitHub',
+  })
   acceptRemediationConsent(
     @CurrentUser() user: { id: string },
     @Body() dto: RemediationConsentAcceptDto,
@@ -206,7 +231,10 @@ export class AuditController {
 
   @Post('reports/:id/remediate-all')
   @Permissions('remediation:apply')
-  @ApiOperation({ summary: 'Aplicar remediação automática em todas as vulnerabilidades do relatório' })
+  @ApiOperation({
+    summary:
+      'Aplicar remediação automática em todas as vulnerabilidades do relatório',
+  })
   remediateAll(
     @CurrentUser() user: { id: string },
     @Param('id') auditId: string,
@@ -231,14 +259,21 @@ export class AuditController {
     return this.remediation.apply(findingId, user.id);
   }
 
-  private async resolveFindingMarkdown(auditId: string, findingId: string): Promise<string> {
+  private async resolveFindingMarkdown(
+    auditId: string,
+    findingId: string,
+  ): Promise<string> {
     let markdown = await this.auditStore.getFindingMarkdown(auditId, findingId);
     if (markdown) return markdown;
 
     const stored = await this.auditStore.getById(auditId);
     if (!stored) throw new NotFoundException('Relatório não encontrado');
 
-    const match = this.auditStore.findInReport(auditId, stored.report, findingId);
+    const match = this.auditStore.findInReport(
+      auditId,
+      stored.report,
+      findingId,
+    );
     if (!match) throw new NotFoundException('Vulnerabilidade não encontrada');
 
     markdown = this.vulnerabilityReportGenerator.generate({
@@ -254,5 +289,4 @@ export class AuditController {
   private findingFilenameSlug(auditId: string, findingId: string): string {
     return `vulnerability-${findingId.slice(0, 8)}`;
   }
-
 }

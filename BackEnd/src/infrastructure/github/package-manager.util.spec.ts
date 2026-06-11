@@ -1,4 +1,7 @@
-import { detectPackageManager, readPackageManagerField } from './package-manager.util';
+import {
+  detectPackageManager,
+  readPackageManagerField,
+} from './package-manager.util';
 import { mkdir, writeFile, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -16,7 +19,11 @@ describe('package-manager.util', () => {
   });
 
   it('detecta pnpm pelo lockfile', async () => {
-    await writeFile(join(repoPath, 'pnpm-lock.yaml'), 'lockfileVersion: 9\n', 'utf-8');
+    await writeFile(
+      join(repoPath, 'pnpm-lock.yaml'),
+      'lockfileVersion: 9\n',
+      'utf-8',
+    );
     await expect(detectPackageManager(repoPath)).resolves.toBe('pnpm');
   });
 

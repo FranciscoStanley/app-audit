@@ -3,7 +3,9 @@ import { join } from 'node:path';
 
 export type PackageManager = 'pnpm' | 'yarn' | 'npm' | 'pip';
 
-export async function detectPackageManager(repoPath: string): Promise<PackageManager | null> {
+export async function detectPackageManager(
+  repoPath: string,
+): Promise<PackageManager | null> {
   const checks: Array<[PackageManager, string]> = [
     ['pnpm', 'pnpm-lock.yaml'],
     ['yarn', 'yarn.lock'],
@@ -24,7 +26,9 @@ export async function detectPackageManager(repoPath: string): Promise<PackageMan
   return null;
 }
 
-export async function readPackageManagerField(repoPath: string): Promise<PackageManager | null> {
+export async function readPackageManagerField(
+  repoPath: string,
+): Promise<PackageManager | null> {
   try {
     const raw = await readFile(join(repoPath, 'package.json'), 'utf-8');
     const pkg = JSON.parse(raw) as { packageManager?: string };
@@ -37,5 +41,11 @@ export async function readPackageManagerField(repoPath: string): Promise<Package
 }
 
 export function lockfileNames(): string[] {
-  return ['pnpm-lock.yaml', 'yarn.lock', 'package-lock.json', 'requirements.txt', 'poetry.lock'];
+  return [
+    'pnpm-lock.yaml',
+    'yarn.lock',
+    'package-lock.json',
+    'requirements.txt',
+    'poetry.lock',
+  ];
 }

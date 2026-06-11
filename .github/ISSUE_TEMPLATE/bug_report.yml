@@ -1,0 +1,33 @@
+name: Bug report
+description: Reportar comportamento incorreto ou regressão
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: Descrição
+      description: O que aconteceu vs. o esperado?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Passos para reproduzir
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Versão / commit
+      placeholder: v1.1.0 ou hash
+  - type: textarea
+    id: environment
+    attributes:
+      label: Ambiente
+      placeholder: Docker, Windows, Node 22, etc.
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs (sem secrets)
+      description: Trechos relevantes — nunca cole tokens ou `.env`

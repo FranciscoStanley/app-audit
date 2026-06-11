@@ -25,7 +25,9 @@ async function main() {
   const role = (args.role ?? 'viewer') as UserRole;
 
   if (!email || !password || !name) {
-    console.error('Uso: npm run users:create -- --email x@empresa.com --password "SenhaForte123!" --name "Nome" --role admin|auditor|viewer');
+    console.error(
+      'Uso: npm run users:create -- --email x@empresa.com --password "SenhaForte123!" --name "Nome" --role admin|auditor|viewer',
+    );
     process.exit(1);
   }
 
@@ -64,7 +66,11 @@ async function main() {
   };
 
   users.push(user);
-  await writeFile(filePath, JSON.stringify({ version: 1, users }, null, 2), 'utf-8');
+  await writeFile(
+    filePath,
+    JSON.stringify({ version: 1, users }, null, 2),
+    'utf-8',
+  );
   console.log(`Usuário criado: ${email} (${role})`);
 }
 

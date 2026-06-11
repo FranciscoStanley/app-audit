@@ -1,16 +1,12 @@
----
-description: Monorepo app-audit — BackEnd + frontend
-alwaysApply: true
----
-
 # App Audit Monorepo
 
 > Skills: `.cursor/skills/README.md`  
 > Change sync: `.cursor/skills/change-sync-docs-tests/SKILL.md`
 
-- **BackEnd/** — NestJS API (`:3000`)
+- **BackEnd/** — NestJS API (`:3000`), rotas REST em **`/v1`**
 - **frontend/** — Next.js (`:3001`)
+- **Health** — `/health` e `/health/ready` (sem `/v1`)
 - JWT + RBAC em todas as rotas protegidas
-- Scanners abrangentes (não só Miasma)
+- Versão semver unificada: **1.1.0** (ver `CHANGELOG.md`)
 
 **Autor:** Francisco Stanley Rodrigues Albuquerque

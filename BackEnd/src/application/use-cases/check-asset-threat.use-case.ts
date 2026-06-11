@@ -21,7 +21,8 @@ export interface CheckAssetOutput {
 export class CheckAssetThreatUseCase {
   constructor(
     private readonly store: ThreatIntelligenceStore,
-    @Inject(OPEN_SOURCE_MALWARE_PORT) private readonly osm: OpenSourceMalwarePort,
+    @Inject(OPEN_SOURCE_MALWARE_PORT)
+    private readonly osm: OpenSourceMalwarePort,
   ) {}
 
   async execute(input: CheckAssetInput): Promise<CheckAssetOutput> {

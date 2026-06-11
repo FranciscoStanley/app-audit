@@ -11,7 +11,12 @@ export interface ImmediateAction {
   priority: number;
   title: string;
   description: string;
-  category: 'credential_rotation' | 'dependency_audit' | 'workflow_review' | 'prevention' | 'monitoring';
+  category:
+    | 'credential_rotation'
+    | 'dependency_audit'
+    | 'workflow_review'
+    | 'prevention'
+    | 'monitoring';
 }
 
 export interface ThreatIntelSummary {

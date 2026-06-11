@@ -16,7 +16,9 @@ export class ComprehensiveSecurityScanner {
     const additionalFindings = await this.additionalScanner.scan(repo);
 
     const findings = [...miasmaResult.findings, ...additionalFindings];
-    const isAffected = findings.some((f) => ['critical', 'high'].includes(f.severity));
+    const isAffected = findings.some((f) =>
+      ['critical', 'high'].includes(f.severity),
+    );
 
     return {
       ...miasmaResult,

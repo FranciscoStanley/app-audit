@@ -18,9 +18,15 @@ describe('RemediationUseCase', () => {
     repository: 'owner/repo',
   };
 
-  let auditStore: jest.Mocked<Pick<AuditReportStore, 'findFindingById' | 'getById'>>;
-  let githubTokens: jest.Mocked<Pick<GitHubTokenResolverService, 'requireForAudit'>>;
-  let remediationFactory: jest.Mocked<Pick<GitHubRemediationFactory, 'create' | 'createWorkspace'>>;
+  let auditStore: jest.Mocked<
+    Pick<AuditReportStore, 'findFindingById' | 'getById'>
+  >;
+  let githubTokens: jest.Mocked<
+    Pick<GitHubTokenResolverService, 'requireForAudit'>
+  >;
+  let remediationFactory: jest.Mocked<
+    Pick<GitHubRemediationFactory, 'create' | 'createWorkspace'>
+  >;
   let github: jest.Mocked<GitHubRemediationPort>;
   let workspace: jest.Mocked<
     Pick<
@@ -37,7 +43,9 @@ describe('RemediationUseCase', () => {
       | 'cleanup'
     >
   >;
-  let remediationConsent: jest.Mocked<Pick<RemediationConsentUseCase, 'assertRemediationConsent'>>;
+  let remediationConsent: jest.Mocked<
+    Pick<RemediationConsentUseCase, 'assertRemediationConsent'>
+  >;
   let useCase: RemediationUseCase;
 
   beforeEach(() => {
@@ -56,7 +64,9 @@ describe('RemediationUseCase', () => {
     };
 
     workspace = {
-      clone: jest.fn().mockResolvedValue({ repoPath: '/tmp/repo', defaultBranch: 'main' }),
+      clone: jest
+        .fn()
+        .mockResolvedValue({ repoPath: '/tmp/repo', defaultBranch: 'main' }),
       deleteFile: jest.fn(),
       ensureGitignoreEntry: jest.fn(),
       pinWorkflowActions: jest.fn(),
@@ -94,7 +104,7 @@ describe('RemediationUseCase', () => {
     useCase = new RemediationUseCase(
       auditStore as unknown as AuditReportStore,
       githubTokens as unknown as GitHubTokenResolverService,
-      remediationFactory as unknown as GitHubRemediationFactory,
+      remediationFactory,
       remediationConsent as unknown as RemediationConsentUseCase,
     );
   });
@@ -111,7 +121,10 @@ describe('RemediationUseCase', () => {
 
     expect(workspace.clone).toHaveBeenCalledWith('owner', 'repo');
     expect(workspace.deleteFile).toHaveBeenCalledWith('/tmp/repo', '.npmrc');
-    expect(workspace.ensureGitignoreEntry).toHaveBeenCalledWith('/tmp/repo', '.npmrc');
+    expect(workspace.ensureGitignoreEntry).toHaveBeenCalledWith(
+      '/tmp/repo',
+      '.npmrc',
+    );
     expect(workspace.deliver).toHaveBeenCalled();
     expect(github.createSecurityIssue).toHaveBeenCalled();
     expect(workspace.cleanup).toHaveBeenCalledWith('/tmp/repo');
@@ -149,7 +162,10 @@ describe('RemediationUseCase', () => {
       'vitest',
       '3.0.5',
     );
-    expect(workspace.regenerateLockfiles).toHaveBeenCalledWith('/tmp/repo', 'frontend/package.json');
+    expect(workspace.regenerateLockfiles).toHaveBeenCalledWith(
+      '/tmp/repo',
+      'frontend/package.json',
+    );
     expect(github.enableDependabotSecurityUpdates).toHaveBeenCalled();
     expect(result.success).toBe(true);
   });

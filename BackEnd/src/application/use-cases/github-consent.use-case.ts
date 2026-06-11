@@ -13,7 +13,10 @@ import {
   LEGAL_INTERNATIONAL_TRANSFER,
   LEGAL_POLICY_VERSION,
 } from '../../domain/constants/legal-policy.constants';
-import { ConsentAcknowledgments, ConsentStore } from '../../infrastructure/auth/consent.store';
+import {
+  ConsentAcknowledgments,
+  ConsentStore,
+} from '../../infrastructure/auth/consent.store';
 import { GitHubOAuthService } from '../../infrastructure/auth/github-oauth.service';
 
 export interface AcceptGitHubConsentInput {
@@ -34,7 +37,9 @@ export class GitHubConsentUseCase {
     return {
       policyVersion: GITHUB_OAUTH_POLICY_VERSION,
       controllerName: this.config.get('DATA_CONTROLLER_NAME') ?? 'App Audit',
-      contactEmail: this.config.get('PRIVACY_CONTACT_EMAIL') ?? DEFAULT_PRIVACY_CONTACT_EMAIL,
+      contactEmail:
+        this.config.get('PRIVACY_CONTACT_EMAIL') ??
+        DEFAULT_PRIVACY_CONTACT_EMAIL,
       controllerAddress: this.config.get('DATA_CONTROLLER_ADDRESS') ?? null,
       scopes: GITHUB_OAUTH_SCOPES,
       purposes: DATA_PROCESSING_PURPOSES,
@@ -53,7 +58,9 @@ export class GitHubConsentUseCase {
       termsUrl: '/legal/termos',
       privacyUrl: '/legal/privacidade',
       controllerName: this.config.get('DATA_CONTROLLER_NAME') ?? 'App Audit',
-      contactEmail: this.config.get('PRIVACY_CONTACT_EMAIL') ?? DEFAULT_PRIVACY_CONTACT_EMAIL,
+      contactEmail:
+        this.config.get('PRIVACY_CONTACT_EMAIL') ??
+        DEFAULT_PRIVACY_CONTACT_EMAIL,
       dpoEmail: this.config.get('DPO_CONTACT_EMAIL') ?? null,
     };
   }
@@ -62,10 +69,15 @@ export class GitHubConsentUseCase {
     this.validateGitHubAcknowledgments(input.acknowledgments);
 
     const scopes = GITHUB_OAUTH_SCOPES.map((s) => s.scope);
-    const record = await this.consents.createPending('github_oauth', input.acknowledgments, scopes, {
-      ip: input.ip,
-      userAgent: input.userAgent,
-    });
+    const record = await this.consents.createPending(
+      'github_oauth',
+      input.acknowledgments,
+      scopes,
+      {
+        ip: input.ip,
+        userAgent: input.userAgent,
+      },
+    );
 
     const authorizeUrl = this.oauth.buildAuthorizeUrl(record.id);
     return {
@@ -77,14 +89,22 @@ export class GitHubConsentUseCase {
 
   async assertConsentForCallback(consentId: string): Promise<void> {
     const record = await this.consents.getById(consentId);
-    if (!record || record.status !== 'pending' || record.kind !== 'github_oauth') {
+    if (
+      !record ||
+      record.status !== 'pending' ||
+      record.kind !== 'github_oauth'
+    ) {
       throw new BadRequestException(
         'Consentimento inválido ou expirado. Aceite novamente os termos antes de conectar o GitHub.',
       );
     }
   }
 
-  async completeConsent(consentId: string, userId: string, githubId: string): Promise<void> {
+  async completeConsent(
+    consentId: string,
+    userId: string,
+    githubId: string,
+  ): Promise<void> {
     await this.consents.complete(consentId, userId, githubId);
   }
 

@@ -1,4 +1,9 @@
-import { ConflictException, Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  Logger,
+  OnModuleInit,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcryptjs';
 import { randomUUID } from 'node:crypto';
@@ -25,12 +30,16 @@ export class UsersService implements OnModuleInit {
     if (this.users.size === 0) {
       await this.bootstrapAdmin();
     } else {
-      this.logger.log(`${this.users.size} usuário(s) carregado(s) de data/users.json`);
+      this.logger.log(
+        `${this.users.size} usuário(s) carregado(s) de data/users.json`,
+      );
     }
   }
 
   async findByEmail(email: string): Promise<User | undefined> {
-    return [...this.users.values()].find((u) => u.email === email.toLowerCase());
+    return [...this.users.values()].find(
+      (u) => u.email === email.toLowerCase(),
+    );
   }
 
   async findById(id: string): Promise<User | undefined> {
@@ -79,7 +88,8 @@ export class UsersService implements OnModuleInit {
   private async bootstrapAdmin(): Promise<void> {
     const email = this.config.get<string>('ADMIN_EMAIL')?.trim().toLowerCase();
     const password = this.config.get<string>('ADMIN_PASSWORD');
-    const name = this.config.get<string>('ADMIN_NAME')?.trim() ?? 'Administrador';
+    const name =
+      this.config.get<string>('ADMIN_NAME')?.trim() ?? 'Administrador';
 
     if (!email || !password) {
       const msg =
@@ -88,7 +98,9 @@ export class UsersService implements OnModuleInit {
       if (isProduction()) {
         throw new Error(msg);
       }
-      this.logger.warn(`${msg} (modo desenvolvimento — API inacessível até criar admin)`);
+      this.logger.warn(
+        `${msg} (modo desenvolvimento — API inacessível até criar admin)`,
+      );
       return;
     }
 

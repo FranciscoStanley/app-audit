@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { randomBytes } from 'node:crypto';
@@ -28,7 +32,7 @@ export class GitHubOAuthService {
   isConfigured(): boolean {
     return Boolean(
       this.config.get('GITHUB_OAUTH_CLIENT_ID') &&
-        this.config.get('GITHUB_OAUTH_CLIENT_SECRET'),
+      this.config.get('GITHUB_OAUTH_CLIENT_SECRET'),
     );
   }
 
@@ -37,7 +41,9 @@ export class GitHubOAuthService {
       throw new BadRequestException('GitHub OAuth não configurado no servidor');
     }
     if (!consentId?.trim()) {
-      throw new BadRequestException('Consentimento LGPD obrigatório antes do OAuth GitHub');
+      throw new BadRequestException(
+        'Consentimento LGPD obrigatório antes do OAuth GitHub',
+      );
     }
 
     const state = this.jwt.sign(
@@ -61,15 +67,20 @@ export class GitHubOAuthService {
 
   validateState(state: string): string {
     try {
-      const payload = this.jwt.verify<{ purpose: string; consentId?: string }>(state);
-      if (payload.purpose !== 'github_oauth' || !payload.consentId) throw new Error('invalid');
+      const payload = this.jwt.verify<{ purpose: string; consentId?: string }>(
+        state,
+      );
+      if (payload.purpose !== 'github_oauth' || !payload.consentId)
+        throw new Error('invalid');
       return payload.consentId;
     } catch {
       throw new UnauthorizedException('State OAuth inválido ou expirado');
     }
   }
 
-  async exchangeCode(code: string): Promise<{ accessToken: string; profile: GitHubProfile }> {
+  async exchangeCode(
+    code: string,
+  ): Promise<{ accessToken: string; profile: GitHubProfile }> {
     const tokenRes = await fetch(GITHUB_TOKEN, {
       method: 'POST',
       headers: {
@@ -96,7 +107,9 @@ export class GitHubOAuthService {
 
     if (tokenData.error || !tokenData.access_token) {
       throw new UnauthorizedException(
-        tokenData.error_description ?? tokenData.error ?? 'Token GitHub ausente',
+        tokenData.error_description ??
+          tokenData.error ??
+          'Token GitHub ausente',
       );
     }
 
@@ -112,7 +125,8 @@ export class GitHubOAuthService {
     };
 
     const userRes = await fetch(GITHUB_USER, { headers });
-    if (!userRes.ok) throw new UnauthorizedException('Falha ao obter perfil GitHub');
+    if (!userRes.ok)
+      throw new UnauthorizedException('Falha ao obter perfil GitHub');
 
     const user = (await userRes.json()) as {
       id: number;
@@ -151,7 +165,7 @@ export class GitHubOAuthService {
   callbackUrl(): string {
     return (
       this.config.get<string>('GITHUB_OAUTH_CALLBACK_URL') ??
-      'http://localhost:3000/auth/github/callback'
+      'http://localhost:3000/v1/auth/github/callback'
     );
   }
 

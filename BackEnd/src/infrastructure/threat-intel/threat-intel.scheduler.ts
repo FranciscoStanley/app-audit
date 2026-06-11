@@ -13,17 +13,22 @@ export class ThreatIntelScheduler implements OnModuleInit {
   ) {}
 
   async onModuleInit(): Promise<void> {
+    if (process.env.NODE_ENV === 'test') return;
     if (this.config.get('THREAT_INTEL_SYNC_ON_STARTUP', 'true') === 'true') {
       this.logger.log('Sincronização inicial de threat intelligence...');
-      await this.syncThreatIntel.execute().catch((err) =>
-        this.logger.warn(`Sync inicial falhou: ${err.message}`),
-      );
+      await this.syncThreatIntel
+        .execute()
+        .catch((err) =>
+          this.logger.warn(`Sync inicial falhou: ${err.message}`),
+        );
     }
   }
 
   @Cron(CronExpression.EVERY_6_HOURS)
   async handleScheduledSync(): Promise<void> {
-    this.logger.log('Sincronização agendada — GitHub Advisories + OpenSourceMalware');
+    this.logger.log(
+      'Sincronização agendada — GitHub Advisories + OpenSourceMalware',
+    );
     await this.syncThreatIntel.execute();
   }
 }

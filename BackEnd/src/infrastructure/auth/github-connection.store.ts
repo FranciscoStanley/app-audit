@@ -19,7 +19,11 @@ interface StoreFile {
 
 @Injectable()
 export class GitHubConnectionStore {
-  private readonly filePath = join(process.cwd(), 'data', 'github-connections.json');
+  private readonly filePath = join(
+    process.cwd(),
+    'data',
+    'github-connections.json',
+  );
 
   constructor(private readonly config: ConfigService) {}
 

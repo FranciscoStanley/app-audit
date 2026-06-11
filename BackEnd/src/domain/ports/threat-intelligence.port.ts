@@ -44,15 +44,24 @@ export interface ThreatIntelligenceStorePort {
   getMaliciousFiles(): Array<{ path: string; description: string }>;
   getCompromisedActions(): string[];
   getC2Domains(): string[];
-  isPackageCompromised(name: string, ecosystem: ThreatEcosystem, version?: string): CompromisedPackage | null;
+  isPackageCompromised(
+    name: string,
+    ecosystem: ThreatEcosystem,
+    version?: string,
+  ): CompromisedPackage | null;
   isRepositoryCompromised(fullName: string): CompromisedRepository | null;
   getStatus(): import('../entities/threat-intelligence.entity').ThreatIntelStatus;
-  applySync(packages: CompromisedPackage[], repositories: CompromisedRepository[]): void;
+  applySync(
+    packages: CompromisedPackage[],
+    repositories: CompromisedRepository[],
+  ): void;
 }
 
 export const GITHUB_ADVISORY_PORT = Symbol('GITHUB_ADVISORY_PORT');
 export const OPEN_SOURCE_MALWARE_PORT = Symbol('OPEN_SOURCE_MALWARE_PORT');
-export const THREAT_INTELLIGENCE_STORE_PORT = Symbol('THREAT_INTELLIGENCE_STORE_PORT');
+export const THREAT_INTELLIGENCE_STORE_PORT = Symbol(
+  'THREAT_INTELLIGENCE_STORE_PORT',
+);
 
 export interface SyncThreatIntelligencePort {
   execute(): Promise<ThreatIntelSyncResult>;

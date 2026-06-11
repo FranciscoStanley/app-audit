@@ -17,7 +17,7 @@ Obrigado pelo interesse em contribuir. Este guia descreve o fluxo esperado para 
 
 ## Código de conduta
 
-Este projeto adota um ambiente colaborativo, respeitoso e inclusivo. Comportamentos inadequados, assédio ou discriminação não serão tolerados. Mantenedores podem remover contribuições ou participantes que violem estas expectativas.
+Este projeto adota um ambiente colaborativo, respeitoso e inclusivo. Comportamentos inadequados não serão tolerados. Veja [CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md).
 
 ## Como posso ajudar?
 

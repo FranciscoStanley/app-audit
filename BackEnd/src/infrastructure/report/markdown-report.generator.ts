@@ -1,5 +1,9 @@
 import { Injectable } from '@nestjs/common';
-import { MIASMA_ATTACK_START_DATE, MIASMA_C2_DOMAINS, MIASMA_SOURCE_URL } from '../../domain/constants/miasma-threat.constants';
+import {
+  MIASMA_ATTACK_START_DATE,
+  MIASMA_C2_DOMAINS,
+  MIASMA_SOURCE_URL,
+} from '../../domain/constants/miasma-threat.constants';
 import { AuditReport } from '../../domain/entities/audit-report.entity';
 import { RepositoryScan } from '../../domain/entities/repository-scan.entity';
 
@@ -175,7 +179,9 @@ export class MarkdownReportGenerator {
     ];
 
     for (const finding of repo.findings) {
-      lines.push(`- **[${finding.severity.toUpperCase()}]** ${finding.message}${finding.evidence ? ` — \`${finding.evidence}\`` : ''}`);
+      lines.push(
+        `- **[${finding.severity.toUpperCase()}]** ${finding.message}${finding.evidence ? ` — \`${finding.evidence}\`` : ''}`,
+      );
     }
 
     lines.push('');
@@ -183,7 +189,9 @@ export class MarkdownReportGenerator {
   }
 
   private formatDate(iso: string): string {
-    return new Date(iso).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+    return new Date(iso).toLocaleString('pt-BR', {
+      timeZone: 'America/Sao_Paulo',
+    });
   }
 
   private verdictBadge(verdict: AuditReport['verdict']): string {

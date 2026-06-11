@@ -24,7 +24,7 @@ const OAUTH_LINES = {
   GITHUB_OAUTH_CLIENT_SECRET: process.env.GITHUB_OAUTH_CLIENT_SECRET?.trim() ?? '',
   GITHUB_OAUTH_CALLBACK_URL:
     process.env.GITHUB_OAUTH_CALLBACK_URL?.trim() ??
-    'http://localhost:3000/auth/github/callback',
+    'http://localhost:3000/v1/auth/github/callback',
   FRONTEND_URL: process.env.FRONTEND_URL?.trim() ?? 'http://localhost:3001',
 };
 

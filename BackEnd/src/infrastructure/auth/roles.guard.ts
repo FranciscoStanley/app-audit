@@ -1,4 +1,9 @@
-import { CanActivate, ExecutionContext, ForbiddenException, Injectable } from '@nestjs/common';
+import {
+  CanActivate,
+  ExecutionContext,
+  ForbiddenException,
+  Injectable,
+} from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { hasPermission } from '../../domain/constants/rbac.constants';
 import { UserRole } from '../../domain/entities/user.entity';
@@ -10,14 +15,14 @@ export class RolesGuard implements CanActivate {
   constructor(private readonly reflector: Reflector) {}
 
   canActivate(context: ExecutionContext): boolean {
-    const requiredRoles = this.reflector.getAllAndOverride<UserRole[]>(ROLES_KEY, [
-      context.getHandler(),
-      context.getClass(),
-    ]);
-    const requiredPermissions = this.reflector.getAllAndOverride<string[]>(PERMISSIONS_KEY, [
-      context.getHandler(),
-      context.getClass(),
-    ]);
+    const requiredRoles = this.reflector.getAllAndOverride<UserRole[]>(
+      ROLES_KEY,
+      [context.getHandler(), context.getClass()],
+    );
+    const requiredPermissions = this.reflector.getAllAndOverride<string[]>(
+      PERMISSIONS_KEY,
+      [context.getHandler(), context.getClass()],
+    );
 
     if (!requiredRoles?.length && !requiredPermissions?.length) return true;
 
@@ -29,7 +34,9 @@ export class RolesGuard implements CanActivate {
     }
 
     if (requiredPermissions?.length) {
-      const allowed = requiredPermissions.every((p) => hasPermission(user.role, p));
+      const allowed = requiredPermissions.every((p) =>
+        hasPermission(user.role, p),
+      );
       if (!allowed) throw new ForbiddenException('Permissão insuficiente');
     }
 

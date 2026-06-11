@@ -9,7 +9,7 @@
 |-------|--------|
 | Application name | `app-audit` |
 | Homepage URL | `http://localhost:3001` |
-| Authorization callback URL | `http://localhost:3000/auth/github/callback` |
+| Authorization callback URL | `http://localhost:3000/v1/auth/github/callback` |
 | Device Flow | Desabilitado (opcional) |
 
 > A Homepage pode ser `http://localhost:3001` (frontend). O callback **deve** apontar para a API (`:3000`).
@@ -36,7 +36,7 @@ Ou edite `BackEnd/.env` e preencha `GITHUB_OAUTH_CLIENT_ID` e `GITHUB_OAUTH_CLIE
 ```env
 GITHUB_OAUTH_CLIENT_ID=
 GITHUB_OAUTH_CLIENT_SECRET=
-GITHUB_OAUTH_CALLBACK_URL=http://localhost:3000/auth/github/callback
+GITHUB_OAUTH_CALLBACK_URL=http://localhost:3000/v1/auth/github/callback
 FRONTEND_URL=http://localhost:3001
 ```
 
@@ -72,7 +72,7 @@ Revogação GitHub: `DELETE /auth/github/disconnect` ou botão **Desconectar** n
 
 Atualize callback e URLs para o domínio real:
 
-- `GITHUB_OAUTH_CALLBACK_URL=https://api.seudominio.com/auth/github/callback`
+- `GITHUB_OAUTH_CALLBACK_URL=https://api.seudominio.com/v1/auth/github/callback`
 - `FRONTEND_URL=https://audit.seudominio.com`
 
 E registre as mesmas URLs no OAuth App no GitHub.

@@ -73,28 +73,29 @@ npm install -w frontend
 
 ## Endpoints da API
 
-Base: `http://localhost:3000`
+Base: `http://localhost:3000` · Prefixo versionado: **`/v1`** (exceto health)
 
 | Método | Rota | Auth | Permissão |
 |--------|------|------|-----------|
-| GET | `/health` | Não | — |
-| POST | `/auth/login` | Não | — |
-| GET | `/auth/me` | JWT | — |
-| GET | `/auth/users` | JWT | admin |
-| POST | `/audit/run` | JWT | audit:run |
-| POST | `/audit/miasma` | JWT | audit:run |
-| GET | `/audit/reports` | JWT | audit:read |
-| GET | `/audit/reports/:id` | JWT | audit:read |
-| GET | `/audit/reports/:id/markdown` | JWT | audit:download |
-| GET | `/audit/reports/:id/pdf` | JWT | audit:download |
-| GET | `/audit/reports/:id/findings` | JWT | audit:read |
-| GET | `/audit/reports/:id/findings/:findingId/markdown` | JWT | audit:download |
-| GET | `/audit/reports/:id/findings/:findingId/pdf` | JWT | audit:download |
-| GET | `/audit/remediation/:findingId/preview` | JWT | remediation:preview |
-| POST | `/audit/remediation/:findingId/apply` | JWT | remediation:apply |
-| POST | `/audit/reports/:id/remediate-all` | JWT | remediation:apply |
-| GET | `/threat-intel/status` | JWT | threat-intel:read |
-| POST | `/threat-intel/sync` | JWT | threat-intel:sync |
+| GET | `/health` | Não | Liveness |
+| GET | `/health/ready` | Não | Readiness |
+| POST | `/v1/auth/login` | Não | — |
+| GET | `/v1/auth/me` | JWT | — |
+| GET | `/v1/auth/users` | JWT | admin |
+| POST | `/v1/auth/users` | JWT | admin |
+| POST | `/v1/audit/run` | JWT | audit:run |
+| GET | `/v1/audit/reports` | JWT | audit:read |
+| GET | `/v1/audit/reports/:id` | JWT | audit:read |
+| GET | `/v1/audit/reports/:id/markdown` | JWT | audit:download |
+| GET | `/v1/audit/reports/:id/pdf` | JWT | audit:download |
+| GET | `/v1/audit/reports/:id/findings` | JWT | audit:read |
+| GET | `/v1/audit/remediation/consent` | JWT | remediation:preview |
+| POST | `/v1/audit/remediation/consent/accept` | JWT | remediation:apply |
+| GET | `/v1/audit/remediation/:findingId/preview` | JWT | remediation:preview |
+| POST | `/v1/audit/remediation/:findingId/apply` | JWT | remediation:apply |
+| POST | `/v1/audit/reports/:id/remediate-all` | JWT | remediation:apply |
+| GET | `/v1/threat-intel/status` | JWT | threat-intel:read |
+| POST | `/v1/threat-intel/sync` | JWT | threat-intel:sync |
 | GET | `/threat-intel/packages` | JWT | threat-intel:read |
 | GET | `/threat-intel/check` | JWT | threat-intel:read |
 

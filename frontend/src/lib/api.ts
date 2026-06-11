@@ -1,4 +1,10 @@
 export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000';
+export const API_V1 = '/v1';
+
+function apiPath(path: string): string {
+  if (path.startsWith('/v1')) return path;
+  return `${API_V1}${path.startsWith('/') ? path : `/${path}`}`;
+}
 
 export class ApiError extends Error {
   constructor(
@@ -16,7 +22,7 @@ async function request<T>(path: string, options: RequestInit = {}, token?: strin
   };
   if (token) headers.Authorization = `Bearer ${token}`;
 
-  const res = await fetch(`${API_URL}${path}`, { ...options, headers });
+  const res = await fetch(`${API_URL}${apiPath(path)}`, { ...options, headers });
   if (!res.ok) {
     const body = await res.text();
     let message = body || res.statusText;
@@ -126,7 +132,7 @@ export const api = {
 
   githubOAuthEnabled: async () => {
     try {
-      const res = await fetch(`${API_URL}/auth/github/config`);
+      const res = await fetch(`${API_URL}${apiPath('/auth/github/config')}`);
       if (!res.ok) return false;
       const data = (await res.json()) as { enabled: boolean };
       return data.enabled;
@@ -160,7 +166,7 @@ export const api = {
     request<{ id: string; createdAt: string; report: AuditReport }>(`/audit/reports/${id}`, {}, token),
 
   getMarkdown: async (token: string, id: string) => {
-    const res = await fetch(`${API_URL}/audit/reports/${id}/markdown`, {
+    const res = await fetch(`${API_URL}${apiPath(`/audit/reports/${id}/markdown`)}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     if (!res.ok) throw new ApiError('Falha ao baixar markdown', res.status);
@@ -168,7 +174,7 @@ export const api = {
   },
 
   downloadPdf: (token: string, id: string) =>
-    `${API_URL}/audit/reports/${id}/pdf`,
+    `${API_URL}${apiPath(`/audit/reports/${id}/pdf`)}`,
 
   listFindings: (token: string, auditId: string) =>
     request<Array<ThreatFinding & { repository: string; auditId: string }>>(
@@ -178,7 +184,7 @@ export const api = {
     ),
 
   getFindingMarkdown: async (token: string, auditId: string, findingId: string) => {
-    const res = await fetch(`${API_URL}/audit/reports/${auditId}/findings/${findingId}/markdown`, {
+    const res = await fetch(`${API_URL}${apiPath(`/audit/reports/${auditId}/findings/${findingId}/markdown`)}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     if (!res.ok) throw new ApiError('Falha ao baixar relatório da vulnerabilidade', res.status);
@@ -186,7 +192,7 @@ export const api = {
   },
 
   downloadFindingPdf: (token: string, auditId: string, findingId: string) =>
-    `${API_URL}/audit/reports/${auditId}/findings/${findingId}/pdf`,
+    `${API_URL}${apiPath(`/audit/reports/${auditId}/findings/${findingId}/pdf`)}`,
 
   threatIntelStatus: (token: string) => request<unknown>('/threat-intel/status', {}, token),
 
@@ -206,6 +212,9 @@ export const api = {
       failed: number;
       results: Array<{ findingId: string; message: string; success: boolean; pullRequestUrl?: string }>;
     }>(`/audit/reports/${auditId}/remediate-all`, { method: 'POST' }, token),
+
+  listUsers: (token: string) =>
+    request<Array<{ id: string; email: string; name: string; role: string }>>('/auth/users', {}, token),
 
   createUser: (
     token: string,

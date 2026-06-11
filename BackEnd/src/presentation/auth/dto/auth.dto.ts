@@ -1,5 +1,11 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsBoolean, IsEmail, IsString, MaxLength, MinLength } from 'class-validator';
+import {
+  IsBoolean,
+  IsEmail,
+  IsString,
+  MaxLength,
+  MinLength,
+} from 'class-validator';
 
 export class LoginDto {
   @ApiProperty({ example: 'admin@empresa.com' })
@@ -34,7 +40,9 @@ export class GitHubConsentAcceptDto {
   @IsBoolean()
   dataProcessingAccepted!: boolean;
 
-  @ApiProperty({ description: 'Ciência das permissões OAuth solicitadas ao GitHub' })
+  @ApiProperty({
+    description: 'Ciência das permissões OAuth solicitadas ao GitHub',
+  })
   @IsBoolean()
   scopesAcknowledged!: boolean;
 }
@@ -48,7 +56,10 @@ export class RemediationConsentAcceptDto {
   @IsBoolean()
   privacyAccepted!: boolean;
 
-  @ApiProperty({ description: 'Autorização para remediação automática em repositórios GitHub' })
+  @ApiProperty({
+    description:
+      'Autorização para remediação automática em repositórios GitHub',
+  })
   @IsBoolean()
   remediationAcknowledged!: boolean;
 
@@ -58,7 +69,9 @@ export class RemediationConsentAcceptDto {
 }
 
 export class GitHubExchangeDto {
-  @ApiProperty({ description: 'Código de uso único retornado pelo callback OAuth' })
+  @ApiProperty({
+    description: 'Código de uso único retornado pelo callback OAuth',
+  })
   @IsString()
   @MinLength(16)
   @MaxLength(128)

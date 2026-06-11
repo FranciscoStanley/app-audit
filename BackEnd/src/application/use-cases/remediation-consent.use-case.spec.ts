@@ -3,7 +3,9 @@ import { RemediationConsentUseCase } from './remediation-consent.use-case';
 import { ConsentStore } from '../../infrastructure/auth/consent.store';
 
 describe('RemediationConsentUseCase', () => {
-  let consents: jest.Mocked<Pick<ConsentStore, 'hasActiveConsent' | 'createCompleted'>>;
+  let consents: jest.Mocked<
+    Pick<ConsentStore, 'hasActiveConsent' | 'createCompleted'>
+  >;
   let useCase: RemediationConsentUseCase;
 
   beforeEach(() => {
@@ -49,7 +51,13 @@ describe('RemediationConsentUseCase', () => {
     await expect(
       useCase.acceptConsent(
         'user-1',
-        { termsAccepted: true, privacyAccepted: true, dataProcessingAccepted: true, remediationAcknowledged: false, risksAcknowledged: true },
+        {
+          termsAccepted: true,
+          privacyAccepted: true,
+          dataProcessingAccepted: true,
+          remediationAcknowledged: false,
+          risksAcknowledged: true,
+        },
         {},
       ),
     ).rejects.toBeInstanceOf(BadRequestException);
@@ -57,6 +65,8 @@ describe('RemediationConsentUseCase', () => {
 
   it('bloqueia remediação sem consentimento ativo', async () => {
     consents.hasActiveConsent.mockResolvedValue(false);
-    await expect(useCase.assertRemediationConsent('user-1')).rejects.toBeInstanceOf(ForbiddenException);
+    await expect(
+      useCase.assertRemediationConsent('user-1'),
+    ).rejects.toBeInstanceOf(ForbiddenException);
   });
 });

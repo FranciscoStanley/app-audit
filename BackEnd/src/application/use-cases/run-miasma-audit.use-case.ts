@@ -1,6 +1,13 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { MIASMA_ATTACK_START_DATE, MIASMA_SOURCE_URL } from '../../domain/constants/miasma-threat.constants';
-import { AuditReport, ImmediateAction, TechnologySummary } from '../../domain/entities/audit-report.entity';
+import {
+  MIASMA_ATTACK_START_DATE,
+  MIASMA_SOURCE_URL,
+} from '../../domain/constants/miasma-threat.constants';
+import {
+  AuditReport,
+  ImmediateAction,
+  TechnologySummary,
+} from '../../domain/entities/audit-report.entity';
 import { RepositoryScan } from '../../domain/entities/repository-scan.entity';
 import { GitHubAdapterFactory } from '../../infrastructure/github/github-adapter.factory';
 import { AuditScannerFactory } from '../../infrastructure/scanners/audit-scanner.factory';
@@ -39,9 +46,11 @@ export class RunMiasmaAuditUseCase {
   ) {}
 
   async execute(input: RunMiasmaAuditInput): Promise<RunMiasmaAuditOutput> {
-    await this.syncThreatIntel.execute().catch((err) =>
-      this.logger.warn(`Sync threat intel ignorado: ${err.message}`),
-    );
+    await this.syncThreatIntel
+      .execute()
+      .catch((err) =>
+        this.logger.warn(`Sync threat intel ignorado: ${err.message}`),
+      );
 
     const token = await this.githubTokens.requireForAudit(input.userId);
     const github = this.githubFactory.create(token);
@@ -50,7 +59,9 @@ export class RunMiasmaAuditUseCase {
     const username = await github.getAuthenticatedUser();
     const repositories = await github.listRepositories();
 
-    this.logger.log(`Auditando ${repositories.length} repositórios de @${username}...`);
+    this.logger.log(
+      `Auditando ${repositories.length} repositórios de @${username}...`,
+    );
 
     const scans: RepositoryScan[] = [];
     for (const repo of repositories) {
@@ -58,15 +69,22 @@ export class RunMiasmaAuditUseCase {
         const scan = await scanner.scan(repo);
         scans.push(scan);
         if (scan.isAffected) {
-          this.logger.warn(`AFETADO: ${repo.fullName} (${scan.findings.length} achados)`);
+          this.logger.warn(
+            `AFETADO: ${repo.fullName} (${scan.findings.length} achados)`,
+          );
         }
       } catch (error) {
-        this.logger.error(`Erro ao auditar ${repo.fullName}: ${(error as Error).message}`);
+        this.logger.error(
+          `Erro ao auditar ${repo.fullName}: ${(error as Error).message}`,
+        );
       }
     }
 
     const affected = scans.filter((s) => s.isAffected);
-    const totalVulnerabilities = scans.reduce((sum, s) => sum + s.vulnerabilityCount, 0);
+    const totalVulnerabilities = scans.reduce(
+      (sum, s) => sum + s.vulnerabilityCount,
+      0,
+    );
     const technologies = this.buildTechnologySummary(scans);
     const intelStatus = this.threatStore.getStatus();
     const report: AuditReport = {
@@ -101,7 +119,9 @@ export class RunMiasmaAuditUseCase {
       (ctx) => this.vulnerabilityReportGenerator.generate(ctx),
     );
     if (findingReports > 0) {
-      this.logger.log(`${findingReports} relatório(s) individual(is) de vulnerabilidade gerado(s)`);
+      this.logger.log(
+        `${findingReports} relatório(s) individual(is) de vulnerabilidade gerado(s)`,
+      );
     }
 
     let savedTo: string | undefined;
@@ -139,7 +159,10 @@ export class RunMiasmaAuditUseCase {
       .sort((a, b) => b.repositoryCount - a.repositoryCount);
   }
 
-  private computeRisk(affected: number, total: number): TechnologySummary['riskLevel'] {
+  private computeRisk(
+    affected: number,
+    total: number,
+  ): TechnologySummary['riskLevel'] {
     if (affected === 0) return 'none';
     const ratio = affected / total;
     if (ratio >= 0.5) return 'critical';
@@ -174,8 +197,7 @@ export class RunMiasmaAuditUseCase {
       {
         priority: 4,
         title: 'Verificar dependências',
-        description:
-          `Confirme ausência de durabletask 1.4.1–1.4.3 (PyPI) e pacotes @redhatcloudservices no npm. Execute npm audit e pip audit nos projetos ativos.`,
+        description: `Confirme ausência de durabletask 1.4.1–1.4.3 (PyPI) e pacotes @redhatcloudservices no npm. Execute npm audit e pip audit nos projetos ativos.`,
         category: 'dependency_audit',
       },
       {

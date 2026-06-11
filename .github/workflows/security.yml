@@ -36,9 +36,7 @@ jobs:
 
       - run: npm ci --ignore-scripts
       - run: npm audit --audit-level=high -w BackEnd
-        continue-on-error: true
       - run: npm audit --audit-level=high -w frontend
-        continue-on-error: true
 
   secret-scan-script:
     name: Local secret patterns

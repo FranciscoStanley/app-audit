@@ -1,9 +1,16 @@
-import { ValidationPipe } from '@nestjs/common';
+import { RequestMethod, ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
-import { isProduction, isSwaggerEnabled, validateProductionEnv } from './config/env.validation';
+import { API_V1_PREFIX, APP_VERSION } from './config/api-version';
+import {
+  isProduction,
+  isSwaggerEnabled,
+  validateProductionEnv,
+} from './config/env.validation';
 
 async function bootstrap() {
   validateProductionEnv();
@@ -30,16 +37,27 @@ async function bootstrap() {
   });
 
   app.useGlobalPipes(
-    new ValidationPipe({ whitelist: true, transform: true, forbidNonWhitelisted: true }),
+    new ValidationPipe({
+      whitelist: true,
+      transform: true,
+      forbidNonWhitelisted: true,
+    }),
   );
+
+  app.setGlobalPrefix(API_V1_PREFIX, {
+    exclude: [
+      { path: 'health', method: RequestMethod.GET },
+      { path: 'health/ready', method: RequestMethod.GET },
+    ],
+  });
 
   if (isSwaggerEnabled()) {
     const config = new DocumentBuilder()
       .setTitle('App Audit API')
       .setDescription(
-        'API de auditoria de segurança — Miasma, supply chain, secrets, dependências e remediação.',
+        'API de auditoria de segurança — Miasma, supply chain, secrets, dependências e remediação. Base path: /v1',
       )
-      .setVersion('2.0.0')
+      .setVersion(APP_VERSION)
       .addBearerAuth()
       .addTag('Authentication')
       .addTag('Security Audit')
@@ -52,6 +70,12 @@ async function bootstrap() {
       customSiteTitle: 'App Audit — Swagger',
       swaggerOptions: { persistAuthorization: true },
     });
+
+    if (process.env.EXPORT_OPENAPI === 'true') {
+      const out = join(process.cwd(), 'docs', 'openapi.json');
+      writeFileSync(out, JSON.stringify(document, null, 2));
+      console.log(`OpenAPI exportado em ${out}`);
+    }
   }
 
   const port = process.env.PORT ?? 3000;

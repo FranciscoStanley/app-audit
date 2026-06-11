@@ -1,29 +1,88 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication } from '@nestjs/common';
+import {
+  INestApplication,
+  RequestMethod,
+  ValidationPipe,
+} from '@nestjs/common';
 import request from 'supertest';
 import { App } from 'supertest/types';
-import { AppModule } from './../src/app.module';
+import { AppModule } from '../src/app.module';
+import { API_V1_PREFIX } from '../src/config/api-version';
 
-describe('AppController (e2e)', () => {
+describe('App Audit API (e2e)', () => {
   let app: INestApplication<App>;
 
-  beforeEach(async () => {
+  beforeAll(async () => {
+    process.env.JWT_SECRET =
+      process.env.JWT_SECRET ??
+      'e2e-test-secret-with-at-least-32-characters-long';
+    process.env.NODE_ENV = 'test';
+    process.env.THREAT_INTEL_SYNC_ON_STARTUP = 'false';
+
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
     }).compile();
 
     app = moduleFixture.createNestApplication();
+    app.useGlobalPipes(
+      new ValidationPipe({
+        whitelist: true,
+        transform: true,
+        forbidNonWhitelisted: true,
+      }),
+    );
+    app.setGlobalPrefix(API_V1_PREFIX, {
+      exclude: [
+        { path: 'health', method: RequestMethod.GET },
+        { path: 'health/ready', method: RequestMethod.GET },
+      ],
+    });
     await app.init();
-  });
+  }, 60_000);
 
-  it('/ (GET)', () => {
-    return request(app.getHttpServer())
-      .get('/')
-      .expect(200)
-      .expect('Hello World!');
-  });
-
-  afterEach(async () => {
+  afterAll(async () => {
     await app.close();
+  });
+
+  it('GET /health — liveness', () => {
+    return request(app.getHttpServer())
+      .get('/health')
+      .expect(200)
+      .expect((res) => {
+        expect(res.body.status).toBe('ok');
+      });
+  });
+
+  it('GET /health/ready — readiness', () => {
+    return request(app.getHttpServer())
+      .get('/health/ready')
+      .expect(200)
+      .expect((res) => {
+        expect(res.body.checks).toBeDefined();
+        expect(res.body.version).toBeDefined();
+      });
+  });
+
+  it('GET /v1/auth/legal/info — informações legais', () => {
+    return request(app.getHttpServer())
+      .get(`/${API_V1_PREFIX}/auth/legal/info`)
+      .expect(200)
+      .expect((res) => {
+        expect(res.body.policyVersion).toBeDefined();
+        expect(res.body.contactEmail).toBeDefined();
+      });
+  });
+
+  it('GET /v1/auth/login/consent', () => {
+    return request(app.getHttpServer())
+      .get(`/${API_V1_PREFIX}/auth/login/consent`)
+      .expect(200);
+  });
+
+  it('POST /v1/auth/login — rejeita sem consentimento', () => {
+    return request(app.getHttpServer())
+      .post(`/${API_V1_PREFIX}/auth/login`)
+      .send({ email: 'nope@test.com', password: 'short' })
+      .expect(400);
   });
 });

@@ -49,7 +49,7 @@
       "_type": "request",
       "name": "Login",
       "method": "POST",
-      "url": "{{ _.baseUrl }}/auth/login",
+      "url": "{{ _.baseUrl }}/v1/auth/login",
       "body": {
         "mimeType": "application/json",
         "text": "{\n  \"email\": \"{{ _.adminEmail }}\",\n  \"password\": \"{{ _.adminPassword }}\",\n  \"termsAccepted\": true,\n  \"privacyAccepted\": true\n}"
@@ -62,7 +62,7 @@
       "_type": "request",
       "name": "Me",
       "method": "GET",
-      "url": "{{ _.baseUrl }}/auth/me",
+      "url": "{{ _.baseUrl }}/v1/auth/me",
       "authentication": {
         "type": "bearer",
         "token": "{{ _.accessToken }}"
@@ -80,7 +80,7 @@
       "_type": "request",
       "name": "Run Audit",
       "method": "POST",
-      "url": "{{ _.baseUrl }}/audit/run?save=true",
+      "url": "{{ _.baseUrl }}/v1/audit/run?save=true",
       "authentication": {
         "type": "bearer",
         "token": "{{ _.accessToken }}"
@@ -92,7 +92,7 @@
       "_type": "request",
       "name": "List Reports",
       "method": "GET",
-      "url": "{{ _.baseUrl }}/audit/reports",
+      "url": "{{ _.baseUrl }}/v1/audit/reports",
       "authentication": {
         "type": "bearer",
         "token": "{{ _.accessToken }}"
@@ -104,7 +104,7 @@
       "_type": "request",
       "name": "Get Report",
       "method": "GET",
-      "url": "{{ _.baseUrl }}/audit/reports/{{ _.auditId }}",
+      "url": "{{ _.baseUrl }}/v1/audit/reports/{{ _.auditId }}",
       "authentication": {
         "type": "bearer",
         "token": "{{ _.accessToken }}"
@@ -116,7 +116,7 @@
       "_type": "request",
       "name": "Download Report Markdown",
       "method": "GET",
-      "url": "{{ _.baseUrl }}/audit/reports/{{ _.auditId }}/markdown",
+      "url": "{{ _.baseUrl }}/v1/audit/reports/{{ _.auditId }}/markdown",
       "authentication": {
         "type": "bearer",
         "token": "{{ _.accessToken }}"
@@ -128,7 +128,7 @@
       "_type": "request",
       "name": "Download Report PDF",
       "method": "GET",
-      "url": "{{ _.baseUrl }}/audit/reports/{{ _.auditId }}/pdf",
+      "url": "{{ _.baseUrl }}/v1/audit/reports/{{ _.auditId }}/pdf",
       "authentication": {
         "type": "bearer",
         "token": "{{ _.accessToken }}"
@@ -140,7 +140,7 @@
       "_type": "request",
       "name": "List Findings",
       "method": "GET",
-      "url": "{{ _.baseUrl }}/audit/reports/{{ _.auditId }}/findings",
+      "url": "{{ _.baseUrl }}/v1/audit/reports/{{ _.auditId }}/findings",
       "authentication": {
         "type": "bearer",
         "token": "{{ _.accessToken }}"
@@ -152,7 +152,7 @@
       "_type": "request",
       "name": "Download Finding Markdown",
       "method": "GET",
-      "url": "{{ _.baseUrl }}/audit/reports/{{ _.auditId }}/findings/{{ _.findingId }}/markdown",
+      "url": "{{ _.baseUrl }}/v1/audit/reports/{{ _.auditId }}/findings/{{ _.findingId }}/markdown",
       "authentication": {
         "type": "bearer",
         "token": "{{ _.accessToken }}"
@@ -164,7 +164,7 @@
       "_type": "request",
       "name": "Download Finding PDF",
       "method": "GET",
-      "url": "{{ _.baseUrl }}/audit/reports/{{ _.auditId }}/findings/{{ _.findingId }}/pdf",
+      "url": "{{ _.baseUrl }}/v1/audit/reports/{{ _.auditId }}/findings/{{ _.findingId }}/pdf",
       "authentication": {
         "type": "bearer",
         "token": "{{ _.accessToken }}"
@@ -176,7 +176,7 @@
       "_type": "request",
       "name": "Remediation Preview",
       "method": "GET",
-      "url": "{{ _.baseUrl }}/audit/remediation/{{ _.findingId }}/preview",
+      "url": "{{ _.baseUrl }}/v1/audit/remediation/{{ _.findingId }}/preview",
       "authentication": {
         "type": "bearer",
         "token": "{{ _.accessToken }}"
@@ -188,7 +188,7 @@
       "_type": "request",
       "name": "Remediation Apply",
       "method": "POST",
-      "url": "{{ _.baseUrl }}/audit/remediation/{{ _.findingId }}/apply",
+      "url": "{{ _.baseUrl }}/v1/audit/remediation/{{ _.findingId }}/apply",
       "authentication": {
         "type": "bearer",
         "token": "{{ _.accessToken }}"
@@ -200,7 +200,7 @@
       "_type": "request",
       "name": "Remediate All (audit report)",
       "method": "POST",
-      "url": "{{ _.baseUrl }}/audit/reports/{{ _.auditId }}/remediate-all",
+      "url": "{{ _.baseUrl }}/v1/audit/reports/{{ _.auditId }}/remediate-all",
       "authentication": {
         "type": "bearer",
         "token": "{{ _.accessToken }}"
@@ -218,7 +218,7 @@
       "_type": "request",
       "name": "Status",
       "method": "GET",
-      "url": "{{ _.baseUrl }}/threat-intel/status",
+      "url": "{{ _.baseUrl }}/v1/threat-intel/status",
       "authentication": {
         "type": "bearer",
         "token": "{{ _.accessToken }}"
@@ -230,7 +230,7 @@
       "_type": "request",
       "name": "Sync",
       "method": "POST",
-      "url": "{{ _.baseUrl }}/threat-intel/sync",
+      "url": "{{ _.baseUrl }}/v1/threat-intel/sync",
       "authentication": {
         "type": "bearer",
         "token": "{{ _.accessToken }}"
@@ -242,7 +242,7 @@
       "_type": "request",
       "name": "List Packages",
       "method": "GET",
-      "url": "{{ _.baseUrl }}/threat-intel/packages",
+      "url": "{{ _.baseUrl }}/v1/threat-intel/packages",
       "authentication": {
         "type": "bearer",
         "token": "{{ _.accessToken }}"
@@ -254,7 +254,7 @@
       "_type": "request",
       "name": "Check Package",
       "method": "GET",
-      "url": "{{ _.baseUrl }}/threat-intel/check?reportType=package&resourceIdentifier=durabletask&ecosystem=pypi&version=1.4.1",
+      "url": "{{ _.baseUrl }}/v1/threat-intel/check?reportType=package&resourceIdentifier=durabletask&ecosystem=pypi&version=1.4.1",
       "authentication": {
         "type": "bearer",
         "token": "{{ _.accessToken }}"

@@ -1,0 +1,47 @@
+name: CI
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+    branches: [master, main]
+
+permissions:
+  contents: read
+
+jobs:
+  test-and-build:
+    name: Test & Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - run: npm ci --ignore-scripts
+
+      - name: Unit tests (BackEnd + frontend)
+        run: npm test
+        env:
+          JWT_SECRET: ci-test-secret-with-at-least-32-characters-long
+          NODE_ENV: test
+
+      - name: E2E smoke (BackEnd)
+        run: npm run test:e2e -w BackEnd
+        env:
+          JWT_SECRET: ci-test-secret-with-at-least-32-characters-long
+          NODE_ENV: test
+
+      - name: Lint BackEnd
+        run: npm run lint -w BackEnd
+
+      - name: Lint frontend
+        run: npm run lint -w frontend
+
+      - name: Build monorepo
+        run: npm run build
+        env:
+          JWT_SECRET: ci-test-secret-with-at-least-32-characters-long

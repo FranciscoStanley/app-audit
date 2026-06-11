@@ -7,7 +7,9 @@ const execFileAsync = promisify(execFile);
 
 async function getGhToken(): Promise<string | null> {
   try {
-    const { stdout } = await execFileAsync('gh', ['auth', 'token'], { windowsHide: true });
+    const { stdout } = await execFileAsync('gh', ['auth', 'token'], {
+      windowsHide: true,
+    });
     return stdout.trim() || null;
   } catch {
     return null;
@@ -37,15 +39,21 @@ async function main() {
     env = env.replace('GITHUB_TOKEN=', `GITHUB_TOKEN=${ghToken}`);
     console.log('GITHUB_TOKEN preenchido via gh auth token.');
   } else {
-    console.log('gh não autenticado — configure GITHUB_TOKEN manualmente ou execute gh auth login.');
+    console.log(
+      'gh não autenticado — configure GITHUB_TOKEN manualmente ou execute gh auth login.',
+    );
   }
 
   await writeFile(envPath, env, 'utf-8');
   console.log('.env criado com JWT_SECRET gerado.');
   console.log('');
   console.log('Próximos passos:');
-  console.log('  1. Defina ADMIN_EMAIL e ADMIN_PASSWORD no .env (mín. 12 caracteres)');
-  console.log('     OU execute: npm run users:create -- --email ... --password ... --name ... --role admin');
+  console.log(
+    '  1. Defina ADMIN_EMAIL e ADMIN_PASSWORD no .env (mín. 12 caracteres)',
+  );
+  console.log(
+    '     OU execute: npm run users:create -- --email ... --password ... --name ... --role admin',
+  );
   console.log('  2. Adicione OSM_API_TOKEN (opcional) para OpenSourceMalware');
 }
 

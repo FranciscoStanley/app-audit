@@ -1,5 +1,7 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { join } from 'node:path';
 import {
   MIASMA_AFFECTED_REPOSITORIES,
   MIASMA_COMPROMISED_GITHUB_ACTIONS,
@@ -19,13 +21,25 @@ import type {
 import type { ThreatIntelligenceStorePort } from '../../domain/ports/threat-intelligence.port';
 
 @Injectable()
-export class ThreatIntelligenceStore implements ThreatIntelligenceStorePort {
+export class ThreatIntelligenceStore
+  implements ThreatIntelligenceStorePort, OnModuleInit
+{
+  private readonly logger = new Logger(ThreatIntelligenceStore.name);
+  private readonly cachePath = join(
+    process.cwd(),
+    'data',
+    'threat-intel-cache.json',
+  );
   private packages = new Map<string, CompromisedPackage>();
   private repositories = new Map<string, CompromisedRepository>();
   private lastSyncedAt: string | null = null;
 
   constructor(private readonly config: ConfigService) {
     this.seedBaseline();
+  }
+
+  async onModuleInit(): Promise<void> {
+    await this.loadCache();
   }
 
   getPackages(): CompromisedPackage[] {
@@ -39,7 +53,9 @@ export class ThreatIntelligenceStore implements ThreatIntelligenceStorePort {
   getMaliciousFiles(): Array<{ path: string; description: string }> {
     return MIASMA_MALICIOUS_FILES.map((path) => ({
       path,
-      description: MIASMA_MALICIOUS_PATTERNS.find((p) => p.file === path)?.description ?? 'Indicador Miasma',
+      description:
+        MIASMA_MALICIOUS_PATTERNS.find((p) => p.file === path)?.description ??
+        'Indicador Miasma',
     }));
   }
 
@@ -80,9 +96,13 @@ export class ThreatIntelligenceStore implements ThreatIntelligenceStorePort {
   }
 
   getStatus(): ThreatIntelStatus {
-    const refreshHours = Number(this.config.get('THREAT_INTEL_REFRESH_HOURS') ?? 6);
+    const refreshHours = Number(
+      this.config.get('THREAT_INTEL_REFRESH_HOURS') ?? 6,
+    );
     const nextSyncAt = this.lastSyncedAt
-      ? new Date(new Date(this.lastSyncedAt).getTime() + refreshHours * 3600000).toISOString()
+      ? new Date(
+          new Date(this.lastSyncedAt).getTime() + refreshHours * 3600000,
+        ).toISOString()
       : null;
 
     return {
@@ -96,7 +116,10 @@ export class ThreatIntelligenceStore implements ThreatIntelligenceStorePort {
     };
   }
 
-  applySync(packages: CompromisedPackage[], repositories: CompromisedRepository[]): void {
+  applySync(
+    packages: CompromisedPackage[],
+    repositories: CompromisedRepository[],
+  ): void {
     for (const pkg of packages) {
       this.packages.set(this.packageKey(pkg.name, pkg.ecosystem), pkg);
     }
@@ -104,10 +127,61 @@ export class ThreatIntelligenceStore implements ThreatIntelligenceStorePort {
       this.repositories.set(repo.fullName.toLowerCase(), repo);
     }
     this.lastSyncedAt = new Date().toISOString();
+    void this.persistCache();
   }
 
   markSynced(): void {
     this.lastSyncedAt = new Date().toISOString();
+    void this.persistCache();
+  }
+
+  private async loadCache(): Promise<void> {
+    try {
+      const raw = await readFile(this.cachePath, 'utf-8');
+      const data = JSON.parse(raw) as {
+        lastSyncedAt?: string;
+        packages?: CompromisedPackage[];
+        repositories?: CompromisedRepository[];
+      };
+      if (data.lastSyncedAt) this.lastSyncedAt = data.lastSyncedAt;
+      for (const pkg of data.packages ?? []) {
+        this.packages.set(this.packageKey(pkg.name, pkg.ecosystem), pkg);
+      }
+      for (const repo of data.repositories ?? []) {
+        this.repositories.set(repo.fullName.toLowerCase(), repo);
+      }
+      this.logger.log(
+        `Threat intel cache carregado (${this.packages.size} pacotes)`,
+      );
+    } catch {
+      // cache ausente — baseline only
+    }
+  }
+
+  private async persistCache(): Promise<void> {
+    try {
+      await mkdir(join(this.cachePath, '..'), { recursive: true });
+      await writeFile(
+        this.cachePath,
+        JSON.stringify(
+          {
+            version: 1,
+            lastSyncedAt: this.lastSyncedAt,
+            packages: this.getPackages().filter((p) => p.source !== 'baseline'),
+            repositories: this.getRepositories().filter(
+              (r) => r.source !== 'baseline',
+            ),
+          },
+          null,
+          2,
+        ),
+        'utf-8',
+      );
+    } catch (err) {
+      this.logger.warn(
+        `Falha ao persistir threat intel cache: ${(err as Error).message}`,
+      );
+    }
   }
 
   private seedBaseline(): void {

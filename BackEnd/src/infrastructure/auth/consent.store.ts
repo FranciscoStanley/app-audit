@@ -92,7 +92,11 @@ export class ConsentStore {
     return record;
   }
 
-  async complete(consentId: string, userId: string, githubId: string): Promise<void> {
+  async complete(
+    consentId: string,
+    userId: string,
+    githubId: string,
+  ): Promise<void> {
     const store = await this.load();
     const record = store.records.find((r) => r.id === consentId);
     if (!record) return;
@@ -106,7 +110,11 @@ export class ConsentStore {
     const store = await this.load();
     const now = new Date().toISOString();
     for (const record of store.records) {
-      if (record.userId === userId && record.status === 'completed' && (!kind || record.kind === kind)) {
+      if (
+        record.userId === userId &&
+        record.status === 'completed' &&
+        (!kind || record.kind === kind)
+      ) {
         record.status = 'revoked';
         record.revokedAt = now;
       }
@@ -114,7 +122,11 @@ export class ConsentStore {
     await this.persist(store);
   }
 
-  async hasActiveConsent(userId: string, kind: ConsentKind, policyVersion = LEGAL_POLICY_VERSION): Promise<boolean> {
+  async hasActiveConsent(
+    userId: string,
+    kind: ConsentKind,
+    policyVersion = LEGAL_POLICY_VERSION,
+  ): Promise<boolean> {
     const store = await this.load();
     return store.records.some(
       (r) =>

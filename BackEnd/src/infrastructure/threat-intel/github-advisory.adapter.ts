@@ -2,7 +2,10 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import type { GitHubAdvisoryPort, GitHubAdvisoryRecord } from '../../domain/ports/threat-intelligence.port';
+import type {
+  GitHubAdvisoryPort,
+  GitHubAdvisoryRecord,
+} from '../../domain/ports/threat-intelligence.port';
 
 const execFileAsync = promisify(execFile);
 
@@ -31,7 +34,9 @@ export class GitHubAdvisoryAdapter implements GitHubAdvisoryPort {
 
   constructor(private readonly config: ConfigService) {}
 
-  async fetchMalwareAdvisories(since = '2026-01-01'): Promise<GitHubAdvisoryRecord[]> {
+  async fetchMalwareAdvisories(
+    since = '2026-01-01',
+  ): Promise<GitHubAdvisoryRecord[]> {
     const token = await this.resolveToken();
     const advisories: GitHubAdvisoryRecord[] = [];
     let page = 1;
@@ -46,7 +51,9 @@ export class GitHubAdvisoryAdapter implements GitHubAdvisoryPort {
       page++;
     }
 
-    this.logger.log(`${advisories.length} advisories de malware carregadas do GitHub`);
+    this.logger.log(
+      `${advisories.length} advisories de malware carregadas do GitHub`,
+    );
     return advisories;
   }
 
@@ -74,12 +81,17 @@ export class GitHubAdvisoryAdapter implements GitHubAdvisoryPort {
     try {
       return await this.fetchViaGhCli(since, page, perPage);
     } catch (error) {
-      this.logger.warn(`GitHub Advisories indisponível: ${(error as Error).message}`);
+      this.logger.warn(
+        `GitHub Advisories indisponível: ${(error as Error).message}`,
+      );
       return [];
     }
   }
 
-  private async fetchViaHttp(token: string, url: string): Promise<GitHubAdvisoryRecord[]> {
+  private async fetchViaHttp(
+    token: string,
+    url: string,
+  ): Promise<GitHubAdvisoryRecord[]> {
     const response = await fetch(url, {
       headers: {
         Accept: 'application/vnd.github+json',
@@ -90,14 +102,20 @@ export class GitHubAdvisoryAdapter implements GitHubAdvisoryPort {
     });
 
     if (!response.ok) {
-      throw new Error(`GitHub Advisories HTTP ${response.status}: ${await response.text()}`);
+      throw new Error(
+        `GitHub Advisories HTTP ${response.status}: ${await response.text()}`,
+      );
     }
 
     const data = (await response.json()) as RawAdvisory[];
     return data.map((item) => this.mapAdvisory(item));
   }
 
-  private async fetchViaGhCli(since: string, page: number, perPage: number): Promise<GitHubAdvisoryRecord[]> {
+  private async fetchViaGhCli(
+    since: string,
+    page: number,
+    perPage: number,
+  ): Promise<GitHubAdvisoryRecord[]> {
     const { stdout } = await execFileAsync(
       'gh',
       [
@@ -137,7 +155,9 @@ export class GitHubAdvisoryAdapter implements GitHubAdvisoryPort {
     if (envToken) return envToken;
 
     try {
-      const { stdout } = await execFileAsync('gh', ['auth', 'token'], { windowsHide: true });
+      const { stdout } = await execFileAsync('gh', ['auth', 'token'], {
+        windowsHide: true,
+      });
       return stdout.trim() || null;
     } catch {
       return null;

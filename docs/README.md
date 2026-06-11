@@ -8,6 +8,9 @@
 |---------|-----------|
 | [../README.md](../README.md) | Visão geral e início rápido |
 | [../CONTRIBUTING.md](../CONTRIBUTING.md) | Guia de contribuição |
+| [../CODE_OF_CONDUCT.md](../CODE_OF_CONDUCT.md) | Código de conduta |
+| [../CHANGELOG.md](../CHANGELOG.md) | Notas de release |
+| [../ROADMAP.md](../ROADMAP.md) | Evolução do produto |
 | [../LICENSE](../LICENSE) | Licença MIT |
 | [../SECURITY.md](../SECURITY.md) | Política de segurança |
 
@@ -21,6 +24,8 @@
 | [Referência da API](./api.md) | Contratos HTTP detalhados |
 | [Guia de desenvolvimento](./development.md) | Setup, estrutura, troubleshooting |
 | [Deploy produção](./deployment.md) | Docker, checklist, usuários |
+| [Operações](./operations.md) | Backup, logs, health, releases |
+| [Limitações v1](./LIMITATIONS.md) | Single-node, file storage |
 | [GitHub OAuth](./github-oauth-setup.md) | Login com GitHub (app 3659122) |
 | [Collections](./collections/) | Postman e Insomnia |
 

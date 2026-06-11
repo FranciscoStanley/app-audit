@@ -44,7 +44,9 @@ export const GITHUB_OAUTH_RETENTION_SUMMARY =
   LEGAL_RETENTION_PERIODS.slice(0, 2).join('. ') +
   '. Tokens OAuth são revogados ao desconectar o GitHub.';
 
-export const GITHUB_OAUTH_THIRD_PARTIES = LEGAL_THIRD_PARTIES.map(({ name, purpose }) => ({
-  name,
-  purpose,
-}));
+export const GITHUB_OAUTH_THIRD_PARTIES = LEGAL_THIRD_PARTIES.map(
+  ({ name, purpose }) => ({
+    name,
+    purpose,
+  }),
+);

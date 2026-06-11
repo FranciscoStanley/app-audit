@@ -1,6 +1,13 @@
 import { Logger } from '@nestjs/common';
 import { execFile } from 'node:child_process';
-import { access, mkdir, readFile, rm, unlink, writeFile } from 'node:fs/promises';
+import {
+  access,
+  mkdir,
+  readFile,
+  rm,
+  unlink,
+  writeFile,
+} from 'node:fs/promises';
 import { join, dirname } from 'node:path';
 import { promisify } from 'node:util';
 import {
@@ -28,7 +35,10 @@ export class RemediationGitWorkspace {
     private readonly workRoot: string,
   ) {}
 
-  async clone(owner: string, repo: string): Promise<{ repoPath: string; defaultBranch: string }> {
+  async clone(
+    owner: string,
+    repo: string,
+  ): Promise<{ repoPath: string; defaultBranch: string }> {
     await mkdir(this.workRoot, { recursive: true });
     const repoPath = join(this.workRoot, `${owner}-${repo}-${Date.now()}`);
 
@@ -44,8 +54,14 @@ export class RemediationGitWorkspace {
       repoPath,
     ]);
 
-    await this.run('git', ['config', 'user.email', 'security@app-audit.local'], { cwd: repoPath });
-    await this.run('git', ['config', 'user.name', 'App Audit Security Bot'], { cwd: repoPath });
+    await this.run(
+      'git',
+      ['config', 'user.email', 'security@app-audit.local'],
+      { cwd: repoPath },
+    );
+    await this.run('git', ['config', 'user.name', 'App Audit Security Bot'], {
+      cwd: repoPath,
+    });
 
     return { repoPath, defaultBranch };
   }
@@ -68,14 +84,22 @@ export class RemediationGitWorkspace {
       content = '';
     }
     if (content.split('\n').some((line) => line.trim() === normalized)) return;
-    const updated = [...content.split('\n').filter(Boolean), normalized, ''].join('\n');
+    const updated = [
+      ...content.split('\n').filter(Boolean),
+      normalized,
+      '',
+    ].join('\n');
     await writeFile(gitignorePath, updated, 'utf-8');
   }
 
-  async pinWorkflowActions(repoPath: string, workflowPath: string): Promise<number> {
+  async pinWorkflowActions(
+    repoPath: string,
+    workflowPath: string,
+  ): Promise<number> {
     const fullPath = join(repoPath, workflowPath);
     let content = await readFile(fullPath, 'utf-8');
-    const actionRefRegex = /uses:\s*([^\s@/]+\/[^\s@]+)@(v[\d.]+|main|master)\b/gi;
+    const actionRefRegex =
+      /uses:\s*([^\s@/]+\/[^\s@]+)@(v[\d.]+|main|master)\b/gi;
     let pinned = 0;
 
     const matches = [...content.matchAll(actionRefRegex)];
@@ -96,7 +120,11 @@ export class RemediationGitWorkspace {
     return pinned;
   }
 
-  async sanitizeFile(repoPath: string, relativePath: string, patterns: string[]): Promise<void> {
+  async sanitizeFile(
+    repoPath: string,
+    relativePath: string,
+    patterns: string[],
+  ): Promise<void> {
     const fullPath = join(repoPath, relativePath);
     try {
       const content = await readFile(fullPath, 'utf-8');
@@ -121,14 +149,22 @@ export class RemediationGitWorkspace {
     targetVersion: string,
   ): Promise<void> {
     const fullPath = join(repoPath, manifestPath);
-    const pkg = JSON.parse(await readFile(fullPath, 'utf-8')) as Record<string, Record<string, string>>;
+    const pkg = JSON.parse(await readFile(fullPath, 'utf-8')) as Record<
+      string,
+      Record<string, string>
+    >;
     const version =
       targetVersion.startsWith('^') || targetVersion.startsWith('~')
         ? targetVersion
         : `^${targetVersion.replace(/^[\^~]/, '')}`;
 
     let updated = false;
-    for (const field of ['dependencies', 'devDependencies', 'peerDependencies', 'optionalDependencies']) {
+    for (const field of [
+      'dependencies',
+      'devDependencies',
+      'peerDependencies',
+      'optionalDependencies',
+    ]) {
       if (pkg[field]?.[packageName]) {
         pkg[field][packageName] = version;
         updated = true;
@@ -141,35 +177,58 @@ export class RemediationGitWorkspace {
     await writeFile(fullPath, `${JSON.stringify(pkg, null, 2)}\n`, 'utf-8');
   }
 
-  async removePackage(repoPath: string, manifestPath: string, packageName: string): Promise<void> {
+  async removePackage(
+    repoPath: string,
+    manifestPath: string,
+    packageName: string,
+  ): Promise<void> {
     const fullPath = join(repoPath, manifestPath);
-    const pkg = JSON.parse(await readFile(fullPath, 'utf-8')) as Record<string, Record<string, string>>;
+    const pkg = JSON.parse(await readFile(fullPath, 'utf-8')) as Record<
+      string,
+      Record<string, string>
+    >;
     let removed = false;
-    for (const field of ['dependencies', 'devDependencies', 'peerDependencies', 'optionalDependencies']) {
+    for (const field of [
+      'dependencies',
+      'devDependencies',
+      'peerDependencies',
+      'optionalDependencies',
+    ]) {
       if (pkg[field]?.[packageName]) {
         delete pkg[field][packageName];
         removed = true;
       }
     }
-    if (!removed) throw new Error(`Pacote ${packageName} não encontrado em ${manifestPath}`);
+    if (!removed)
+      throw new Error(
+        `Pacote ${packageName} não encontrado em ${manifestPath}`,
+      );
     await writeFile(fullPath, `${JSON.stringify(pkg, null, 2)}\n`, 'utf-8');
   }
 
-  async regenerateLockfiles(repoPath: string, manifestPath?: string): Promise<string[]> {
+  async regenerateLockfiles(
+    repoPath: string,
+    manifestPath?: string,
+  ): Promise<string[]> {
     const fieldPm = await readPackageManagerField(repoPath);
     const detected = fieldPm ?? (await detectPackageManager(repoPath));
     if (!detected) return [];
 
     const cwd = manifestPath ? join(repoPath, dirname(manifestPath)) : repoPath;
-    const installRoot = detected === 'pnpm' || detected === 'yarn' ? repoPath : cwd;
+    const installRoot =
+      detected === 'pnpm' || detected === 'yarn' ? repoPath : cwd;
 
     try {
       switch (detected) {
         case 'pnpm':
-          await this.run('pnpm', ['install', '--lockfile-only', '--ignore-scripts'], {
-            cwd: installRoot,
-            timeout: 300_000,
-          });
+          await this.run(
+            'pnpm',
+            ['install', '--lockfile-only', '--ignore-scripts'],
+            {
+              cwd: installRoot,
+              timeout: 300_000,
+            },
+          );
           break;
         case 'yarn':
           await this.run('yarn', ['install', '--mode', 'update-lockfile'], {
@@ -178,17 +237,28 @@ export class RemediationGitWorkspace {
           });
           break;
         case 'npm':
-          await this.run('npm', ['install', '--package-lock-only', '--ignore-scripts'], {
-            cwd: installRoot,
-            timeout: 300_000,
-          });
+          await this.run(
+            'npm',
+            ['install', '--package-lock-only', '--ignore-scripts'],
+            {
+              cwd: installRoot,
+              timeout: 300_000,
+            },
+          );
           break;
         case 'pip':
-          await this.run('pip', ['install', '--upgrade', '-r', 'requirements.txt'], {
-            cwd: installRoot,
-            timeout: 300_000,
-          }).catch(() =>
-            this.run('pip', ['install', '-r', 'requirements.txt'], { cwd: installRoot, timeout: 300_000 }),
+          await this.run(
+            'pip',
+            ['install', '--upgrade', '-r', 'requirements.txt'],
+            {
+              cwd: installRoot,
+              timeout: 300_000,
+            },
+          ).catch(() =>
+            this.run('pip', ['install', '-r', 'requirements.txt'], {
+              cwd: installRoot,
+              timeout: 300_000,
+            }),
           );
           break;
       }
@@ -217,29 +287,63 @@ export class RemediationGitWorkspace {
     prTitle: string,
     prBody: string,
   ): Promise<DeliveryResult> {
-    const status = await this.run('git', ['status', '--porcelain'], { cwd: repoPath });
+    const status = await this.run('git', ['status', '--porcelain'], {
+      cwd: repoPath,
+    });
     if (!status.stdout.trim()) {
-      return { method: 'no_changes', branch: defaultBranch, lockfilesUpdated: [] };
+      return {
+        method: 'no_changes',
+        branch: defaultBranch,
+        lockfilesUpdated: [],
+      };
     }
 
     await this.run('git', ['add', '-A'], { cwd: repoPath });
     await this.run('git', ['commit', '-m', commitMessage], { cwd: repoPath });
 
-    const sha = (await this.run('git', ['rev-parse', 'HEAD'], { cwd: repoPath })).stdout.trim();
+    const sha = (
+      await this.run('git', ['rev-parse', 'HEAD'], { cwd: repoPath })
+    ).stdout.trim();
 
     try {
-      await this.run('git', ['push', 'origin', `HEAD:${defaultBranch}`], { cwd: repoPath, timeout: 120_000 });
-      return { method: 'direct_push', branch: defaultBranch, commitSha: sha, lockfilesUpdated: [] };
+      await this.run('git', ['push', 'origin', `HEAD:${defaultBranch}`], {
+        cwd: repoPath,
+        timeout: 120_000,
+      });
+      return {
+        method: 'direct_push',
+        branch: defaultBranch,
+        commitSha: sha,
+        lockfilesUpdated: [],
+      };
     } catch (pushError) {
-      this.logger.warn(`Push direto falhou, criando PR: ${(pushError as Error).message}`);
+      this.logger.warn(
+        `Push direto falhou, criando PR: ${(pushError as Error).message}`,
+      );
     }
 
     const branch = `security/app-audit-${Date.now()}`;
     await this.run('git', ['checkout', '-b', branch], { cwd: repoPath });
-    await this.run('git', ['push', '-u', 'origin', branch], { cwd: repoPath, timeout: 120_000 });
+    await this.run('git', ['push', '-u', 'origin', branch], {
+      cwd: repoPath,
+      timeout: 120_000,
+    });
 
-    const prUrl = await this.createPullRequest(owner, repo, branch, defaultBranch, prTitle, prBody);
-    return { method: 'pull_request', branch, pullRequestUrl: prUrl, commitSha: sha, lockfilesUpdated: [] };
+    const prUrl = await this.createPullRequest(
+      owner,
+      repo,
+      branch,
+      defaultBranch,
+      prTitle,
+      prBody,
+    );
+    return {
+      method: 'pull_request',
+      branch,
+      pullRequestUrl: prUrl,
+      commitSha: sha,
+      lockfilesUpdated: [],
+    };
   }
 
   async cleanup(repoPath: string): Promise<void> {
@@ -251,7 +355,12 @@ export class RemediationGitWorkspace {
   }
 
   private async getDefaultBranch(owner: string, repo: string): Promise<string> {
-    const { stdout } = await this.runGh(['api', `repos/${owner}/${repo}`, '--jq', '.default_branch']);
+    const { stdout } = await this.runGh([
+      'api',
+      `repos/${owner}/${repo}`,
+      '--jq',
+      '.default_branch',
+    ]);
     return stdout.trim() || 'main';
   }
 
@@ -280,7 +389,10 @@ export class RemediationGitWorkspace {
     return stdout.trim();
   }
 
-  private async resolveActionSha(action: string, ref: string): Promise<string | null> {
+  private async resolveActionSha(
+    action: string,
+    ref: string,
+  ): Promise<string | null> {
     try {
       const { stdout } = await this.runGh([
         'api',
@@ -291,7 +403,12 @@ export class RemediationGitWorkspace {
       const result = stdout.trim();
       if (/^[a-f0-9]{40}$/i.test(result)) return result;
       if (result.startsWith('https://')) {
-        const { stdout: shaOut } = await this.runGh(['api', result, '--jq', '.object.sha']);
+        const { stdout: shaOut } = await this.runGh([
+          'api',
+          result,
+          '--jq',
+          '.object.sha',
+        ]);
         const sha = shaOut.trim();
         return /^[a-f0-9]{40}$/i.test(sha) ? sha : null;
       }
@@ -308,9 +425,16 @@ export class RemediationGitWorkspace {
     }
   }
 
-  private async runGh(args: string[]): Promise<{ stdout: string; stderr: string }> {
+  private async runGh(
+    args: string[],
+  ): Promise<{ stdout: string; stderr: string }> {
     const env = { ...process.env, GITHUB_TOKEN: this.accessToken };
-    return execFileAsync('gh', args, { maxBuffer: 50 * 1024 * 1024, windowsHide: true, env, timeout: 120_000 });
+    return execFileAsync('gh', args, {
+      maxBuffer: 50 * 1024 * 1024,
+      windowsHide: true,
+      env,
+      timeout: 120_000,
+    });
   }
 
   private async run(

@@ -13,13 +13,25 @@ export class AuditScannerFactory {
   constructor(
     private readonly threatStore: ThreatIntelligenceStore,
     private readonly remediationFactory: GitHubRemediationFactory,
-    @Inject(OPEN_SOURCE_MALWARE_PORT) private readonly osm: OpenSourceMalwarePort,
+    @Inject(OPEN_SOURCE_MALWARE_PORT)
+    private readonly osm: OpenSourceMalwarePort,
   ) {}
 
-  create(github: GitHubRepositoryPort, accessToken?: string | null): ComprehensiveSecurityScanner {
-    const miasma = new MiasmaRepositoryScanner(github, this.threatStore, this.osm);
+  create(
+    github: GitHubRepositoryPort,
+    accessToken?: string | null,
+  ): ComprehensiveSecurityScanner {
+    const miasma = new MiasmaRepositoryScanner(
+      github,
+      this.threatStore,
+      this.osm,
+    );
     const remediation = this.remediationFactory.create(accessToken);
-    const additional = new AdditionalSecurityScanner(github, remediation, this.threatStore);
+    const additional = new AdditionalSecurityScanner(
+      github,
+      remediation,
+      this.threatStore,
+    );
     return new ComprehensiveSecurityScanner(miasma, additional);
   }
 }

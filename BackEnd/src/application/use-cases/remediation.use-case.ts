@@ -28,7 +28,12 @@ export class RemediationUseCase {
     const finding = await this.auditStore.findFindingById(findingId);
     if (!finding) throw new NotFoundException('Vulnerabilidade não encontrada');
 
-    return this.buildPlan(finding.type, finding.repository, finding.evidence ?? '', findingId);
+    return this.buildPlan(
+      finding.type,
+      finding.repository,
+      finding.evidence ?? '',
+      findingId,
+    );
   }
 
   async apply(findingId: string, userId: string): Promise<RemediationResult> {
@@ -40,14 +45,23 @@ export class RemediationUseCase {
     const token = await this.githubTokens.requireForAudit(userId);
     const github = this.remediationFactory.create(token);
     const [owner, repo] = finding.repository.split('/');
-    const plan = this.buildPlan(finding.type, finding.repository, finding.evidence ?? '', findingId);
+    const plan = this.buildPlan(
+      finding.type,
+      finding.repository,
+      finding.evidence ?? '',
+      findingId,
+    );
 
     const applied: string[] = [];
     const failed: string[] = [];
     let delivery: DeliveryResult | undefined;
 
-    const workspaceSteps = plan.steps.filter((s) => s.action && !API_ONLY_ACTIONS.has(s.action));
-    const apiSteps = plan.steps.filter((s) => s.action && API_ONLY_ACTIONS.has(s.action));
+    const workspaceSteps = plan.steps.filter(
+      (s) => s.action && !API_ONLY_ACTIONS.has(s.action),
+    );
+    const apiSteps = plan.steps.filter(
+      (s) => s.action && API_ONLY_ACTIONS.has(s.action),
+    );
 
     if (workspaceSteps.length > 0) {
       const workspace = this.remediationFactory.createWorkspace(token);
@@ -73,9 +87,17 @@ export class RemediationUseCase {
               step,
             );
             applied.push(step.title);
-            if (['fix_dependabot', 'update_dependency', 'remove_dependency'].includes(step.action ?? '')) {
+            if (
+              [
+                'fix_dependabot',
+                'update_dependency',
+                'remove_dependency',
+              ].includes(step.action ?? '')
+            ) {
               needsLockfile = true;
-              manifestPath = this.parseDependencyEvidence(finding.evidence ?? '').manifestPath;
+              manifestPath = this.parseDependencyEvidence(
+                finding.evidence ?? '',
+              ).manifestPath;
             }
           } catch (error) {
             failed.push(`${step.title}: ${(error as Error).message}`);
@@ -86,9 +108,14 @@ export class RemediationUseCase {
 
         if (needsLockfile && failed.length === 0) {
           try {
-            lockfilesUpdated = await workspace.regenerateLockfiles(repoPath, manifestPath);
+            lockfilesUpdated = await workspace.regenerateLockfiles(
+              repoPath,
+              manifestPath,
+            );
             if (lockfilesUpdated.length > 0) {
-              applied.push(`Regenerar lockfile (${lockfilesUpdated.join(', ')})`);
+              applied.push(
+                `Regenerar lockfile (${lockfilesUpdated.join(', ')})`,
+              );
             }
           } catch (error) {
             failed.push(`Regenerar lockfile: ${(error as Error).message}`);
@@ -103,7 +130,11 @@ export class RemediationUseCase {
             cloned.defaultBranch,
             `security: automated remediation (${finding.type})`,
             `security: correção automática — ${finding.message.slice(0, 80)}`,
-            this.buildPullRequestBody(finding.type, finding.message, finding.evidence ?? ''),
+            this.buildPullRequestBody(
+              finding.type,
+              finding.message,
+              finding.evidence ?? '',
+            ),
           );
           delivery = { ...delivery, lockfilesUpdated };
         }
@@ -126,23 +157,39 @@ export class RemediationUseCase {
     return this.buildResult(failed, applied, delivery);
   }
 
-  async applyAll(auditId: string, userId: string): Promise<{
+  async applyAll(
+    auditId: string,
+    userId: string,
+  ): Promise<{
     total: number;
     succeeded: number;
     failed: number;
-    results: Array<{ findingId: string; message: string; success: boolean; pullRequestUrl?: string }>;
+    results: Array<{
+      findingId: string;
+      message: string;
+      success: boolean;
+      pullRequestUrl?: string;
+    }>;
   }> {
     await this.remediationConsent.assertRemediationConsent(userId);
 
     const stored = await this.auditStore.getById(auditId);
     if (!stored) throw new NotFoundException('Relatório não encontrado');
 
-    const repos = stored.report.allRepositories ?? stored.report.affectedRepositories;
+    const repos =
+      stored.report.allRepositories ?? stored.report.affectedRepositories;
     const findings = repos.flatMap((r) =>
-      r.findings.filter((f) => f.remediationAvailable).map((f) => ({ ...f, repository: r.fullName })),
+      r.findings
+        .filter((f) => f.remediationAvailable)
+        .map((f) => ({ ...f, repository: r.fullName })),
     );
 
-    const results: Array<{ findingId: string; message: string; success: boolean; pullRequestUrl?: string }> = [];
+    const results: Array<{
+      findingId: string;
+      message: string;
+      success: boolean;
+      pullRequestUrl?: string;
+    }> = [];
     let succeeded = 0;
     let failed = 0;
 
@@ -202,14 +249,25 @@ export class RemediationUseCase {
       }
 
       case 'update_dependency': {
-        const { packageName, version, manifestPath } = this.parseDependencyEvidence(evidence);
-        await workspace.updatePackageVersion(repoPath, manifestPath ?? 'package.json', packageName, version);
+        const { packageName, version, manifestPath } =
+          this.parseDependencyEvidence(evidence);
+        await workspace.updatePackageVersion(
+          repoPath,
+          manifestPath ?? 'package.json',
+          packageName,
+          version,
+        );
         return;
       }
 
       case 'remove_dependency': {
-        const { packageName, manifestPath } = this.parseDependencyEvidence(evidence);
-        await workspace.removePackage(repoPath, manifestPath ?? 'package.json', packageName);
+        const { packageName, manifestPath } =
+          this.parseDependencyEvidence(evidence);
+        await workspace.removePackage(
+          repoPath,
+          manifestPath ?? 'package.json',
+          packageName,
+        );
         return;
       }
 
@@ -235,7 +293,12 @@ export class RemediationUseCase {
         await github.enableDependabotSecurityUpdates(owner, repo);
         return;
       case 'security_issue':
-        await github.createSecurityIssue(owner, repo, step.title, step.description);
+        await github.createSecurityIssue(
+          owner,
+          repo,
+          step.title,
+          step.description,
+        );
         return;
       default:
         throw new Error(`Passo de API não suportado: ${step.title}`);
@@ -254,7 +317,13 @@ export class RemediationUseCase {
       } else if (delivery?.lockfilesUpdated?.length) {
         message = `Remediação aplicada — lockfiles atualizados: ${delivery.lockfilesUpdated.join(', ')}`;
       }
-      return { success: true, message, appliedSteps: applied, requiresManualSteps: [], delivery };
+      return {
+        success: true,
+        message,
+        appliedSteps: applied,
+        requiresManualSteps: [],
+        delivery,
+      };
     }
 
     return {
@@ -266,7 +335,11 @@ export class RemediationUseCase {
     };
   }
 
-  private buildPullRequestBody(type: string, message: string, evidence: string): string {
+  private buildPullRequestBody(
+    type: string,
+    message: string,
+    evidence: string,
+  ): string {
     return [
       '## Correção automática — App Audit',
       '',
@@ -295,16 +368,46 @@ export class RemediationUseCase {
       case 'malicious_file':
       case 'malicious_pattern':
         steps.push(
-          { order: 1, title: 'Remover arquivo malicioso', description: `Excluir ${evidence}`, action: 'delete_file', automated: true },
-          { order: 2, title: 'Registrar incidente de segurança', description: 'Issue de rastreamento', action: 'security_issue', automated: true },
+          {
+            order: 1,
+            title: 'Remover arquivo malicioso',
+            description: `Excluir ${evidence}`,
+            action: 'delete_file',
+            automated: true,
+          },
+          {
+            order: 2,
+            title: 'Registrar incidente de segurança',
+            description: 'Issue de rastreamento',
+            action: 'security_issue',
+            automated: true,
+          },
         );
         break;
 
       case 'exposed_secret':
         steps.push(
-          { order: 1, title: 'Remover arquivo sensível', description: `Remover ${evidence}`, action: 'delete_file', automated: true },
-          { order: 2, title: 'Adicionar ao .gitignore', description: `Proteger ${evidence}`, action: 'gitignore', automated: true },
-          { order: 3, title: 'Abrir issue de rotação de credenciais', description: 'Rastrear rotação', action: 'security_issue', automated: true },
+          {
+            order: 1,
+            title: 'Remover arquivo sensível',
+            description: `Remover ${evidence}`,
+            action: 'delete_file',
+            automated: true,
+          },
+          {
+            order: 2,
+            title: 'Adicionar ao .gitignore',
+            description: `Proteger ${evidence}`,
+            action: 'gitignore',
+            automated: true,
+          },
+          {
+            order: 3,
+            title: 'Abrir issue de rotação de credenciais',
+            description: 'Rastrear rotação',
+            action: 'security_issue',
+            automated: true,
+          },
         );
         break;
 
@@ -322,22 +425,64 @@ export class RemediationUseCase {
       case 'compromised_dependency':
       case 'malware_advisory':
         steps.push(
-          { order: 1, title: 'Remover dependência comprometida', description: evidence, action: 'remove_dependency', automated: true },
-          { order: 2, title: 'Regenerar lockfile', description: 'Atualizar pnpm/npm/yarn lock', action: 'regenerate_lockfile', automated: true },
-          { order: 3, title: 'Habilitar Dependabot security updates', description: 'Atualizações automáticas', action: 'enable_dependabot', automated: true },
+          {
+            order: 1,
+            title: 'Remover dependência comprometida',
+            description: evidence,
+            action: 'remove_dependency',
+            automated: true,
+          },
+          {
+            order: 2,
+            title: 'Regenerar lockfile',
+            description: 'Atualizar pnpm/npm/yarn lock',
+            action: 'regenerate_lockfile',
+            automated: true,
+          },
+          {
+            order: 3,
+            title: 'Habilitar Dependabot security updates',
+            description: 'Atualizações automáticas',
+            action: 'enable_dependabot',
+            automated: true,
+          },
         );
         break;
 
       case 'vulnerable_dependency':
         if (evidence.includes('dependabot-')) {
           steps.push(
-            { order: 1, title: 'Corrigir alerta Dependabot', description: evidence, action: 'fix_dependabot', automated: true },
-            { order: 2, title: 'Regenerar lockfile', description: 'Fechar alerta no GitHub', action: 'regenerate_lockfile', automated: true },
+            {
+              order: 1,
+              title: 'Corrigir alerta Dependabot',
+              description: evidence,
+              action: 'fix_dependabot',
+              automated: true,
+            },
+            {
+              order: 2,
+              title: 'Regenerar lockfile',
+              description: 'Fechar alerta no GitHub',
+              action: 'regenerate_lockfile',
+              automated: true,
+            },
           );
         } else {
           steps.push(
-            { order: 1, title: 'Atualizar dependência vulnerável', description: evidence, action: 'update_dependency', automated: true },
-            { order: 2, title: 'Regenerar lockfile', description: 'Sincronizar lockfile', action: 'regenerate_lockfile', automated: true },
+            {
+              order: 1,
+              title: 'Atualizar dependência vulnerável',
+              description: evidence,
+              action: 'update_dependency',
+              automated: true,
+            },
+            {
+              order: 2,
+              title: 'Regenerar lockfile',
+              description: 'Sincronizar lockfile',
+              action: 'regenerate_lockfile',
+              automated: true,
+            },
           );
         }
         steps.push({
@@ -375,7 +520,13 @@ export class RemediationUseCase {
       action: this.mapAction(type),
       steps,
       canAutoApply: steps.every((s) => s.automated),
-      estimatedImpact: ['malicious_file', 'exposed_secret', 'c2_domain'].includes(type) ? 'high' : 'medium',
+      estimatedImpact: [
+        'malicious_file',
+        'exposed_secret',
+        'c2_domain',
+      ].includes(type)
+        ? 'high'
+        : 'medium',
     };
   }
 
@@ -396,7 +547,8 @@ export class RemediationUseCase {
 
   private parseDependabotAlertNumber(evidence: string): number {
     const match = evidence.match(/dependabot-(\d+)/);
-    if (!match) throw new Error(`Número de alerta Dependabot inválido: ${evidence}`);
+    if (!match)
+      throw new Error(`Número de alerta Dependabot inválido: ${evidence}`);
     return Number.parseInt(match[1], 10);
   }
 
@@ -405,7 +557,9 @@ export class RemediationUseCase {
     version: string;
     manifestPath?: string;
   } {
-    const dependabotPipe = evidence.match(/^(.+?)\|(.+?)\|(.+?)\|dependabot-(\d+)$/);
+    const dependabotPipe = evidence.match(
+      /^(.+?)\|(.+?)\|(.+?)\|dependabot-(\d+)$/,
+    );
     if (dependabotPipe) {
       return {
         manifestPath: dependabotPipe[1],
@@ -422,8 +576,14 @@ export class RemediationUseCase {
     return { packageName: evidence, version: 'latest' };
   }
 
-  private parseC2Evidence(evidence: string): { workflowPath: string; patterns: string[] } {
+  private parseC2Evidence(evidence: string): {
+    workflowPath: string;
+    patterns: string[];
+  } {
     const [workflowPath, ...domains] = evidence.split('|');
-    return { workflowPath, patterns: domains.length > 0 ? domains : [workflowPath] };
+    return {
+      workflowPath,
+      patterns: domains.length > 0 ? domains : [workflowPath],
+    };
   }
 }

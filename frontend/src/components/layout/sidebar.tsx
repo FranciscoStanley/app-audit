@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Shield, LayoutDashboard, FileSearch, AlertTriangle, Database, LogOut } from 'lucide-react';
+import { Shield, LayoutDashboard, FileSearch, AlertTriangle, Database, LogOut, Settings } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/stores/auth-store';
 
@@ -16,6 +16,12 @@ const links = [
 export function Sidebar() {
   const pathname = usePathname();
   const { user, logout } = useAuthStore();
+  const navLinks = [
+    ...links,
+    ...(user?.role === 'admin'
+      ? [{ href: '/dashboard/admin', label: 'Administração', icon: Settings }]
+      : []),
+  ];
 
   return (
     <aside className="flex h-screen w-64 flex-col border-r border-white/10 bg-[#0c0f1a]/80 backdrop-blur-xl">
@@ -30,7 +36,7 @@ export function Sidebar() {
       </div>
 
       <nav className="flex-1 space-y-1 p-4">
-        {links.map(({ href, label, icon: Icon }) => (
+        {navLinks.map(({ href, label, icon: Icon }) => (
           <Link
             key={href}
             href={href}

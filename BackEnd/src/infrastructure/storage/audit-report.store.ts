@@ -4,13 +4,19 @@ import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { AuditReport } from '../../domain/entities/audit-report.entity';
 import { StoredAuditReport } from '../../domain/entities/stored-audit.entity';
-import { RepositoryScan, ThreatFinding } from '../../domain/entities/repository-scan.entity';
+import {
+  RepositoryScan,
+  ThreatFinding,
+} from '../../domain/entities/repository-scan.entity';
 
 @Injectable()
 export class AuditReportStore {
   private readonly baseDir = join(process.cwd(), 'data', 'audits');
 
-  async save(report: AuditReport, markdown: string): Promise<StoredAuditReport> {
+  async save(
+    report: AuditReport,
+    markdown: string,
+  ): Promise<StoredAuditReport> {
     const id = randomUUID();
     const dir = join(this.baseDir, id);
     await mkdir(dir, { recursive: true });
@@ -72,7 +78,9 @@ export class AuditReportStore {
     await writeFile(jsonPath, JSON.stringify(stored.report, null, 2), 'utf-8');
   }
 
-  async findFindingById(findingId: string): Promise<(ThreatFinding & { repository: string; auditId: string }) | null> {
+  async findFindingById(
+    findingId: string,
+  ): Promise<(ThreatFinding & { repository: string; auditId: string }) | null> {
     const reports = await this.list();
     for (const stored of reports) {
       const match = this.findInReport(stored.id, stored.report, findingId);
@@ -85,12 +93,23 @@ export class AuditReportStore {
     auditId: string,
     report: AuditReport,
     findingId: string,
-  ): (ThreatFinding & { repository: string; repositoryScan: RepositoryScan; auditId: string }) | null {
+  ):
+    | (ThreatFinding & {
+        repository: string;
+        repositoryScan: RepositoryScan;
+        auditId: string;
+      })
+    | null {
     const repos = report.allRepositories ?? report.affectedRepositories;
     for (const repo of repos) {
       const finding = repo.findings.find((f) => f.id === findingId);
       if (finding) {
-        return { ...finding, repository: repo.fullName, repositoryScan: repo, auditId };
+        return {
+          ...finding,
+          repository: repo.fullName,
+          repositoryScan: repo,
+          auditId,
+        };
       }
     }
     return null;
@@ -99,17 +118,32 @@ export class AuditReportStore {
   async findFindingInAudit(
     auditId: string,
     findingId: string,
-  ): Promise<(ThreatFinding & { repository: string; repositoryScan: RepositoryScan; auditId: string }) | null> {
+  ): Promise<
+    | (ThreatFinding & {
+        repository: string;
+        repositoryScan: RepositoryScan;
+        auditId: string;
+      })
+    | null
+  > {
     const stored = await this.getById(auditId);
     if (!stored) return null;
     return this.findInReport(auditId, stored.report, findingId);
   }
 
-  findingReportPath(auditId: string, findingId: string, ext: 'md' | 'pdf'): string {
+  findingReportPath(
+    auditId: string,
+    findingId: string,
+    ext: 'md' | 'pdf',
+  ): string {
     return join(this.baseDir, auditId, 'findings', `${findingId}.${ext}`);
   }
 
-  async saveFindingMarkdown(auditId: string, findingId: string, markdown: string): Promise<string> {
+  async saveFindingMarkdown(
+    auditId: string,
+    findingId: string,
+    markdown: string,
+  ): Promise<string> {
     const dir = join(this.baseDir, auditId, 'findings');
     await mkdir(dir, { recursive: true });
     const path = this.findingReportPath(auditId, findingId, 'md');
@@ -117,9 +151,15 @@ export class AuditReportStore {
     return path;
   }
 
-  async getFindingMarkdown(auditId: string, findingId: string): Promise<string | null> {
+  async getFindingMarkdown(
+    auditId: string,
+    findingId: string,
+  ): Promise<string | null> {
     try {
-      return await readFile(this.findingReportPath(auditId, findingId, 'md'), 'utf-8');
+      return await readFile(
+        this.findingReportPath(auditId, findingId, 'md'),
+        'utf-8',
+      );
     } catch {
       return null;
     }
@@ -139,7 +179,12 @@ export class AuditReportStore {
     let count = 0;
     for (const repo of repos) {
       for (const finding of repo.findings) {
-        const markdown = generate({ auditId, report, repository: repo, finding });
+        const markdown = generate({
+          auditId,
+          report,
+          repository: repo,
+          finding,
+        });
         await this.saveFindingMarkdown(auditId, finding.id, markdown);
         count++;
       }

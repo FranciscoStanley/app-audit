@@ -7,7 +7,10 @@ import { mdToPdf } from 'md-to-pdf';
 export class PdfReportGenerator {
   private readonly logger = new Logger(PdfReportGenerator.name);
 
-  async generateFromMarkdown(markdown: string, outputPath: string): Promise<string> {
+  async generateFromMarkdown(
+    markdown: string,
+    outputPath: string,
+  ): Promise<string> {
     await mkdir(join(outputPath, '..'), { recursive: true });
 
     const pdf = await mdToPdf(

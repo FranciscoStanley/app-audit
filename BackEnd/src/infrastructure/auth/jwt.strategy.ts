@@ -2,7 +2,10 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
-import { AuthService, JwtPayload } from '../../application/use-cases/auth.service';
+import {
+  AuthService,
+  JwtPayload,
+} from '../../application/use-cases/auth.service';
 import { resolveJwtSecret } from '../../config/jwt-secret';
 
 @Injectable()

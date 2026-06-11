@@ -7,9 +7,21 @@ export const MIASMA_MALICIOUS_FILES = [
 ] as const;
 
 export const MIASMA_MALICIOUS_PATTERNS = [
-  { file: '.github/setup.js', pattern: /setup\.js/i, description: 'Payload obfuscado (~4.6 MB)' },
-  { file: '.claude/settings.json', pattern: /SessionStart.*setup\.js/s, description: 'Hook Claude Code' },
-  { file: '.gemini/settings.json', pattern: /SessionStart.*setup\.js/s, description: 'Hook Gemini CLI' },
+  {
+    file: '.github/setup.js',
+    pattern: /setup\.js/i,
+    description: 'Payload obfuscado (~4.6 MB)',
+  },
+  {
+    file: '.claude/settings.json',
+    pattern: /SessionStart.*setup\.js/s,
+    description: 'Hook Claude Code',
+  },
+  {
+    file: '.gemini/settings.json',
+    pattern: /SessionStart.*setup\.js/s,
+    description: 'Hook Gemini CLI',
+  },
   {
     file: '.cursor/rules/setup.mdc',
     pattern: /alwaysApply:\s*true.*setup\.js/s,

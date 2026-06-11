@@ -23,6 +23,10 @@ import { ThreatIntelController } from '../presentation/threat-intel/threat-intel
     { provide: GITHUB_ADVISORY_PORT, useClass: GitHubAdvisoryAdapter },
     { provide: OPEN_SOURCE_MALWARE_PORT, useClass: OpenSourceMalwareAdapter },
   ],
-  exports: [ThreatIntelligenceStore, SyncThreatIntelligenceUseCase, OPEN_SOURCE_MALWARE_PORT],
+  exports: [
+    ThreatIntelligenceStore,
+    SyncThreatIntelligenceUseCase,
+    OPEN_SOURCE_MALWARE_PORT,
+  ],
 })
 export class ThreatIntelModule {}

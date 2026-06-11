@@ -1,9 +1,24 @@
-import { Body, Controller, Delete, Get, Post, Query, Req, Res, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Post,
+  Query,
+  Req,
+  Res,
+  UseGuards,
+} from '@nestjs/common';
 import type { Request, Response } from 'express';
 import { Permissions } from './decorators/permissions.decorator';
 import { AuthGuard } from '@nestjs/passport';
 import { Throttle, SkipThrottle } from '@nestjs/throttler';
-import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 import { AuthService } from '../../application/use-cases/auth.service';
 import { GitHubAuthUseCase } from '../../application/use-cases/github-auth.use-case';
 import { GitHubConsentUseCase } from '../../application/use-cases/github-consent.use-case';
@@ -52,14 +67,18 @@ export class AuthController {
 
   @Get('legal/info')
   @SkipThrottle()
-  @ApiOperation({ summary: 'Informações legais públicas (versão de política, contatos)' })
+  @ApiOperation({
+    summary: 'Informações legais públicas (versão de política, contatos)',
+  })
   legalInfo() {
     return this.githubConsent.getLegalInfo();
   }
 
   @Get('login/consent')
   @SkipThrottle()
-  @ApiOperation({ summary: 'Informações de consentimento para login por e-mail' })
+  @ApiOperation({
+    summary: 'Informações de consentimento para login por e-mail',
+  })
   loginConsentInfo() {
     return this.loginConsent.getLoginConsentInfo();
   }
@@ -73,15 +92,22 @@ export class AuthController {
 
   @Get('github/consent')
   @SkipThrottle()
-  @ApiOperation({ summary: 'Informações de consentimento LGPD para login GitHub' })
+  @ApiOperation({
+    summary: 'Informações de consentimento LGPD para login GitHub',
+  })
   githubConsentInfo() {
     return this.githubConsent.getConsentInfo();
   }
 
   @Post('github/consent/accept')
   @Throttle({ default: { limit: 10, ttl: 60_000 } })
-  @ApiOperation({ summary: 'Registrar aceite LGPD e obter URL de autorização GitHub' })
-  githubConsentAccept(@Body() dto: GitHubConsentAcceptDto, @Req() req: Request) {
+  @ApiOperation({
+    summary: 'Registrar aceite LGPD e obter URL de autorização GitHub',
+  })
+  githubConsentAccept(
+    @Body() dto: GitHubConsentAcceptDto,
+    @Req() req: Request,
+  ) {
     return this.githubConsent.acceptConsent({
       acknowledgments: {
         termsAccepted: dto.termsAccepted,
@@ -96,7 +122,10 @@ export class AuthController {
 
   @Get('github')
   @Throttle({ default: { limit: 10, ttl: 60_000 } })
-  @ApiOperation({ summary: 'OAuth GitHub — exige consentimento prévio via POST /auth/github/consent/accept' })
+  @ApiOperation({
+    summary:
+      'OAuth GitHub — exige consentimento prévio via POST /auth/github/consent/accept',
+  })
   githubLogin(@Res() res: Response) {
     const frontend = process.env.FRONTEND_URL ?? 'http://localhost:3001';
     return res.redirect(`${frontend}/login?oauth=consent_required`);
@@ -105,15 +134,24 @@ export class AuthController {
   @Delete('github/disconnect')
   @UseGuards(AuthGuard('jwt'))
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Revogar conexão GitHub e consentimento (direito do titular — LGPD)' })
+  @ApiOperation({
+    summary:
+      'Revogar conexão GitHub e consentimento (direito do titular — LGPD)',
+  })
   async githubDisconnect(@CurrentUser() user: { id: string }) {
     await this.githubAuth.disconnectGitHub(user.id);
-    return { disconnected: true, message: 'Conexão GitHub revogada com sucesso.' };
+    return {
+      disconnected: true,
+      message: 'Conexão GitHub revogada com sucesso.',
+    };
   }
 
   @Get('github/callback')
   @SkipThrottle()
-  @ApiOperation({ summary: 'Callback OAuth GitHub — redireciona ao frontend com código de uso único' })
+  @ApiOperation({
+    summary:
+      'Callback OAuth GitHub — redireciona ao frontend com código de uso único',
+  })
   async githubCallback(
     @Query('code') code: string,
     @Query('state') state: string,
@@ -137,7 +175,9 @@ export class AuthController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Status da conexão GitHub do usuário' })
   @ApiResponse({ status: 200, type: GitHubStatusDto })
-  async githubStatus(@CurrentUser() user: { id: string }): Promise<GitHubStatusDto> {
+  async githubStatus(
+    @CurrentUser() user: { id: string },
+  ): Promise<GitHubStatusDto> {
     const status = await this.githubAuth.getGitHubStatus(user.id);
     return {
       enabled: this.githubAuth.isEnabled(),
@@ -149,7 +189,15 @@ export class AuthController {
   @UseGuards(AuthGuard('jwt'))
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Perfil do usuário autenticado' })
-  me(@CurrentUser() user: { id: string; email: string; name: string; role: string }) {
+  me(
+    @CurrentUser()
+    user: {
+      id: string;
+      email: string;
+      name: string;
+      role: string;
+    },
+  ) {
     return user;
   }
 

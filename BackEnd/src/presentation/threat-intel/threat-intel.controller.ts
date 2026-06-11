@@ -1,6 +1,12 @@
 import { Controller, Get, Post, Query, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
-import { ApiBearerAuth, ApiOperation, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiQuery,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 import { CheckAssetThreatUseCase } from '../../application/use-cases/check-asset-threat.use-case';
 import { SyncThreatIntelligenceUseCase } from '../../application/use-cases/sync-threat-intelligence.use-case';
 import { RolesGuard } from '../../infrastructure/auth/roles.guard';
@@ -45,7 +51,9 @@ export class ThreatIntelController {
   @ApiOperation({ summary: 'Listar pacotes comprometidos' })
   @ApiQuery({ name: 'ecosystem', required: false })
   @ApiResponse({ status: 200, type: [CompromisedPackageDto] })
-  listPackages(@Query('ecosystem') ecosystem?: string): CompromisedPackageDto[] {
+  listPackages(
+    @Query('ecosystem') ecosystem?: string,
+  ): CompromisedPackageDto[] {
     const packages = this.store.getPackages();
     if (!ecosystem) return packages;
     return packages.filter((p) => p.ecosystem === ecosystem);

@@ -28,7 +28,12 @@ export class GhCliRemediationAdapter implements GitHubRemediationPort {
     return stdout.trim() || 'main';
   }
 
-  async deleteFile(owner: string, repo: string, path: string, message: string): Promise<void> {
+  async deleteFile(
+    owner: string,
+    repo: string,
+    path: string,
+    message: string,
+  ): Promise<void> {
     const meta = await this.getFileMeta(owner, repo, path);
     if (!meta) return;
 
@@ -44,7 +49,11 @@ export class GhCliRemediationAdapter implements GitHubRemediationPort {
     ]);
   }
 
-  async ensureGitignoreEntry(owner: string, repo: string, entry: string): Promise<void> {
+  async ensureGitignoreEntry(
+    owner: string,
+    repo: string,
+    entry: string,
+  ): Promise<void> {
     const normalized = entry.replace(/^\//, '');
     const meta = await this.getFileMeta(owner, repo, '.gitignore');
     const lines = meta?.content.split('\n') ?? [];
@@ -52,7 +61,11 @@ export class GhCliRemediationAdapter implements GitHubRemediationPort {
 
     if (lines.some((line) => line.trim() === trimmedEntry)) return;
 
-    const updated = [...lines.filter((l) => l.length > 0), trimmedEntry, ''].join('\n');
+    const updated = [
+      ...lines.filter((l) => l.length > 0),
+      trimmedEntry,
+      '',
+    ].join('\n');
     await this.putFileContent(
       owner,
       repo,
@@ -63,11 +76,16 @@ export class GhCliRemediationAdapter implements GitHubRemediationPort {
     );
   }
 
-  async pinWorkflowActions(owner: string, repo: string, workflowPath: string): Promise<number> {
+  async pinWorkflowActions(
+    owner: string,
+    repo: string,
+    workflowPath: string,
+  ): Promise<number> {
     const meta = await this.getFileMeta(owner, repo, workflowPath);
     if (!meta) return 0;
 
-    const actionRefRegex = /uses:\s*([^\s@/]+\/[^\s@]+)@(v[\d.]+|main|master)\b/gi;
+    const actionRefRegex =
+      /uses:\s*([^\s@/]+\/[^\s@]+)@(v[\d.]+|main|master)\b/gi;
     let pinned = 0;
     let content = meta.content;
 
@@ -107,7 +125,12 @@ export class GhCliRemediationAdapter implements GitHubRemediationPort {
   ): Promise<void> {
     const meta = await this.getFileMeta(owner, repo, path);
     if (!meta) {
-      await this.deleteFile(owner, repo, path, `security: remove malicious file ${path}`);
+      await this.deleteFile(
+        owner,
+        repo,
+        path,
+        `security: remove malicious file ${path}`,
+      );
       return;
     }
 
@@ -118,7 +141,12 @@ export class GhCliRemediationAdapter implements GitHubRemediationPort {
     const content = filteredLines.join('\n');
 
     if (content.trim() === meta.content.trim()) {
-      await this.deleteFile(owner, repo, path, `security: remove malicious file ${path}`);
+      await this.deleteFile(
+        owner,
+        repo,
+        path,
+        `security: remove malicious file ${path}`,
+      );
       return;
     }
 
@@ -132,10 +160,16 @@ export class GhCliRemediationAdapter implements GitHubRemediationPort {
     );
   }
 
-  async fixDependabotAlert(owner: string, repo: string, alertNumber: number): Promise<void> {
+  async fixDependabotAlert(
+    owner: string,
+    repo: string,
+    alertNumber: number,
+  ): Promise<void> {
     const alert = await this.getDependabotAlert(owner, repo, alertNumber);
     if (!alert.patchedVersion) {
-      throw new Error(`Alerta #${alertNumber} não possui versão corrigida disponível`);
+      throw new Error(
+        `Alerta #${alertNumber} não possui versão corrigida disponível`,
+      );
     }
 
     await this.updatePackageVersion(
@@ -159,13 +193,22 @@ export class GhCliRemediationAdapter implements GitHubRemediationPort {
       throw new Error(`Manifesto ${manifestPath} não encontrado`);
     }
 
-    const pkg = JSON.parse(meta.content) as Record<string, Record<string, string>>;
-    const version = targetVersion.startsWith('^') || targetVersion.startsWith('~')
-      ? targetVersion
-      : `^${targetVersion.replace(/^[\^~]/, '')}`;
+    const pkg = JSON.parse(meta.content) as Record<
+      string,
+      Record<string, string>
+    >;
+    const version =
+      targetVersion.startsWith('^') || targetVersion.startsWith('~')
+        ? targetVersion
+        : `^${targetVersion.replace(/^[\^~]/, '')}`;
 
     let updated = false;
-    for (const field of ['dependencies', 'devDependencies', 'peerDependencies', 'optionalDependencies']) {
+    for (const field of [
+      'dependencies',
+      'devDependencies',
+      'peerDependencies',
+      'optionalDependencies',
+    ]) {
       if (pkg[field]?.[packageName]) {
         pkg[field][packageName] = version;
         updated = true;
@@ -198,9 +241,17 @@ export class GhCliRemediationAdapter implements GitHubRemediationPort {
       throw new Error(`Manifesto ${manifestPath} não encontrado`);
     }
 
-    const pkg = JSON.parse(meta.content) as Record<string, Record<string, string>>;
+    const pkg = JSON.parse(meta.content) as Record<
+      string,
+      Record<string, string>
+    >;
     let removed = false;
-    for (const field of ['dependencies', 'devDependencies', 'peerDependencies', 'optionalDependencies']) {
+    for (const field of [
+      'dependencies',
+      'devDependencies',
+      'peerDependencies',
+      'optionalDependencies',
+    ]) {
       if (pkg[field]?.[packageName]) {
         delete pkg[field][packageName];
         removed = true;
@@ -208,7 +259,9 @@ export class GhCliRemediationAdapter implements GitHubRemediationPort {
     }
 
     if (!removed) {
-      throw new Error(`Pacote ${packageName} não encontrado em ${manifestPath}`);
+      throw new Error(
+        `Pacote ${packageName} não encontrado em ${manifestPath}`,
+      );
     }
 
     await this.putFileContent(
@@ -221,7 +274,10 @@ export class GhCliRemediationAdapter implements GitHubRemediationPort {
     );
   }
 
-  async enableDependabotSecurityUpdates(owner: string, repo: string): Promise<void> {
+  async enableDependabotSecurityUpdates(
+    owner: string,
+    repo: string,
+  ): Promise<void> {
     try {
       await this.runGh([
         'api',
@@ -243,11 +299,16 @@ export class GhCliRemediationAdapter implements GitHubRemediationPort {
         'security_and_analysis[dependabot_security_updates][status]=enabled',
       ]);
     } catch (error) {
-      this.logger.warn(`dependabot_security_updates: ${(error as Error).message}`);
+      this.logger.warn(
+        `dependabot_security_updates: ${(error as Error).message}`,
+      );
     }
   }
 
-  async listDependabotAlerts(owner: string, repo: string): Promise<DependabotAlert[]> {
+  async listDependabotAlerts(
+    owner: string,
+    repo: string,
+  ): Promise<DependabotAlert[]> {
     try {
       const { stdout } = await this.runGh([
         'api',
@@ -264,12 +325,19 @@ export class GhCliRemediationAdapter implements GitHubRemediationPort {
       const parsed: unknown = JSON.parse(stdout);
       return this.flattenDependabotAlerts(parsed);
     } catch (error) {
-      this.logger.debug(`Dependabot alerts indisponíveis para ${owner}/${repo}: ${(error as Error).message}`);
+      this.logger.debug(
+        `Dependabot alerts indisponíveis para ${owner}/${repo}: ${(error as Error).message}`,
+      );
       return [];
     }
   }
 
-  async createSecurityIssue(owner: string, repo: string, title: string, body: string): Promise<void> {
+  async createSecurityIssue(
+    owner: string,
+    repo: string,
+    title: string,
+    body: string,
+  ): Promise<void> {
     await this.runGh([
       'api',
       `repos/${owner}/${repo}/issues`,
@@ -298,7 +366,11 @@ export class GhCliRemediationAdapter implements GitHubRemediationPort {
     return JSON.parse(stdout) as DependabotAlert;
   }
 
-  private async getFileMeta(owner: string, repo: string, path: string): Promise<FileMeta | null> {
+  private async getFileMeta(
+    owner: string,
+    repo: string,
+    path: string,
+  ): Promise<FileMeta | null> {
     try {
       const { stdout } = await this.runGh([
         'api',
@@ -306,7 +378,11 @@ export class GhCliRemediationAdapter implements GitHubRemediationPort {
         '--jq',
         '{sha, content, encoding}',
       ]);
-      const data = JSON.parse(stdout) as { sha: string; content: string; encoding: string };
+      const data = JSON.parse(stdout) as {
+        sha: string;
+        content: string;
+        encoding: string;
+      };
       const content =
         data.encoding === 'base64'
           ? Buffer.from(data.content, 'base64').toString('utf-8')
@@ -341,7 +417,10 @@ export class GhCliRemediationAdapter implements GitHubRemediationPort {
     await this.runGh(args);
   }
 
-  private async resolveActionSha(action: string, ref: string): Promise<string | null> {
+  private async resolveActionSha(
+    action: string,
+    ref: string,
+  ): Promise<string | null> {
     try {
       const { stdout } = await this.runGh([
         'api',
@@ -353,7 +432,12 @@ export class GhCliRemediationAdapter implements GitHubRemediationPort {
       if (/^[a-f0-9]{40}$/i.test(result)) return result;
 
       if (result.startsWith('https://')) {
-        const { stdout: tagObj } = await this.runGh(['api', result, '--jq', '.object.sha']);
+        const { stdout: tagObj } = await this.runGh([
+          'api',
+          result,
+          '--jq',
+          '.object.sha',
+        ]);
         const sha = tagObj.trim();
         return /^[a-f0-9]{40}$/i.test(sha) ? sha : null;
       }
@@ -377,7 +461,9 @@ export class GhCliRemediationAdapter implements GitHubRemediationPort {
     return raw as DependabotAlert[];
   }
 
-  private async runGh(args: string[]): Promise<{ stdout: string; stderr: string }> {
+  private async runGh(
+    args: string[],
+  ): Promise<{ stdout: string; stderr: string }> {
     const env = { ...process.env };
     const token = this.accessToken ?? process.env.GITHUB_TOKEN;
     if (token) env.GITHUB_TOKEN = token;

@@ -1,5 +1,9 @@
 import { randomUUID } from 'node:crypto';
-import { ThreatFinding, ThreatFindingType, ThreatSeverity } from '../../domain/entities/repository-scan.entity';
+import {
+  ThreatFinding,
+  ThreatFindingType,
+  ThreatSeverity,
+} from '../../domain/entities/repository-scan.entity';
 
 const REMEDIATION_TYPES: ThreatFindingType[] = [
   'malicious_file',

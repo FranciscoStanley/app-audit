@@ -39,12 +39,12 @@
           "request": {
             "auth": { "type": "noauth" },
             "method": "GET",
-            "url": "{{baseUrl}}/auth/github/config"
+            "url": "{{baseUrl}}/v1/auth/github/config"
           }
         },
         {
           "name": "GitHub Status",
-          "request": { "method": "GET", "url": "{{baseUrl}}/auth/github/status" }
+          "request": { "method": "GET", "url": "{{baseUrl}}/v1/auth/github/status" }
         },
         {
           "name": "Login",
@@ -71,16 +71,16 @@
               "mode": "raw",
               "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"{{adminPassword}}\",\n  \"termsAccepted\": true,\n  \"privacyAccepted\": true\n}"
             },
-            "url": "{{baseUrl}}/auth/login"
+            "url": "{{baseUrl}}/v1/auth/login"
           }
         },
         {
           "name": "Me",
-          "request": { "method": "GET", "url": "{{baseUrl}}/auth/me" }
+          "request": { "method": "GET", "url": "{{baseUrl}}/v1/auth/me" }
         },
         {
           "name": "List Users (admin)",
-          "request": { "method": "GET", "url": "{{baseUrl}}/auth/users" }
+          "request": { "method": "GET", "url": "{{baseUrl}}/v1/auth/users" }
         },
         {
           "name": "Create User (admin)",
@@ -91,7 +91,7 @@
               "mode": "raw",
               "raw": "{\n  \"email\": \"auditor@empresa.com\",\n  \"password\": \"SenhaForteCom12+\",\n  \"name\": \"Auditor\",\n  \"role\": \"auditor\"\n}"
             },
-            "url": "{{baseUrl}}/auth/users"
+            "url": "{{baseUrl}}/v1/auth/users"
           }
         }
       ]
@@ -117,24 +117,24 @@
           ],
           "request": {
             "method": "POST",
-            "url": "{{baseUrl}}/audit/run?save=true"
+            "url": "{{baseUrl}}/v1/audit/run?save=true"
           }
         },
         {
           "name": "List Reports",
-          "request": { "method": "GET", "url": "{{baseUrl}}/audit/reports" }
+          "request": { "method": "GET", "url": "{{baseUrl}}/v1/audit/reports" }
         },
         {
           "name": "Get Report",
-          "request": { "method": "GET", "url": "{{baseUrl}}/audit/reports/{{auditId}}" }
+          "request": { "method": "GET", "url": "{{baseUrl}}/v1/audit/reports/{{auditId}}" }
         },
         {
           "name": "Download Report Markdown",
-          "request": { "method": "GET", "url": "{{baseUrl}}/audit/reports/{{auditId}}/markdown" }
+          "request": { "method": "GET", "url": "{{baseUrl}}/v1/audit/reports/{{auditId}}/markdown" }
         },
         {
           "name": "Download Report PDF",
-          "request": { "method": "GET", "url": "{{baseUrl}}/audit/reports/{{auditId}}/pdf" }
+          "request": { "method": "GET", "url": "{{baseUrl}}/v1/audit/reports/{{auditId}}/pdf" }
         },
         {
           "name": "List Findings",
@@ -152,33 +152,33 @@
               }
             }
           ],
-          "request": { "method": "GET", "url": "{{baseUrl}}/audit/reports/{{auditId}}/findings" }
+          "request": { "method": "GET", "url": "{{baseUrl}}/v1/audit/reports/{{auditId}}/findings" }
         },
         {
           "name": "Download Finding Markdown",
           "request": {
             "method": "GET",
-            "url": "{{baseUrl}}/audit/reports/{{auditId}}/findings/{{findingId}}/markdown"
+            "url": "{{baseUrl}}/v1/audit/reports/{{auditId}}/findings/{{findingId}}/markdown"
           }
         },
         {
           "name": "Download Finding PDF",
           "request": {
             "method": "GET",
-            "url": "{{baseUrl}}/audit/reports/{{auditId}}/findings/{{findingId}}/pdf"
+            "url": "{{baseUrl}}/v1/audit/reports/{{auditId}}/findings/{{findingId}}/pdf"
           }
         },
         {
           "name": "Remediation Preview",
-          "request": { "method": "GET", "url": "{{baseUrl}}/audit/remediation/{{findingId}}/preview" }
+          "request": { "method": "GET", "url": "{{baseUrl}}/v1/audit/remediation/{{findingId}}/preview" }
         },
         {
           "name": "Remediation Apply",
-          "request": { "method": "POST", "url": "{{baseUrl}}/audit/remediation/{{findingId}}/apply" }
+          "request": { "method": "POST", "url": "{{baseUrl}}/v1/audit/remediation/{{findingId}}/apply" }
         },
         {
           "name": "Remediate All (audit report)",
-          "request": { "method": "POST", "url": "{{baseUrl}}/audit/reports/{{auditId}}/remediate-all" }
+          "request": { "method": "POST", "url": "{{baseUrl}}/v1/audit/reports/{{auditId}}/remediate-all" }
         }
       ]
     },
@@ -187,22 +187,22 @@
       "item": [
         {
           "name": "Status",
-          "request": { "method": "GET", "url": "{{baseUrl}}/threat-intel/status" }
+          "request": { "method": "GET", "url": "{{baseUrl}}/v1/threat-intel/status" }
         },
         {
           "name": "Sync",
-          "request": { "method": "POST", "url": "{{baseUrl}}/threat-intel/sync" }
+          "request": { "method": "POST", "url": "{{baseUrl}}/v1/threat-intel/sync" }
         },
         {
           "name": "List Packages",
-          "request": { "method": "GET", "url": "{{baseUrl}}/threat-intel/packages" }
+          "request": { "method": "GET", "url": "{{baseUrl}}/v1/threat-intel/packages" }
         },
         {
           "name": "Check Package",
           "request": {
             "method": "GET",
             "url": {
-              "raw": "{{baseUrl}}/threat-intel/check?reportType=package&resourceIdentifier=durabletask&ecosystem=pypi&version=1.4.1",
+              "raw": "{{baseUrl}}/v1/threat-intel/check?reportType=package&resourceIdentifier=durabletask&ecosystem=pypi&version=1.4.1",
               "host": ["{{baseUrl}}"],
               "path": ["threat-intel", "check"],
               "query": [

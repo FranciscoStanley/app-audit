@@ -1,6 +1,12 @@
 import { Injectable } from '@nestjs/common';
-import { RepositoryScan, ThreatFinding } from '../../domain/entities/repository-scan.entity';
-import type { GitHubRepositoryInfo, GitHubRepositoryPort } from '../../domain/ports/github-repository.port';
+import {
+  RepositoryScan,
+  ThreatFinding,
+} from '../../domain/entities/repository-scan.entity';
+import type {
+  GitHubRepositoryInfo,
+  GitHubRepositoryPort,
+} from '../../domain/ports/github-repository.port';
 import type { OpenSourceMalwarePort } from '../../domain/ports/threat-intelligence.port';
 import { ThreatIntelligenceStore } from '../threat-intel/threat-intelligence.store';
 import { createFinding } from './finding.factory';
@@ -32,7 +38,9 @@ export class MiasmaRepositoryScanner {
       topics: repo.topics,
       updatedAt: repo.updatedAt,
       findings,
-      isAffected: findings.some((f) => f.severity === 'critical' || f.severity === 'high'),
+      isAffected: findings.some(
+        (f) => f.severity === 'critical' || f.severity === 'high',
+      ),
       vulnerabilityCount: findings.length,
     };
   }
@@ -51,10 +59,17 @@ export class MiasmaRepositoryScanner {
     ];
   }
 
-  private async scanMaliciousFiles(owner: string, name: string): Promise<ThreatFinding[]> {
+  private async scanMaliciousFiles(
+    owner: string,
+    name: string,
+  ): Promise<ThreatFinding[]> {
     const findings: ThreatFinding[] = [];
     for (const indicator of this.threatStore.getMaliciousFiles()) {
-      const exists = await this.github.searchFileInRepo(owner, name, indicator.path);
+      const exists = await this.github.searchFileInRepo(
+        owner,
+        name,
+        indicator.path,
+      );
       if (!exists) continue;
       findings.push(
         createFinding({
@@ -65,10 +80,17 @@ export class MiasmaRepositoryScanner {
           category: 'Malware Indicators',
         }),
       );
-      const content = await this.github.getFileContent(owner, name, indicator.path);
+      const content = await this.github.getFileContent(
+        owner,
+        name,
+        indicator.path,
+      );
       if (content?.content) {
         for (const rule of this.threatStore.getMaliciousPatterns()) {
-          if (indicator.path.endsWith(rule.file.split('/').pop()!) && rule.pattern.test(content.content)) {
+          if (
+            indicator.path.endsWith(rule.file.split('/').pop()!) &&
+            rule.pattern.test(content.content)
+          ) {
             findings.push(
               createFinding({
                 type: 'malicious_pattern',
@@ -85,7 +107,10 @@ export class MiasmaRepositoryScanner {
     return findings;
   }
 
-  private async scanDependencies(owner: string, repo: string): Promise<ThreatFinding[]> {
+  private async scanDependencies(
+    owner: string,
+    repo: string,
+  ): Promise<ThreatFinding[]> {
     const findings: ThreatFinding[] = [];
     const packageJson = await this.github.getPackageJson(owner, repo);
     if (packageJson) {
@@ -119,7 +144,12 @@ export class MiasmaRepositoryScanner {
             );
           }
         }
-        const osmHit = await this.safeOsmCheck({ reportType: 'package', resourceIdentifier: dep, ecosystem: 'npm', version: this.extractVersion(versionRange) });
+        const osmHit = await this.safeOsmCheck({
+          reportType: 'package',
+          resourceIdentifier: dep,
+          ecosystem: 'npm',
+          version: this.extractVersion(versionRange),
+        });
         if (osmHit?.malicious) {
           findings.push(
             createFinding({
@@ -135,8 +165,14 @@ export class MiasmaRepositoryScanner {
     }
     const requirements = await this.github.getRequirementsTxt(owner, repo);
     if (requirements) {
-      for (const { name: pkgName, version } of this.parsePythonDeps(requirements)) {
-        const localHit = this.threatStore.isPackageCompromised(pkgName, 'pip', version);
+      for (const { name: pkgName, version } of this.parsePythonDeps(
+        requirements,
+      )) {
+        const localHit = this.threatStore.isPackageCompromised(
+          pkgName,
+          'pip',
+          version,
+        );
         if (localHit) {
           findings.push(
             createFinding({
@@ -153,10 +189,20 @@ export class MiasmaRepositoryScanner {
     return findings;
   }
 
-  private async scanWorkflows(owner: string, repo: string): Promise<ThreatFinding[]> {
+  private async scanWorkflows(
+    owner: string,
+    repo: string,
+  ): Promise<ThreatFinding[]> {
     const findings: ThreatFinding[] = [];
-    for (const workflowPath of await this.github.listWorkflowFiles(owner, repo)) {
-      const content = await this.github.getWorkflowContent(owner, repo, workflowPath);
+    for (const workflowPath of await this.github.listWorkflowFiles(
+      owner,
+      repo,
+    )) {
+      const content = await this.github.getWorkflowContent(
+        owner,
+        repo,
+        workflowPath,
+      );
       if (!content) continue;
       for (const action of this.threatStore.getCompromisedActions()) {
         if (content.includes(action)) {
@@ -189,7 +235,10 @@ export class MiasmaRepositoryScanner {
   }
 
   private async checkRepositoryViaOsm(url: string): Promise<ThreatFinding[]> {
-    const osmHit = await this.safeOsmCheck({ reportType: 'repository', resourceIdentifier: url });
+    const osmHit = await this.safeOsmCheck({
+      reportType: 'repository',
+      resourceIdentifier: url,
+    });
     if (!osmHit?.malicious) return [];
     return [
       createFinding({
@@ -202,7 +251,9 @@ export class MiasmaRepositoryScanner {
     ];
   }
 
-  private async safeOsmCheck(params: Parameters<OpenSourceMalwarePort['checkMalicious']>[0]) {
+  private async safeOsmCheck(
+    params: Parameters<OpenSourceMalwarePort['checkMalicious']>[0],
+  ) {
     try {
       return await this.osm.checkMalicious(params);
     } catch {
@@ -214,7 +265,9 @@ export class MiasmaRepositoryScanner {
     return range.match(/(\d+\.\d+\.\d+)/)?.[1];
   }
 
-  private parsePythonDeps(content: string): Array<{ name: string; version?: string }> {
+  private parsePythonDeps(
+    content: string,
+  ): Array<{ name: string; version?: string }> {
     const deps: Array<{ name: string; version?: string }> = [];
     for (const line of content.split('\n')) {
       const trimmed = line.trim();

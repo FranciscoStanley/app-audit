@@ -1,5 +1,6 @@
 # App Audit
 
+[![CI](https://github.com/FranciscoStanley/app-audit/actions/workflows/ci.yml/badge.svg)](https://github.com/FranciscoStanley/app-audit/actions/workflows/ci.yml)
 [![Security CI](https://github.com/FranciscoStanley/app-audit/actions/workflows/security.yml/badge.svg)](https://github.com/FranciscoStanley/app-audit/actions/workflows/security.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 
@@ -9,7 +10,11 @@ Plataforma de auditoria de segurança para repositórios GitHub — detecção d
 
 | Documento | Descrição |
 |-----------|-----------|
-| [Contributing](./CONTRIBUTING.md) | Como contribuir, PRs e padrões de código |
+| [CONTRIBUTING](./CONTRIBUTING.md) | Como contribuir, PRs e padrões de código |
+| [CODE_OF_CONDUCT](./CODE_OF_CONDUCT.md) | Código de conduta da comunidade |
+| [CHANGELOG](./CHANGELOG.md) | Histórico de versões |
+| [ROADMAP](./ROADMAP.md) | Evolução do produto |
+| [Limitações](./docs/LIMITATIONS.md) | Limites arquiteturais (single-node, file storage) |
 | [License (MIT)](./LICENSE) | Termos de uso e redistribuição |
 | [Security](./SECURITY.md) | Reporte de vulnerabilidades e boas práticas |
 
@@ -76,7 +81,9 @@ docker compose up -d --build
 |---------|-----|
 | Frontend | http://localhost:3001 |
 | API | http://localhost:3000 |
-| Health | http://localhost:3000/health |
+| Health (liveness) | http://localhost:3000/health |
+| Health (readiness) | http://localhost:3000/health/ready |
+| API REST | http://localhost:3000/v1/… |
 
 Após alterações no código:
 
@@ -184,7 +191,12 @@ Não há credenciais fixas. O primeiro administrador é criado via:
 | [docs/deployment.md](./docs/deployment.md) | Deploy produção |
 | [docs/api.md](./docs/api.md) | API HTTP |
 | [docs/collections/](./docs/collections/) | Postman e Insomnia |
+| [docs/operations.md](./docs/operations.md) | Backup, logs, releases |
+| [docs/LIMITATIONS.md](./docs/LIMITATIONS.md) | Limites de escala v1 |
+| [ROADMAP.md](./ROADMAP.md) | Próximas versões |
+| [CHANGELOG.md](./CHANGELOG.md) | Notas de release |
 | [CONTRIBUTING.md](./CONTRIBUTING.md) | Guia de contribuição |
+| [CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md) | Código de conduta |
 | [SECURITY.md](./SECURITY.md) | Política de segurança |
 
 ## Licença

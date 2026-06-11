@@ -14,7 +14,7 @@ Correções de segurança são aplicadas nas versões em desenvolvimento ativo:
 Se você identificar uma vulnerabilidade de segurança no App Audit:
 
 1. **Não** abra uma issue pública nem divulgue detalhes em fóruns ou redes sociais.
-2. Envie um reporte **privado** via [GitHub Security Advisories](https://github.com/FranciscoStanley/app-audit/security/advisories/new) (**Report a vulnerability**) ou por e-mail ao mantenedor.
+2. Envie um reporte **privado** via [GitHub Security Advisories](https://github.com/FranciscoStanley/app-audit/security/advisories/new) (**Report a vulnerability**) ou por e-mail a **franciscothestanley@gmail.com**.
 3. Inclua:
    - Descrição do problema e componente afetado (API, frontend, OAuth, scanners, etc.)
    - Passos para reproduzir ou proof-of-concept
