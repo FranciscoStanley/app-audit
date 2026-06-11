@@ -10,6 +10,14 @@ export interface DependabotAlert {
   ghsaId: string | null;
 }
 
+export interface DeliveryResult {
+  method: 'direct_push' | 'pull_request' | 'no_changes';
+  branch: string;
+  pullRequestUrl?: string;
+  lockfilesUpdated: string[];
+  commitSha?: string;
+}
+
 export interface GitHubRemediationPort {
   getDefaultBranch(owner: string, repo: string): Promise<string>;
   deleteFile(owner: string, repo: string, path: string, message: string): Promise<void>;

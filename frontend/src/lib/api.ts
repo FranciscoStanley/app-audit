@@ -157,11 +157,12 @@ export const api = {
     request<RemediationResult>(`/audit/remediation/${findingId}/apply`, { method: 'POST' }, token),
 
   applyAllRemediation: (token: string, auditId: string) =>
-    request<{ total: number; succeeded: number; failed: number; results: Array<{ findingId: string; message: string; success: boolean }> }>(
-      `/audit/reports/${auditId}/remediate-all`,
-      { method: 'POST' },
-      token,
-    ),
+    request<{
+      total: number;
+      succeeded: number;
+      failed: number;
+      results: Array<{ findingId: string; message: string; success: boolean; pullRequestUrl?: string }>;
+    }>(`/audit/reports/${auditId}/remediate-all`, { method: 'POST' }, token),
 
   createUser: (
     token: string,
@@ -217,4 +218,11 @@ export interface RemediationResult {
   message: string;
   appliedSteps: string[];
   requiresManualSteps: string[];
+  delivery?: {
+    method: 'direct_push' | 'pull_request' | 'no_changes';
+    branch: string;
+    pullRequestUrl?: string;
+    lockfilesUpdated: string[];
+    commitSha?: string;
+  };
 }

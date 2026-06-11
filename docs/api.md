@@ -140,7 +140,12 @@ Download do relatório individual da vulnerabilidade (PDF).
 
 ## Remediação
 
-Remediação **100% automática** via GitHub API (`gh`): remove arquivos sensíveis, atualiza `.gitignore`, fixa Actions por SHA, corrige alertas Dependabot e atualiza/remove dependências vulneráveis.
+Remediação **100% automática** via Git workspace + GitHub API:
+
+- Clone shallow do repositório, alterações locais, **regeneração de lockfile** (pnpm/npm/yarn/pip)
+- Commit único por vulnerabilidade
+- Push direto ao branch padrão ou **Pull Request automático** se branch protegida
+- Alertas Dependabot fechados após atualizar manifesto + lockfile
 
 ### GET /audit/remediation/:findingId/preview
 

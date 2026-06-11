@@ -3,6 +3,7 @@ import { GitHubRemediationPort } from '../../domain/ports/github-remediation.por
 import { AuditReportStore } from '../../infrastructure/storage/audit-report.store';
 import { GitHubTokenResolverService } from './github-token-resolver.service';
 import { GitHubRemediationFactory } from '../../infrastructure/github/github-remediation.factory';
+import { RemediationGitWorkspace } from '../../infrastructure/github/remediation-git-workspace';
 
 describe('RemediationUseCase', () => {
   const finding = {
@@ -18,8 +19,23 @@ describe('RemediationUseCase', () => {
 
   let auditStore: jest.Mocked<Pick<AuditReportStore, 'findFindingById' | 'getById'>>;
   let githubTokens: jest.Mocked<Pick<GitHubTokenResolverService, 'requireForAudit'>>;
-  let remediationFactory: jest.Mocked<Pick<GitHubRemediationFactory, 'create'>>;
+  let remediationFactory: jest.Mocked<Pick<GitHubRemediationFactory, 'create' | 'createWorkspace'>>;
   let github: jest.Mocked<GitHubRemediationPort>;
+  let workspace: jest.Mocked<
+    Pick<
+      RemediationGitWorkspace,
+      | 'clone'
+      | 'deleteFile'
+      | 'ensureGitignoreEntry'
+      | 'pinWorkflowActions'
+      | 'sanitizeFile'
+      | 'updatePackageVersion'
+      | 'removePackage'
+      | 'regenerateLockfiles'
+      | 'deliver'
+      | 'cleanup'
+    >
+  >;
   let useCase: RemediationUseCase;
 
   beforeEach(() => {
@@ -33,8 +49,26 @@ describe('RemediationUseCase', () => {
       updatePackageVersion: jest.fn(),
       removePackageFromManifest: jest.fn(),
       enableDependabotSecurityUpdates: jest.fn(),
-      listDependabotAlerts: jest.fn(),
+      listDependabotAlerts: jest.fn().mockResolvedValue([]),
       createSecurityIssue: jest.fn(),
+    };
+
+    workspace = {
+      clone: jest.fn().mockResolvedValue({ repoPath: '/tmp/repo', defaultBranch: 'main' }),
+      deleteFile: jest.fn(),
+      ensureGitignoreEntry: jest.fn(),
+      pinWorkflowActions: jest.fn(),
+      sanitizeFile: jest.fn(),
+      updatePackageVersion: jest.fn(),
+      removePackage: jest.fn(),
+      regenerateLockfiles: jest.fn().mockResolvedValue(['pnpm-lock.yaml']),
+      deliver: jest.fn().mockResolvedValue({
+        method: 'direct_push',
+        branch: 'main',
+        lockfilesUpdated: [],
+        commitSha: 'abc123',
+      }),
+      cleanup: jest.fn(),
     };
 
     auditStore = {
@@ -48,6 +82,7 @@ describe('RemediationUseCase', () => {
 
     remediationFactory = {
       create: jest.fn().mockReturnValue(github),
+      createWorkspace: jest.fn().mockReturnValue(workspace),
     };
 
     useCase = new RemediationUseCase(
@@ -64,26 +99,50 @@ describe('RemediationUseCase', () => {
     expect(plan.steps).toHaveLength(3);
   });
 
-  it('aplica remediação de arquivo sensível sem passos manuais', async () => {
+  it('aplica remediação via workspace git com commit único', async () => {
     const result = await useCase.apply('finding-1', 'user-1');
 
-    expect(github.deleteFile).toHaveBeenCalledWith('owner', 'repo', '.npmrc', expect.any(String));
-    expect(github.ensureGitignoreEntry).toHaveBeenCalledWith('owner', 'repo', '.npmrc');
+    expect(workspace.clone).toHaveBeenCalledWith('owner', 'repo');
+    expect(workspace.deleteFile).toHaveBeenCalledWith('/tmp/repo', '.npmrc');
+    expect(workspace.ensureGitignoreEntry).toHaveBeenCalledWith('/tmp/repo', '.npmrc');
+    expect(workspace.deliver).toHaveBeenCalled();
     expect(github.createSecurityIssue).toHaveBeenCalled();
+    expect(workspace.cleanup).toHaveBeenCalledWith('/tmp/repo');
     expect(result.success).toBe(true);
-    expect(result.requiresManualSteps).toHaveLength(0);
+    expect(result.delivery?.method).toBe('direct_push');
   });
 
-  it('corrige alerta dependabot automaticamente', async () => {
+  it('corrige alerta dependabot com lockfile', async () => {
     auditStore.findFindingById.mockResolvedValue({
       ...finding,
       type: 'vulnerable_dependency',
+      message: '[Dependabot] vitest vulnerability',
       evidence: 'frontend/package.json|vitest|3.0.5|dependabot-42',
     });
 
+    github.listDependabotAlerts.mockResolvedValue([
+      {
+        number: 42,
+        state: 'open',
+        packageName: 'vitest',
+        manifestPath: 'frontend/package.json',
+        severity: 'critical',
+        summary: 'vitest vuln',
+        vulnerableVersionRange: '< 3.0.5',
+        patchedVersion: '3.0.5',
+        ghsaId: 'GHSA-xxxx',
+      },
+    ]);
+
     const result = await useCase.apply('finding-1', 'user-1');
 
-    expect(github.fixDependabotAlert).toHaveBeenCalledWith('owner', 'repo', 42);
+    expect(workspace.updatePackageVersion).toHaveBeenCalledWith(
+      '/tmp/repo',
+      'frontend/package.json',
+      'vitest',
+      '3.0.5',
+    );
+    expect(workspace.regenerateLockfiles).toHaveBeenCalledWith('/tmp/repo', 'frontend/package.json');
     expect(github.enableDependabotSecurityUpdates).toHaveBeenCalled();
     expect(result.success).toBe(true);
   });

@@ -20,7 +20,7 @@ export default function VulnerabilitiesPage() {
   const [hasReports, setHasReports] = useState(true);
   const [loading, setLoading] = useState(true);
   const [remediating, setRemediating] = useState(false);
-  const [bulkResult, setBulkResult] = useState<string | null>(null);
+  const [bulkResult, setBulkResult] = useState<{ message: string; pullRequests: string[] } | null>(null);
 
   useEffect(() => {
     if (!token) return;
@@ -51,7 +51,13 @@ export default function VulnerabilitiesPage() {
     setBulkResult(null);
     try {
       const result = await api.applyAllRemediation(token, auditId);
-      setBulkResult(`${result.succeeded}/${result.total} vulnerabilidades corrigidas automaticamente`);
+      const pullRequests = result.results
+        .map((r) => r.pullRequestUrl)
+        .filter((url): url is string => Boolean(url));
+      setBulkResult({
+        message: `${result.succeeded}/${result.total} vulnerabilidades corrigidas automaticamente`,
+        pullRequests,
+      });
     } catch (e) {
       setBulkResult(e instanceof Error ? e.message : 'Falha na remediação em lote');
     } finally {
@@ -74,7 +80,16 @@ export default function VulnerabilitiesPage() {
         )}
       </div>
 
-      {bulkResult && <p className="text-sm text-emerald-400">{bulkResult}</p>}
+      {bulkResult && (
+        <div className="space-y-1">
+          <p className="text-sm text-emerald-400">{bulkResult.message}</p>
+          {bulkResult.pullRequests.map((url) => (
+            <a key={url} href={url} target="_blank" rel="noopener noreferrer" className="block text-sm text-indigo-400 underline">
+              {url}
+            </a>
+          ))}
+        </div>
+      )}
 
       <div className="flex flex-wrap gap-2">
         {categories.map((cat) => (

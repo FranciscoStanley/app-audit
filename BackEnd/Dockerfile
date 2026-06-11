@@ -19,6 +19,8 @@ RUN apt-get update \
     fonts-liberation \
     git \
     gh \
+    python3-pip \
+  && npm install -g pnpm \
   && update-ca-certificates \
   && rm -rf /var/lib/apt/lists/*
 

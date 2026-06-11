@@ -1,3 +1,5 @@
+import type { DeliveryResult } from '../../domain/ports/github-remediation.port';
+
 export type RemediationAction =
   | 'remove_file'
   | 'update_dependency'
@@ -14,7 +16,7 @@ export type RemediationStepAction =
   | 'enable_dependabot'
   | 'update_dependency'
   | 'remove_dependency'
-  | 'remove_malicious_content'
+  | 'regenerate_lockfile'
   | 'sanitize_workflow'
   | 'security_issue';
 
@@ -41,4 +43,5 @@ export interface RemediationResult {
   message: string;
   appliedSteps: string[];
   requiresManualSteps: string[];
+  delivery?: DeliveryResult;
 }

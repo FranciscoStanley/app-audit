@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import type { DeliveryResult } from '../../domain/ports/github-remediation.port';
 import { GitHubRemediationPort } from '../../domain/ports/github-remediation.port';
 import {
   RemediationPlan,
@@ -7,8 +8,11 @@ import {
 } from '../../domain/entities/remediation.entity';
 import { ThreatFindingType } from '../../domain/entities/repository-scan.entity';
 import { GitHubRemediationFactory } from '../../infrastructure/github/github-remediation.factory';
+import { RemediationGitWorkspace } from '../../infrastructure/github/remediation-git-workspace';
 import { AuditReportStore } from '../../infrastructure/storage/audit-report.store';
 import { GitHubTokenResolverService } from './github-token-resolver.service';
+
+const API_ONLY_ACTIONS = new Set(['enable_dependabot', 'security_issue']);
 
 @Injectable()
 export class RemediationUseCase {
@@ -36,48 +40,114 @@ export class RemediationUseCase {
 
     const applied: string[] = [];
     const failed: string[] = [];
+    let delivery: DeliveryResult | undefined;
 
-    for (const step of plan.steps) {
+    const workspaceSteps = plan.steps.filter((s) => s.action && !API_ONLY_ACTIONS.has(s.action));
+    const apiSteps = plan.steps.filter((s) => s.action && API_ONLY_ACTIONS.has(s.action));
+
+    if (workspaceSteps.length > 0) {
+      const workspace = this.remediationFactory.createWorkspace(token);
+      let repoPath = '';
       try {
-        await this.executeStep(github, owner, repo, finding.type, finding.evidence ?? '', step);
+        const cloned = await workspace.clone(owner, repo);
+        repoPath = cloned.repoPath;
+
+        let needsLockfile = false;
+        let manifestPath: string | undefined;
+
+        for (const step of workspaceSteps) {
+          try {
+            if (step.action === 'regenerate_lockfile') continue;
+            await this.applyWorkspaceStep(
+              workspace,
+              github,
+              repoPath,
+              owner,
+              repo,
+              finding.type,
+              finding.evidence ?? '',
+              step,
+            );
+            applied.push(step.title);
+            if (['fix_dependabot', 'update_dependency', 'remove_dependency'].includes(step.action ?? '')) {
+              needsLockfile = true;
+              manifestPath = this.parseDependencyEvidence(finding.evidence ?? '').manifestPath;
+            }
+          } catch (error) {
+            failed.push(`${step.title}: ${(error as Error).message}`);
+          }
+        }
+
+        let lockfilesUpdated: string[] = [];
+
+        if (needsLockfile && failed.length === 0) {
+          try {
+            lockfilesUpdated = await workspace.regenerateLockfiles(repoPath, manifestPath);
+            if (lockfilesUpdated.length > 0) {
+              applied.push(`Regenerar lockfile (${lockfilesUpdated.join(', ')})`);
+            }
+          } catch (error) {
+            failed.push(`Regenerar lockfile: ${(error as Error).message}`);
+          }
+        }
+
+        if (failed.length === 0) {
+          delivery = await workspace.deliver(
+            repoPath,
+            owner,
+            repo,
+            cloned.defaultBranch,
+            `security: automated remediation (${finding.type})`,
+            `security: correção automática — ${finding.message.slice(0, 80)}`,
+            this.buildPullRequestBody(finding.type, finding.message, finding.evidence ?? ''),
+          );
+          delivery = { ...delivery, lockfilesUpdated };
+        }
+      } catch (error) {
+        failed.push(`Workspace: ${(error as Error).message}`);
+      } finally {
+        if (repoPath) await workspace.cleanup(repoPath);
+      }
+    }
+
+    for (const step of apiSteps) {
+      try {
+        await this.executeApiStep(github, owner, repo, step);
         applied.push(step.title);
       } catch (error) {
         failed.push(`${step.title}: ${(error as Error).message}`);
       }
     }
 
-    return {
-      success: failed.length === 0,
-      message:
-        failed.length === 0
-          ? 'Remediação aplicada com sucesso'
-          : `Remediação parcial — ${failed.length} passo(s) falharam`,
-      appliedSteps: applied,
-      requiresManualSteps: failed,
-    };
+    return this.buildResult(failed, applied, delivery);
   }
 
   async applyAll(auditId: string, userId: string): Promise<{
     total: number;
     succeeded: number;
     failed: number;
-    results: Array<{ findingId: string; message: string; success: boolean }>;
+    results: Array<{ findingId: string; message: string; success: boolean; pullRequestUrl?: string }>;
   }> {
     const stored = await this.auditStore.getById(auditId);
     if (!stored) throw new NotFoundException('Relatório não encontrado');
 
     const repos = stored.report.allRepositories ?? stored.report.affectedRepositories;
-    const findings = repos.flatMap((repo) =>
-      repo.findings.filter((f) => f.remediationAvailable).map((f) => ({ ...f, repository: repo.fullName })),
+    const findings = repos.flatMap((r) =>
+      r.findings.filter((f) => f.remediationAvailable).map((f) => ({ ...f, repository: r.fullName })),
     );
 
-    const results: Array<{ findingId: string; message: string; success: boolean }> = [];
+    const results: Array<{ findingId: string; message: string; success: boolean; pullRequestUrl?: string }> = [];
     let succeeded = 0;
     let failed = 0;
 
     for (const finding of findings) {
       const result = await this.apply(finding.id, userId);
-      results.push({ findingId: finding.id, message: result.message, success: result.success });
+      results.push({
+        findingId: finding.id,
+        message: result.message,
+        success: result.success,
+        pullRequestUrl: result.delivery?.pullRequestUrl,
+      });
       if (result.success) succeeded++;
       else failed++;
     }
@@ -85,8 +155,10 @@ export class RemediationUseCase {
     return { total: findings.length, succeeded, failed, results };
   }
 
-  private async executeStep(
+  private async applyWorkspaceStep(
+    workspace: RemediationGitWorkspace,
     github: GitHubRemediationPort,
+    repoPath: string,
     owner: string,
     repo: string,
     type: ThreatFindingType,
@@ -95,50 +167,114 @@ export class RemediationUseCase {
   ): Promise<void> {
     switch (step.action) {
       case 'delete_file':
-        await github.deleteFile(owner, repo, evidence, `security: remove ${evidence}`);
+        await workspace.deleteFile(repoPath, evidence);
         return;
 
       case 'gitignore':
-        await github.ensureGitignoreEntry(owner, repo, evidence);
+        await workspace.ensureGitignoreEntry(repoPath, evidence);
         return;
 
       case 'pin_actions':
-        await github.pinWorkflowActions(owner, repo, evidence);
+        await workspace.pinWorkflowActions(repoPath, evidence);
         return;
 
-      case 'enable_dependabot':
-        await github.enableDependabotSecurityUpdates(owner, repo);
+      case 'fix_dependabot': {
+        const alertNumber = this.parseDependabotAlertNumber(evidence);
+        const alerts = await github.listDependabotAlerts(owner, repo);
+        const alert = alerts.find((a) => a.number === alertNumber);
+        if (!alert?.patchedVersion) {
+          await github.fixDependabotAlert(owner, repo, alertNumber);
+          return;
+        }
+        await workspace.updatePackageVersion(
+          repoPath,
+          alert.manifestPath,
+          alert.packageName,
+          alert.patchedVersion,
+        );
         return;
-
-      case 'fix_dependabot':
-        await github.fixDependabotAlert(owner, repo, this.parseDependabotAlertNumber(evidence));
-        return;
+      }
 
       case 'update_dependency': {
         const { packageName, version, manifestPath } = this.parseDependencyEvidence(evidence);
-        await github.updatePackageVersion(owner, repo, packageName, version, manifestPath);
+        await workspace.updatePackageVersion(repoPath, manifestPath ?? 'package.json', packageName, version);
         return;
       }
 
       case 'remove_dependency': {
         const { packageName, manifestPath } = this.parseDependencyEvidence(evidence);
-        await github.removePackageFromManifest(owner, repo, packageName, manifestPath);
+        await workspace.removePackage(repoPath, manifestPath ?? 'package.json', packageName);
         return;
       }
 
       case 'sanitize_workflow': {
         const { workflowPath, patterns } = this.parseC2Evidence(evidence);
-        await github.removeMaliciousContent(owner, repo, workflowPath, patterns);
+        await workspace.sanitizeFile(repoPath, workflowPath, patterns);
         return;
       }
 
+      default:
+        throw new Error(`Passo de workspace não suportado: ${step.title}`);
+    }
+  }
+
+  private async executeApiStep(
+    github: GitHubRemediationPort,
+    owner: string,
+    repo: string,
+    step: RemediationStep,
+  ): Promise<void> {
+    switch (step.action) {
+      case 'enable_dependabot':
+        await github.enableDependabotSecurityUpdates(owner, repo);
+        return;
       case 'security_issue':
         await github.createSecurityIssue(owner, repo, step.title, step.description);
         return;
-
       default:
-        throw new Error(`Passo não suportado: ${step.title}`);
+        throw new Error(`Passo de API não suportado: ${step.title}`);
     }
+  }
+
+  private buildResult(
+    failed: string[],
+    applied: string[],
+    delivery?: DeliveryResult,
+  ): RemediationResult {
+    if (failed.length === 0) {
+      let message = 'Remediação aplicada com sucesso';
+      if (delivery?.method === 'pull_request' && delivery.pullRequestUrl) {
+        message = `Remediação aplicada — Pull Request criado: ${delivery.pullRequestUrl}`;
+      } else if (delivery?.lockfilesUpdated?.length) {
+        message = `Remediação aplicada — lockfiles atualizados: ${delivery.lockfilesUpdated.join(', ')}`;
+      }
+      return { success: true, message, appliedSteps: applied, requiresManualSteps: [], delivery };
+    }
+
+    return {
+      success: false,
+      message: `Remediação parcial — ${failed.length} passo(s) falharam`,
+      appliedSteps: applied,
+      requiresManualSteps: failed,
+      delivery,
+    };
+  }
+
+  private buildPullRequestBody(type: string, message: string, evidence: string): string {
+    return [
+      '## Correção automática — App Audit',
+      '',
+      `- **Tipo:** ${type}`,
+      `- **Achado:** ${message}`,
+      `- **Evidência:** ${evidence}`,
+      '',
+      'Esta PR foi gerada automaticamente pela plataforma App Audit.',
+      '',
+      '### Checklist',
+      '- [ ] Revisar diff de dependências e lockfile',
+      '- [ ] Rodar CI/CD',
+      '- [ ] Rotacionar credenciais se o achado envolver secrets',
+    ].join('\n');
   }
 
   private buildPlan(
@@ -152,44 +288,18 @@ export class RemediationUseCase {
     switch (type) {
       case 'malicious_file':
       case 'malicious_pattern':
-        steps.push({
-          order: 1,
-          title: 'Remover arquivo malicioso',
-          description: `Excluir ${evidence} do repositório`,
-          action: 'delete_file',
-          automated: true,
-        });
-        steps.push({
-          order: 2,
-          title: 'Registrar incidente de segurança',
-          description: 'Criar issue de rastreamento para rotação de credenciais',
-          action: 'security_issue',
-          automated: true,
-        });
+        steps.push(
+          { order: 1, title: 'Remover arquivo malicioso', description: `Excluir ${evidence}`, action: 'delete_file', automated: true },
+          { order: 2, title: 'Registrar incidente de segurança', description: 'Issue de rastreamento', action: 'security_issue', automated: true },
+        );
         break;
 
       case 'exposed_secret':
-        steps.push({
-          order: 1,
-          title: 'Remover arquivo sensível',
-          description: `Remover ${evidence} do branch padrão`,
-          action: 'delete_file',
-          automated: true,
-        });
-        steps.push({
-          order: 2,
-          title: 'Adicionar ao .gitignore',
-          description: `Garantir que ${evidence} está no .gitignore`,
-          action: 'gitignore',
-          automated: true,
-        });
-        steps.push({
-          order: 3,
-          title: 'Abrir issue de rotação de credenciais',
-          description: `Credencial em ${evidence} — rotacionar tokens associados`,
-          action: 'security_issue',
-          automated: true,
-        });
+        steps.push(
+          { order: 1, title: 'Remover arquivo sensível', description: `Remover ${evidence}`, action: 'delete_file', automated: true },
+          { order: 2, title: 'Adicionar ao .gitignore', description: `Proteger ${evidence}`, action: 'gitignore', automated: true },
+          { order: 3, title: 'Abrir issue de rotação de credenciais', description: 'Rastrear rotação', action: 'security_issue', automated: true },
+        );
         break;
 
       case 'unpinned_action':
@@ -197,7 +307,7 @@ export class RemediationUseCase {
         steps.push({
           order: 1,
           title: 'Fixar GitHub Action por SHA',
-          description: `Substituir tags mutáveis por commit SHA em ${evidence}`,
+          description: `Fixar actions em ${evidence}`,
           action: 'pin_actions',
           automated: true,
         });
@@ -205,44 +315,29 @@ export class RemediationUseCase {
 
       case 'compromised_dependency':
       case 'malware_advisory':
-        steps.push({
-          order: 1,
-          title: 'Remover dependência comprometida',
-          description: `Remover pacote malicioso: ${evidence}`,
-          action: 'remove_dependency',
-          automated: true,
-        });
-        steps.push({
-          order: 2,
-          title: 'Habilitar Dependabot security updates',
-          description: 'Garantir atualizações automáticas de segurança no repositório',
-          action: 'enable_dependabot',
-          automated: true,
-        });
+        steps.push(
+          { order: 1, title: 'Remover dependência comprometida', description: evidence, action: 'remove_dependency', automated: true },
+          { order: 2, title: 'Regenerar lockfile', description: 'Atualizar pnpm/npm/yarn lock', action: 'regenerate_lockfile', automated: true },
+          { order: 3, title: 'Habilitar Dependabot security updates', description: 'Atualizações automáticas', action: 'enable_dependabot', automated: true },
+        );
         break;
 
       case 'vulnerable_dependency':
         if (evidence.includes('dependabot-')) {
-          steps.push({
-            order: 1,
-            title: 'Corrigir alerta Dependabot',
-            description: evidence,
-            action: 'fix_dependabot',
-            automated: true,
-          });
+          steps.push(
+            { order: 1, title: 'Corrigir alerta Dependabot', description: evidence, action: 'fix_dependabot', automated: true },
+            { order: 2, title: 'Regenerar lockfile', description: 'Fechar alerta no GitHub', action: 'regenerate_lockfile', automated: true },
+          );
         } else {
-          steps.push({
-            order: 1,
-            title: 'Atualizar dependência vulnerável',
-            description: `Atualizar pacote: ${evidence}`,
-            action: 'update_dependency',
-            automated: true,
-          });
+          steps.push(
+            { order: 1, title: 'Atualizar dependência vulnerável', description: evidence, action: 'update_dependency', automated: true },
+            { order: 2, title: 'Regenerar lockfile', description: 'Sincronizar lockfile', action: 'regenerate_lockfile', automated: true },
+          );
         }
         steps.push({
-          order: 2,
+          order: steps.length + 1,
           title: 'Habilitar Dependabot security updates',
-          description: 'Garantir atualizações automáticas de segurança no repositório',
+          description: 'Atualizações automáticas',
           action: 'enable_dependabot',
           automated: true,
         });
@@ -252,7 +347,7 @@ export class RemediationUseCase {
         steps.push({
           order: 1,
           title: 'Remover referência a domínio C2',
-          description: `Sanitizar workflow removendo domínios maliciosos`,
+          description: 'Sanitizar workflow',
           action: 'sanitize_workflow',
           automated: true,
         });
@@ -262,7 +357,7 @@ export class RemediationUseCase {
         steps.push({
           order: 1,
           title: 'Revisão de segurança',
-          description: 'Criar issue para análise do achado',
+          description: 'Criar issue',
           action: 'security_issue',
           automated: true,
         });
@@ -323,9 +418,6 @@ export class RemediationUseCase {
 
   private parseC2Evidence(evidence: string): { workflowPath: string; patterns: string[] } {
     const [workflowPath, ...domains] = evidence.split('|');
-    return {
-      workflowPath,
-      patterns: domains.length > 0 ? domains : [workflowPath],
-    };
+    return { workflowPath, patterns: domains.length > 0 ? domains : [workflowPath] };
   }
 }
