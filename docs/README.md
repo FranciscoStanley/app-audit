@@ -6,7 +6,7 @@
 
 | Documento | Descrição |
 |-----------|-----------|
-| [Telas da aplicação](./screenshots.md) | Screenshots das interfaces |
+| [Telas da aplicação](./screenshots.md) | Screenshots das interfaces (abaixo) |
 | [Arquitetura](./architecture.md) | Diagramas Mermaid, camadas, fluxos |
 | [Documentação técnica](./technical.md) | Stack, env vars, endpoints, monorepo |
 | [Referência da API](./api.md) | Contratos HTTP detalhados |
@@ -14,6 +14,26 @@
 | [Deploy produção](./deployment.md) | Docker, checklist, usuários |
 | [GitHub OAuth](./github-oauth-setup.md) | Login com GitHub (app 3659122) |
 | [Collections](./collections/) | Postman e Insomnia |
+
+## Prévia das telas
+
+| Login | Consentimento LGPD |
+|-------|-------------------|
+| ![Login](./screenshots/01-login.png) | ![Consentimento](./screenshots/01b-consentimento-lgpd.png) |
+
+| Dashboard | Auditorias |
+|-----------|------------|
+| ![Dashboard](./screenshots/02-dashboard.png) | ![Auditorias](./screenshots/03-auditorias.png) |
+
+| Detalhe da auditoria | Vulnerabilidades |
+|----------------------|------------------|
+| ![Detalhe](./screenshots/04-detalhe-auditoria.png) | ![Vulnerabilidades](./screenshots/05-vulnerabilidades.png) |
+
+| Threat Intelligence |
+|---------------------|
+| ![Threat Intel](./screenshots/06-threat-intel.png) |
+
+Detalhes e instruções para atualizar as capturas de tela: [screenshots.md](./screenshots.md).
 
 ## Collections API
 

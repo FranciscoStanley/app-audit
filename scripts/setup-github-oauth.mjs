@@ -3,10 +3,12 @@
  * Configura GITHUB_OAUTH_* nos .env locais (não versionados).
  *
  * Uso:
- *   GITHUB_OAUTH_CLIENT_ID=Ov23... GITHUB_OAUTH_CLIENT_SECRET=... node scripts/setup-github-oauth.mjs
+ *   1. Defina GITHUB_OAUTH_CLIENT_ID e GITHUB_OAUTH_CLIENT_SECRET no ambiente
+ *   2. node scripts/setup-github-oauth.mjs
  *
- * Ou interativo (PowerShell):
- *   $env:GITHUB_OAUTH_CLIENT_ID="..."; $env:GITHUB_OAUTH_CLIENT_SECRET="..."; node scripts/setup-github-oauth.mjs
+ * PowerShell (exemplo):
+ *   $env:GITHUB_OAUTH_CLIENT_ID="<id>"
+ *   node scripts/setup-github-oauth.mjs
  */
 import { readFile, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';

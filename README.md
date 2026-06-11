@@ -97,7 +97,51 @@ npm run dev
 
 ## Telas
 
-Screenshots das interfaces em [docs/screenshots.md](./docs/screenshots.md).
+Capturar de tela das interfaces (dados de demonstração). Galeria completa: [docs/screenshots.md](./docs/screenshots.md).
+
+### Login
+
+Autenticação por e-mail/senha e **Entrar com GitHub** (OAuth).
+
+![Tela de login](./docs/screenshots/01-login.png)
+
+### Consentimento LGPD (GitHub OAuth)
+
+Modal exibido antes do redirect ao GitHub: finalidades, permissões OAuth e direitos do titular.
+
+![Consentimento LGPD](./docs/screenshots/01b-consentimento-lgpd.png)
+
+### Dashboard
+
+Métricas da última auditoria: repositórios, vulnerabilidades, pacotes monitorados e veredito.
+
+![Dashboard](./docs/screenshots/02-dashboard.png)
+
+### Auditorias
+
+Histórico de varredura, status da conexão GitHub e nova auditoria em todos os repositórios.
+
+![Auditorias](./docs/screenshots/03-auditorias.png)
+
+### Detalhe da auditoria
+
+Relatório Markdown, download PDF e vulnerabilidades por repositório.
+
+![Detalhe da auditoria](./docs/screenshots/04-detalhe-auditoria.png)
+
+### Vulnerabilidades
+
+Todas as categorias detectadas (Secrets, Supply Chain, CI/CD, etc.) com filtros.
+
+![Vulnerabilidades](./docs/screenshots/05-vulnerabilidades.png)
+
+### Threat Intelligence
+
+Sincronização com GitHub Advisories e OpenSourceMalware.
+
+![Threat Intelligence](./docs/screenshots/06-threat-intel.png)
+
+Para regenerar as capturas de tela: `npm run docs:screenshots` (frontend em `http://localhost:3001`).
 
 ## Usuários
 

@@ -19,13 +19,15 @@
 1. Abra [OAuth App settings](https://github.com/settings/applications/3659122)
 2. Copie o **Client ID**
 3. Clique **Generate a new client secret** e copie o secret (exibido uma vez)
-4. Configure localmente:
+4. Configure localmente (defina as variáveis **apenas na sessão do terminal**, nunca no Git):
 
 ```powershell
-$env:GITHUB_OAUTH_CLIENT_ID="seu_client_id"
-$env:GITHUB_OAUTH_CLIENT_SECRET="seu_client_secret"
+$env:GITHUB_OAUTH_CLIENT_ID="<seu_client_id>"
+# Defina o client secret via Read-Host ou variável de ambiente do SO
 node scripts/setup-github-oauth.mjs
 ```
+
+Ou edite `BackEnd/.env` e preencha `GITHUB_OAUTH_CLIENT_ID` e `GITHUB_OAUTH_CLIENT_SECRET` manualmente.
 
 5. Reinicie o BackEnd (`npm run dev` ou Docker)
 
