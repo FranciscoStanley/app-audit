@@ -29,6 +29,10 @@ npm run audit:miasma
 npm test
 ```
 
+## Ao alterar API
+
+Siga `change-sync-docs-tests`: Swagger (decorators + DTOs), `docs/api.md`, collections, `*.spec.ts`.
+
 ## Auth
 
 - `POST /auth/login` — JWT

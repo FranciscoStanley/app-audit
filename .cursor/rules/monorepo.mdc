@@ -5,7 +5,8 @@ alwaysApply: true
 
 # App Audit Monorepo
 
-> Skills: `.cursor/skills/README.md`
+> Skills: `.cursor/skills/README.md`  
+> Change sync: `.cursor/skills/change-sync-docs-tests/SKILL.md`
 
 - **BackEnd/** — NestJS API (`:3000`)
 - **frontend/** — Next.js (`:3001`)

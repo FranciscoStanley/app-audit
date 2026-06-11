@@ -45,7 +45,14 @@ Ou `ADMIN_EMAIL` + `ADMIN_PASSWORD` no `.env` no primeiro boot.
 
 ## Skills relacionadas
 
+- `change-sync-docs-tests` — **obrigatório** ao mudar features (testes, Swagger, docs)
 - `app-audit-backend` — API NestJS
 - `app-audit-frontend` — UI Next.js
 - `app-audit-auth-rbac` — JWT e papéis
 - `app-audit-security-scan` — scanners e remediação
+
+## Ao concluir qualquer feature
+
+1. Carregar skill `change-sync-docs-tests`
+2. Rodar `npm test`
+3. Confirmar Swagger, docs e collections sincronizados

@@ -33,6 +33,10 @@ npm run dev      # :3001
 npm test         # Vitest
 ```
 
+## Ao alterar UI ou API client
+
+Siga `change-sync-docs-tests`: Vitest em `src/**/*.test.ts`, `lib/api.ts`, docs se fluxo mudou.
+
 ## API
 
 `NEXT_PUBLIC_API_URL=http://localhost:3000`

@@ -21,8 +21,10 @@ NestJS 11, Clean Architecture, Swagger, GitHub CLI, GitHub Advisories API, OpenS
 
 ## Ao modificar
 
-1. Atualizar Swagger e DTOs
-2. Manter threat intel sincronizado (`ThreatIntelModule`)
-3. Regenerar relatório: `npm run audit:miasma`
+> Skill obrigatória: `.cursor/skills/change-sync-docs-tests/SKILL.md`
+
+1. Atualizar testes, Swagger, DTOs e docs impactados
+2. Atualizar collections Postman/Insomnia se rotas mudarem
+3. Rodar `npm test` antes de concluir
 
 **Autor:** Francisco Stanley Rodrigues Albuquerque

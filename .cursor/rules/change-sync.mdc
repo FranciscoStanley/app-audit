@@ -1,0 +1,22 @@
+---
+description: Sincronizar testes, Swagger e documentação ao alterar funcionalidades
+alwaysApply: true
+---
+
+# Change Sync — Testes, Swagger e Docs
+
+> Skill: `.cursor/skills/change-sync-docs-tests/SKILL.md`
+
+Ao **adicionar, alterar ou remover** funcionalidade, avalie e atualize o que for impactado:
+
+| Mudança | Atualizar |
+|---------|-----------|
+| Endpoint / DTO / RBAC | Swagger, `docs/api.md`, collections Postman/Insomnia, testes |
+| Use case / scanner / entidade | Testes unitários, `docs/technical.md` ou `architecture.md` se relevante |
+| UI / fluxo frontend | Testes Vitest, skill de frontend se padrão mudou |
+| Auth / papéis | `docs/api.md`, `app-audit-auth-rbac`, collections |
+| Docker / env / deploy | `docs/deployment.md`, `.env*.example`, `docker-compose.yml` |
+
+**Antes de concluir:** `npm test` (raiz) e revisar checklist da skill.
+
+**Autor:** Francisco Stanley Rodrigues Albuquerque

@@ -41,11 +41,27 @@ npm run users:create -- \
 ## Docker Compose
 
 ```bash
-cp .env.production.example .env
-# Edite .env com valores reais
+cp .env.docker.example .env
+# Edite .env: JWT_SECRET, ADMIN_PASSWORD, GITHUB_TOKEN
 
-docker compose up -d --build
+npm run docker:up
+# ou: docker compose up -d --build
 ```
+
+| Serviço | URL |
+|---------|-----|
+| Frontend | http://localhost:3001 |
+| API | http://localhost:3000 |
+| Health | http://localhost:3000/health |
+
+Comandos úteis:
+
+```bash
+npm run docker:logs    # acompanhar logs
+npm run docker:down    # parar containers
+```
+
+O volume `app-audit-data` persiste `data/users.json` e relatórios de auditoria.
 
 ## Sem Docker
 

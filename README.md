@@ -36,15 +36,20 @@ npm run dev
 | Swagger | http://localhost:3000/api/docs (dev) |
 | Frontend | http://localhost:3001 |
 
-## Produção
-
-Consulte [docs/deployment.md](./docs/deployment.md).
+## Docker (produção local)
 
 ```bash
-cp .env.production.example .env
-# Preencha JWT_SECRET, ADMIN_*, GITHUB_TOKEN, CORS_ORIGIN
-docker compose up -d --build
+cp .env.docker.example .env
+# Preencha JWT_SECRET, ADMIN_PASSWORD, GITHUB_TOKEN
+npm run docker:up
 ```
+
+| Serviço | URL |
+|---------|-----|
+| Frontend | http://localhost:3001 |
+| API | http://localhost:3000 |
+
+Detalhes: [docs/deployment.md](./docs/deployment.md)
 
 ## Usuários
 
