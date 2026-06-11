@@ -1,27 +1,48 @@
 {
-  // Auto-approve desenvolvimento — commits/push permanecem bloqueados (ver hooks + skill auto-dev-approve)
+  // Auto-approve desenvolvimento — commits/push bloqueados via hooks
   // Docs: https://cursor.com/docs/reference/permissions
+  // Run Mode: Cursor Settings → Agent → Run Everything (recomendado)
 
   "mcpAllowlist": ["*:*"],
 
   "terminalAllowlist": [
+    "cd",
+    "Set-Location",
+    "powershell",
+    "pwsh",
+    "cmd",
+    "docker",
+    "docker compose",
     "npm",
     "npx",
     "node",
-    "docker",
-    "docker compose",
-    "gh api",
-    "gh browse",
-    "gh status",
-    "gh pr",
-    "gh issue",
-    "gh repo",
-    "playwright",
     "nest",
+    "next",
     "vitest",
     "jest",
+    "eslint",
+    "prettier",
+    "concurrently",
+    "playwright",
     "curl",
+    "wget",
+    "Invoke-RestMethod",
+    "Invoke-WebRequest",
+    "Write-Host",
+    "Start-Process",
+    "Start-Sleep",
+    "mkdir",
+    "copy",
+    "cp",
+    "mv",
+    "type",
+    "cat",
+    "Get-Content",
+    "Select-String",
+    "findstr",
+    "where",
     "openssl",
+    "gh",
     "git status",
     "git diff",
     "git log",
@@ -31,19 +52,23 @@
     "git check-ignore",
     "git ls-files",
     "git rev-parse",
-    "git describe"
+    "git describe",
+    "git fetch",
+    "git pull"
   ],
 
   "autoRun": {
     "allow_instructions": [
-      "Auto-aprovar comandos de desenvolvimento: npm install, npm run build, npm test, npm run dev, docker compose, nest, next, playwright, vitest, jest, gh api read-only.",
-      "Auto-aprovar leituras Git: status, diff, log, branch, check-ignore, ls-files.",
-      "Auto-aprovar edição de arquivos, instalação de dependências e execução de testes durante implementações."
+      "Auto-aprovar todos os comandos de desenvolvimento: npm, docker compose (incluindo stop/up/build), build, testes, lint, nest, next, playwright, curl, PowerShell e comandos compostos com cd.",
+      "Auto-aprovar edição e criação de arquivos no workspace durante implementações.",
+      "Auto-aprovar todas as ferramentas MCP.",
+      "Na revisão de alterações do agente, aceitar sempre Keep All / aplicar todas as mudanças sem pedir confirmação por arquivo.",
+      "Auto-aprovar leituras Git: status, diff, log, branch, fetch, pull."
     ],
     "block_instructions": [
-      "Nunca auto-executar git commit, git push, git add ou qualquer publicação no remoto sem autorização explícita do usuário.",
+      "Nunca auto-executar git commit, git push, git add ou publicação no remoto sem pedido explícito do usuário.",
       "Nunca auto-executar git reset --hard, push --force, clean -fd ou comandos destrutivos.",
-      "Nunca commitar arquivos .env, secrets ou data/ mesmo se o usuário pedir sem revisar."
+      "Nunca commitar .env, secrets ou data/ sem revisão explícita."
     ]
   }
 }

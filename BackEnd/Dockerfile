@@ -1,5 +1,6 @@
 FROM node:22-bookworm-slim AS builder
 WORKDIR /app
+ENV PUPPETEER_SKIP_DOWNLOAD=true
 COPY package.json package-lock.json* ./
 RUN npm install
 COPY . .

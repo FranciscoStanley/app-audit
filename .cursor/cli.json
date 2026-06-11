@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": ["Shell(*)", "Mcp(*:*)", "Write(*)", "Read(*)", "Task(*)"],
+    "deny": [
+      "Shell(git commit*)",
+      "Shell(git push*)",
+      "Shell(git add*)",
+      "Shell(git reset --hard*)",
+      "Shell(git push --force*)"
+    ]
+  }
+}

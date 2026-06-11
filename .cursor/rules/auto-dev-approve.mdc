@@ -7,7 +7,9 @@ alwaysApply: true
 
 > Skill: `.cursor/skills/auto-dev-approve/SKILL.md`
 
-- **Auto-aprovar** durante implementações: npm, docker, testes, build, MCP, edição de código.
+- **Auto-aprovar** durante implementações: npm, docker compose, testes, build, MCP, terminal, edição de código.
+- **Revisão:** sempre **Keep All** — aplicar todas as alterações do agente sem pedir confirmação por arquivo.
+- **Run Mode:** preferir Run Everything em Cursor Settings → Agent (allowlists em `.cursor/permissions.json`).
 - **Nunca** `git commit`, `git push` ou `git add` sem o usuário pedir explicitamente.
 - **Nunca** commitar `.env`, `data/` ou secrets.
 - Ao concluir tarefas: resumir alterações; deixar commit para o usuário.
