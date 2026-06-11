@@ -36,6 +36,10 @@ npm run dev
 | Swagger | http://localhost:3000/api/docs (dev) |
 | Frontend | http://localhost:3001 |
 
+## Telas
+
+Screenshots das interfaces em [docs/screenshots.md](./docs/screenshots.md).
+
 ## Docker (produção local)
 
 ```bash

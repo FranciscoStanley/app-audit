@@ -8,6 +8,8 @@ import { UsersService } from '../infrastructure/auth/users.service';
 import { AuthController } from '../presentation/auth/auth.controller';
 import { AuthService } from '../application/use-cases/auth.service';
 import { GitHubAuthUseCase } from '../application/use-cases/github-auth.use-case';
+import { GitHubConsentUseCase } from '../application/use-cases/github-consent.use-case';
+import { ConsentStore } from '../infrastructure/auth/consent.store';
 import { GitHubTokenResolverService } from '../application/use-cases/github-token-resolver.service';
 import { GitHubConnectionStore } from '../infrastructure/auth/github-connection.store';
 import { GitHubOAuthService } from '../infrastructure/auth/github-oauth.service';
@@ -31,9 +33,11 @@ import { RolesGuard } from '../infrastructure/auth/roles.guard';
   providers: [
     AuthService,
     GitHubAuthUseCase,
+    GitHubConsentUseCase,
     GitHubTokenResolverService,
     GitHubOAuthService,
     OAuthCodeStore,
+    ConsentStore,
     GitHubConnectionStore,
     UsersService,
     UserStore,

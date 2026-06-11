@@ -95,20 +95,12 @@ const mockReportsList = [
   {
     id: AUDIT_ID,
     createdAt: '2026-06-10T14:30:00.000Z',
-    report: {
-      verdict: 'affected',
-      githubUsername: 'demo-user',
-      totalVulnerabilities: 7,
-    },
+    report: mockReport,
   },
   {
     id: 'screenshot-demo-002',
     createdAt: '2026-06-03T09:15:00.000Z',
-    report: {
-      verdict: 'not_affected',
-      githubUsername: 'demo-user',
-      totalVulnerabilities: 0,
-    },
+    report: { ...mockReport, verdict: 'not_affected', totalVulnerabilities: 0 },
   },
 ];
 
@@ -194,29 +186,25 @@ async function setupApiMocks(context) {
   });
 }
 
-function buildStorageState() {
-  return {
-    origins: [
-      {
-        origin: BASE_URL.replace(/\/$/, ''),
-        localStorage: [
-          {
-            name: 'app-audit-auth',
-            value: JSON.stringify({
-              state: { token: 'screenshot-demo-token', user: mockUser },
-              version: 0,
-            }),
-          },
-        ],
-      },
-    ],
-  };
+const authStorageValue = JSON.stringify({
+  state: { token: 'screenshot-demo-token', user: mockUser },
+  version: 0,
+});
+
+async function seedAuth(page) {
+  await page.goto(`${BASE_URL}/login`, { waitUntil: 'domcontentloaded' });
+  await page.evaluate((value) => {
+    localStorage.setItem('app-audit-auth', value);
+  }, authStorageValue);
 }
 
-async function capture(page, name, path, { waitFor } = {}) {
+async function capture(page, name, path, { waitFor, waitForExact } = {}) {
   await page.goto(`${BASE_URL}${path}`, { waitUntil: 'networkidle' });
   if (waitFor) {
-    await page.getByRole('heading', { name: waitFor }).waitFor({ timeout: 15_000 });
+    await page
+      .getByRole('heading', { name: waitFor, exact: waitForExact ?? false })
+      .first()
+      .waitFor({ timeout: 15_000 });
   }
   await page.waitForTimeout(400);
   await page.screenshot({ path: resolve(OUT_DIR, `${name}.png`) });
@@ -241,17 +229,17 @@ async function main() {
   await loginContext.close();
 
   // —— Telas autenticadas ——
-  const authContext = await browser.newContext({
-    viewport: VIEWPORT,
-    colorScheme: 'dark',
-    storageState: buildStorageState(),
-  });
+  const authContext = await browser.newContext({ viewport: VIEWPORT, colorScheme: 'dark' });
   await setupApiMocks(authContext);
   const page = await authContext.newPage();
+  await seedAuth(page);
 
   await capture(page, '02-dashboard', '/dashboard', { waitFor: 'Dashboard' });
   await capture(page, '03-auditorias', '/dashboard/audits', { waitFor: 'Auditorias' });
-  await capture(page, '04-detalhe-auditoria', `/dashboard/audits/${AUDIT_ID}`, { waitFor: 'Auditoria' });
+  await capture(page, '04-detalhe-auditoria', `/dashboard/audits/${AUDIT_ID}`, {
+    waitFor: 'Auditoria',
+    waitForExact: true,
+  });
   await capture(page, '05-vulnerabilidades', '/dashboard/vulnerabilities', { waitFor: 'Vulnerabilidades' });
   await capture(page, '06-threat-intel', '/dashboard/threat-intel', { waitFor: 'Threat Intelligence' });
 

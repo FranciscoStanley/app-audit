@@ -18,7 +18,8 @@
     "docker:down": "docker compose down",
     "docker:logs": "docker compose logs -f",
     "security:scan": "node scripts/check-secrets.mjs",
-    "docs:screenshots": "node scripts/capture-screenshots.mjs"
+    "docs:screenshots": "node scripts/capture-screenshots.mjs",
+    "setup:oauth": "node scripts/setup-github-oauth.mjs"
   },
   "devDependencies": {
     "concurrently": "^9.2.1",

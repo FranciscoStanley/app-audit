@@ -52,8 +52,34 @@ export interface GitHubStatus {
   connectedAt: string | null;
 }
 
+export interface GitHubConsentInfo {
+  policyVersion: string;
+  controllerName: string;
+  contactEmail: string;
+  scopes: Array<{ scope: string; title: string; description: string }>;
+  purposes: string[];
+  dataSubjectRights: string[];
+  retentionSummary: string;
+  thirdParties: Array<{ name: string; purpose: string }>;
+  legalBasis: string;
+}
+
 export const api = {
-  githubLoginUrl: () => `${API_URL}/auth/github`,
+  githubConsentInfo: () => request<GitHubConsentInfo>('/auth/github/consent'),
+
+  acceptGitHubConsent: (body: {
+    termsAccepted: boolean;
+    privacyAccepted: boolean;
+    dataProcessingAccepted: boolean;
+    scopesAcknowledged: boolean;
+  }) =>
+    request<{ consentId: string; policyVersion: string; authorizeUrl: string }>(
+      '/auth/github/consent/accept',
+      { method: 'POST', body: JSON.stringify(body) },
+    ),
+
+  disconnectGitHub: (token: string) =>
+    request<{ disconnected: boolean; message: string }>('/auth/github/disconnect', { method: 'DELETE' }, token),
 
   githubOAuthEnabled: async () => {
     try {

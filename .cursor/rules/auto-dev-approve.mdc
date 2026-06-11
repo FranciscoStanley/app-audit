@@ -1,0 +1,15 @@
+---
+description: Auto-aprovar dev/MCP/terminal; commits e push sempre manuais
+alwaysApply: true
+---
+
+# Auto-dev-approve
+
+> Skill: `.cursor/skills/auto-dev-approve/SKILL.md`
+
+- **Auto-aprovar** durante implementações: npm, docker, testes, build, MCP, edição de código.
+- **Nunca** `git commit`, `git push` ou `git add` sem o usuário pedir explicitamente.
+- **Nunca** commitar `.env`, `data/` ou secrets.
+- Ao concluir tarefas: resumir alterações; deixar commit para o usuário.
+
+Allowlists: `.cursor/permissions.json` · Hook: `.cursor/hooks/block-git-publish.mjs`

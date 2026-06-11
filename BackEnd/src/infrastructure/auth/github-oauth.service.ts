@@ -32,13 +32,20 @@ export class GitHubOAuthService {
     );
   }
 
-  buildAuthorizeUrl(): string {
+  buildAuthorizeUrl(consentId: string): string {
     if (!this.isConfigured()) {
       throw new BadRequestException('GitHub OAuth não configurado no servidor');
     }
+    if (!consentId?.trim()) {
+      throw new BadRequestException('Consentimento LGPD obrigatório antes do OAuth GitHub');
+    }
 
     const state = this.jwt.sign(
-      { purpose: 'github_oauth', nonce: randomBytes(16).toString('hex') },
+      {
+        purpose: 'github_oauth',
+        consentId: consentId.trim(),
+        nonce: randomBytes(16).toString('hex'),
+      },
       { expiresIn: '10m' },
     );
 
@@ -52,10 +59,11 @@ export class GitHubOAuthService {
     return `${GITHUB_AUTHORIZE}?${params.toString()}`;
   }
 
-  validateState(state: string): void {
+  validateState(state: string): string {
     try {
-      const payload = this.jwt.verify<{ purpose: string }>(state);
-      if (payload.purpose !== 'github_oauth') throw new Error('invalid');
+      const payload = this.jwt.verify<{ purpose: string; consentId?: string }>(state);
+      if (payload.purpose !== 'github_oauth' || !payload.consentId) throw new Error('invalid');
+      return payload.consentId;
     } catch {
       throw new UnauthorizedException('State OAuth inválido ou expirado');
     }

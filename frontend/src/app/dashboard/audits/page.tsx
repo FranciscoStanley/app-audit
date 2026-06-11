@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Play, ExternalLink, AlertTriangle } from 'lucide-react';
 import { GitHubIcon } from '@/components/icons/github-icon';
+import { GitHubOAuthConsentModal } from '@/components/auth/github-oauth-consent-modal';
 import { api, type GitHubStatus } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth-store';
 import { Button } from '@/components/ui/button';
@@ -18,6 +19,8 @@ export default function AuditsPage() {
   const [running, setRunning] = useState(false);
   const [github, setGithub] = useState<GitHubStatus | null>(null);
   const [auditError, setAuditError] = useState('');
+  const [consentOpen, setConsentOpen] = useState(false);
+  const [disconnecting, setDisconnecting] = useState(false);
 
   async function load() {
     if (!token) return;
@@ -44,8 +47,28 @@ export default function AuditsPage() {
     }
   }
 
+  async function disconnectGitHub() {
+    if (!token) return;
+    setDisconnecting(true);
+    try {
+      await api.disconnectGitHub(token);
+      setGithub((g) => (g ? { ...g, connected: false, githubUsername: null } : g));
+    } finally {
+      setDisconnecting(false);
+    }
+  }
+
   return (
     <div className="space-y-6">
+      <GitHubOAuthConsentModal
+        open={consentOpen}
+        onClose={() => setConsentOpen(false)}
+        onAccepted={(url) => {
+          setConsentOpen(false);
+          window.location.href = url;
+        }}
+      />
+
       {github && !github.connected && github.enabled && (
         <Card>
           <CardContent className="flex flex-wrap items-center justify-between gap-4 py-4">
@@ -58,20 +81,21 @@ export default function AuditsPage() {
                 </p>
               </div>
             </div>
-            <a href={api.githubLoginUrl()}>
-              <Button variant="secondary">
-                <GitHubIcon className="h-4 w-4" />
-                Conectar GitHub
-              </Button>
-            </a>
+            <Button variant="secondary" onClick={() => setConsentOpen(true)}>
+              <GitHubIcon className="h-4 w-4" />
+              Conectar GitHub
+            </Button>
           </CardContent>
         </Card>
       )}
 
       {github?.connected && (
-        <p className="text-sm text-emerald-400">
-          GitHub conectado como @{github.githubUsername}
-        </p>
+        <div className="flex flex-wrap items-center gap-3">
+          <p className="text-sm text-emerald-400">GitHub conectado como @{github.githubUsername}</p>
+          <Button variant="ghost" loading={disconnecting} onClick={disconnectGitHub}>
+            Desconectar (revogar consentimento)
+          </Button>
+        </div>
       )}
 
       {auditError && <p className="text-sm text-red-400">{auditError}</p>}

@@ -47,9 +47,12 @@ Status da sincronização com GitHub Advisories e OpenSourceMalware.
 Com o frontend rodando localmente:
 
 ```bash
-npm run dev -w frontend
+# Build de produção recomendado (reidratação de auth mais estável)
+npm run build -w frontend
+npx next start -p 3002 -w frontend
+
 # Em outro terminal:
-npm run docs:screenshots
+SCREENSHOT_BASE_URL=http://localhost:3002 npm run docs:screenshots
 ```
 
 Os arquivos PNG são gravados em `docs/screenshots/`.

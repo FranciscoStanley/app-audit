@@ -49,9 +49,14 @@ export function useAuthHydrated(): boolean {
 
   useEffect(() => {
     const unsub = useAuthStore.persist.onFinishHydration(() => setHydrated(true));
-    void useAuthStore.persist.rehydrate().then(() => {
-      if (useAuthStore.persist.hasHydrated()) setHydrated(true);
-    });
+    const result = useAuthStore.persist.rehydrate();
+    if (result instanceof Promise) {
+      void result.then(() => {
+        if (useAuthStore.persist.hasHydrated()) setHydrated(true);
+      });
+    } else if (useAuthStore.persist.hasHydrated()) {
+      setHydrated(true);
+    }
     return unsub;
   }, []);
 

@@ -12,6 +12,7 @@
 | [Referência da API](./api.md) | Contratos HTTP detalhados |
 | [Guia de desenvolvimento](./development.md) | Setup, estrutura, troubleshooting |
 | [Deploy produção](./deployment.md) | Docker, checklist, usuários |
+| [GitHub OAuth](./github-oauth-setup.md) | Login com GitHub (app 3659122) |
 | [Collections](./collections/) | Postman e Insomnia |
 
 ## Collections API

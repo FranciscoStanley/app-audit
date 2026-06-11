@@ -1,0 +1,49 @@
+{
+  // Auto-approve desenvolvimento — commits/push permanecem bloqueados (ver hooks + skill auto-dev-approve)
+  // Docs: https://cursor.com/docs/reference/permissions
+
+  "mcpAllowlist": ["*:*"],
+
+  "terminalAllowlist": [
+    "npm",
+    "npx",
+    "node",
+    "docker",
+    "docker compose",
+    "gh api",
+    "gh browse",
+    "gh status",
+    "gh pr",
+    "gh issue",
+    "gh repo",
+    "playwright",
+    "nest",
+    "vitest",
+    "jest",
+    "curl",
+    "openssl",
+    "git status",
+    "git diff",
+    "git log",
+    "git branch",
+    "git remote",
+    "git show",
+    "git check-ignore",
+    "git ls-files",
+    "git rev-parse",
+    "git describe"
+  ],
+
+  "autoRun": {
+    "allow_instructions": [
+      "Auto-aprovar comandos de desenvolvimento: npm install, npm run build, npm test, npm run dev, docker compose, nest, next, playwright, vitest, jest, gh api read-only.",
+      "Auto-aprovar leituras Git: status, diff, log, branch, check-ignore, ls-files.",
+      "Auto-aprovar edição de arquivos, instalação de dependências e execução de testes durante implementações."
+    ],
+    "block_instructions": [
+      "Nunca auto-executar git commit, git push, git add ou qualquer publicação no remoto sem autorização explícita do usuário.",
+      "Nunca auto-executar git reset --hard, push --force, clean -fd ou comandos destrutivos.",
+      "Nunca commitar arquivos .env, secrets ou data/ mesmo se o usuário pedir sem revisar."
+    ]
+  }
+}

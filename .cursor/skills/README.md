@@ -8,6 +8,7 @@
 | [app-audit-auth-rbac](./app-audit-auth-rbac/SKILL.md) | JWT + papéis |
 | [app-audit-security-scan](./app-audit-security-scan/SKILL.md) | Scanners e remediação |
 | [change-sync-docs-tests](./change-sync-docs-tests/SKILL.md) | **Sincronizar testes, Swagger e docs** |
+| [auto-dev-approve](./auto-dev-approve/SKILL.md) | **Auto-aprovar dev; commits manuais** |
 
 **Autor:** Francisco Stanley Rodrigues Albuquerque
 

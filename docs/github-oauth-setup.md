@@ -1,0 +1,64 @@
+# GitHub OAuth — app-audit
+
+**App:** [settings/applications/3659122](https://github.com/settings/applications/3659122)  
+**Autor:** Francisco Stanley Rodrigues Albuquerque
+
+## Valores no GitHub (Developer Settings)
+
+| Campo | Valor |
+|-------|--------|
+| Application name | `app-audit` |
+| Homepage URL | `http://localhost:3001` |
+| Authorization callback URL | `http://localhost:3000/auth/github/callback` |
+| Device Flow | Desabilitado (opcional) |
+
+> A Homepage pode ser `http://localhost:3001` (frontend). O callback **deve** apontar para a API (`:3000`).
+
+## Após registrar / atualizar o app
+
+1. Abra [OAuth App settings](https://github.com/settings/applications/3659122)
+2. Copie o **Client ID**
+3. Clique **Generate a new client secret** e copie o secret (exibido uma vez)
+4. Configure localmente:
+
+```powershell
+$env:GITHUB_OAUTH_CLIENT_ID="seu_client_id"
+$env:GITHUB_OAUTH_CLIENT_SECRET="seu_client_secret"
+node scripts/setup-github-oauth.mjs
+```
+
+5. Reinicie o BackEnd (`npm run dev` ou Docker)
+
+## Variáveis
+
+```env
+GITHUB_OAUTH_CLIENT_ID=
+GITHUB_OAUTH_CLIENT_SECRET=
+GITHUB_OAUTH_CALLBACK_URL=http://localhost:3000/auth/github/callback
+FRONTEND_URL=http://localhost:3001
+```
+
+## Consentimento LGPD (obrigatório)
+
+Antes do redirect ao GitHub, o usuário deve:
+
+1. Ler permissões, finalidades e direitos do titular
+2. Aceitar Termo de Uso, Política de Privacidade, tratamento de dados e escopos OAuth
+3. Clicar **Aceito e continuar** ou **Não aceito** (permanece no login por e-mail)
+
+O aceite é registrado em `data/consents.json` (não versionado) com IP, user-agent e versão da política.
+
+Revogação: `DELETE /auth/github/disconnect` ou botão **Desconectar** na página de Auditorias.
+
+## Scopes solicitados
+
+`read:user`, `user:email`, `repo` — necessários para auditar repositórios públicos e privados.
+
+## Produção
+
+Atualize callback e URLs para o domínio real:
+
+- `GITHUB_OAUTH_CALLBACK_URL=https://api.seudominio.com/auth/github/callback`
+- `FRONTEND_URL=https://audit.seudominio.com`
+
+E registre as mesmas URLs no OAuth App no GitHub.

@@ -4,6 +4,7 @@ import { GitHubOAuthService } from '../../infrastructure/auth/github-oauth.servi
 import { OAuthCodeStore } from '../../infrastructure/auth/oauth-code.store';
 import { UsersService } from '../../infrastructure/auth/users.service';
 import { AuthService } from './auth.service';
+import { GitHubConsentUseCase } from './github-consent.use-case';
 
 @Injectable()
 export class GitHubAuthUseCase {
@@ -13,11 +14,8 @@ export class GitHubAuthUseCase {
     private readonly connections: GitHubConnectionStore,
     private readonly oauthCodes: OAuthCodeStore,
     private readonly auth: AuthService,
+    private readonly consent: GitHubConsentUseCase,
   ) {}
-
-  getAuthorizeUrl(): string {
-    return this.oauth.buildAuthorizeUrl();
-  }
 
   isEnabled(): boolean {
     return this.oauth.isConfigured();
@@ -25,7 +23,8 @@ export class GitHubAuthUseCase {
 
   async handleCallback(code: string, state: string) {
     if (!code) throw new BadRequestException('Código OAuth ausente');
-    this.oauth.validateState(state);
+    const consentId = this.oauth.validateState(state);
+    await this.consent.assertConsentForCallback(consentId);
 
     const { accessToken, profile } = await this.oauth.exchangeCode(code);
     const user = await this.users.upsertFromGitHub({
@@ -41,10 +40,17 @@ export class GitHubAuthUseCase {
       accessToken,
     });
 
+    await this.consent.completeConsent(consentId, user.id, profile.id);
+
     return this.auth.buildAuthResponse(user, {
       githubConnected: true,
       githubUsername: profile.login,
     });
+  }
+
+  async disconnectGitHub(userId: string): Promise<void> {
+    await this.connections.removeConnection(userId);
+    await this.consent.revokeConsentForUser(userId);
   }
 
   async getGitHubStatus(userId: string) {

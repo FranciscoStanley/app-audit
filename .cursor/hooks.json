@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "hooks": {
+    "beforeShellExecution": [
+      {
+        "command": "node .cursor/hooks/block-git-publish.mjs",
+        "matcher": "git\\s+(commit|push|add|restore|reset|clean)",
+        "failClosed": false
+      }
+    ]
+  }
+}

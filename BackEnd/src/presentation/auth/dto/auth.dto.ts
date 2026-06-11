@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsEmail, IsString, MaxLength, MinLength } from 'class-validator';
+import { IsBoolean, IsEmail, IsString, MaxLength, MinLength } from 'class-validator';
 
 export class LoginDto {
   @ApiProperty({ example: 'admin@empresa.com' })
@@ -11,6 +11,24 @@ export class LoginDto {
   @MinLength(8)
   @MaxLength(128)
   password!: string;
+}
+
+export class GitHubConsentAcceptDto {
+  @ApiProperty({ description: 'Aceite do Termo de Uso' })
+  @IsBoolean()
+  termsAccepted!: boolean;
+
+  @ApiProperty({ description: 'Aceite da Política de Privacidade' })
+  @IsBoolean()
+  privacyAccepted!: boolean;
+
+  @ApiProperty({ description: 'Consentimento para tratamento de dados (LGPD)' })
+  @IsBoolean()
+  dataProcessingAccepted!: boolean;
+
+  @ApiProperty({ description: 'Ciência das permissões OAuth solicitadas ao GitHub' })
+  @IsBoolean()
+  scopesAcknowledged!: boolean;
 }
 
 export class GitHubExchangeDto {
