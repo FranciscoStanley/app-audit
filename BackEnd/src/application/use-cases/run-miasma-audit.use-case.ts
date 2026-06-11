@@ -1,10 +1,10 @@
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { MIASMA_ATTACK_START_DATE, MIASMA_SOURCE_URL } from '../../domain/constants/miasma-threat.constants';
 import { AuditReport, ImmediateAction, TechnologySummary } from '../../domain/entities/audit-report.entity';
 import { RepositoryScan } from '../../domain/entities/repository-scan.entity';
-import { GITHUB_REPOSITORY_PORT } from '../../domain/ports/github-repository.port';
-import type { GitHubRepositoryPort } from '../../domain/ports/github-repository.port';
-import { ComprehensiveSecurityScanner } from '../../infrastructure/scanners/comprehensive-security.scanner';
+import { GitHubAdapterFactory } from '../../infrastructure/github/github-adapter.factory';
+import { AuditScannerFactory } from '../../infrastructure/scanners/audit-scanner.factory';
+import { GitHubTokenResolverService } from './github-token-resolver.service';
 import { MarkdownReportGenerator } from '../../infrastructure/report/markdown-report.generator';
 import { VulnerabilityReportGenerator } from '../../infrastructure/report/vulnerability-report.generator';
 import { ThreatIntelligenceStore } from '../../infrastructure/threat-intel/threat-intelligence.store';
@@ -12,6 +12,7 @@ import { AuditReportStore } from '../../infrastructure/storage/audit-report.stor
 import { SyncThreatIntelligenceUseCase } from './sync-threat-intelligence.use-case';
 
 export interface RunMiasmaAuditInput {
+  userId: string;
   saveReportPath?: string;
 }
 
@@ -27,8 +28,9 @@ export class RunMiasmaAuditUseCase {
   private readonly logger = new Logger(RunMiasmaAuditUseCase.name);
 
   constructor(
-    @Inject(GITHUB_REPOSITORY_PORT) private readonly github: GitHubRepositoryPort,
-    private readonly scanner: ComprehensiveSecurityScanner,
+    private readonly githubTokens: GitHubTokenResolverService,
+    private readonly githubFactory: GitHubAdapterFactory,
+    private readonly scannerFactory: AuditScannerFactory,
     private readonly reportGenerator: MarkdownReportGenerator,
     private readonly vulnerabilityReportGenerator: VulnerabilityReportGenerator,
     private readonly syncThreatIntel: SyncThreatIntelligenceUseCase,
@@ -36,20 +38,24 @@ export class RunMiasmaAuditUseCase {
     private readonly auditStore: AuditReportStore,
   ) {}
 
-  async execute(input: RunMiasmaAuditInput = {}): Promise<RunMiasmaAuditOutput> {
+  async execute(input: RunMiasmaAuditInput): Promise<RunMiasmaAuditOutput> {
     await this.syncThreatIntel.execute().catch((err) =>
       this.logger.warn(`Sync threat intel ignorado: ${err.message}`),
     );
 
-    const username = await this.github.getAuthenticatedUser();
-    const repositories = await this.github.listRepositories();
+    const token = await this.githubTokens.requireForAudit(input.userId);
+    const github = this.githubFactory.create(token);
+    const scanner = this.scannerFactory.create(github);
+
+    const username = await github.getAuthenticatedUser();
+    const repositories = await github.listRepositories();
 
     this.logger.log(`Auditando ${repositories.length} repositórios de @${username}...`);
 
     const scans: RepositoryScan[] = [];
     for (const repo of repositories) {
       try {
-        const scan = await this.scanner.scan(repo);
+        const scan = await scanner.scan(repo);
         scans.push(scan);
         if (scan.isAffected) {
           this.logger.warn(`AFETADO: ${repo.fullName} (${scan.findings.length} achados)`);

@@ -6,6 +6,10 @@ import { UserStore } from '../infrastructure/auth/user.store';
 import { UsersService } from '../infrastructure/auth/users.service';
 import { AuthController } from '../presentation/auth/auth.controller';
 import { AuthService } from '../application/use-cases/auth.service';
+import { GitHubAuthUseCase } from '../application/use-cases/github-auth.use-case';
+import { GitHubTokenResolverService } from '../application/use-cases/github-token-resolver.service';
+import { GitHubConnectionStore } from '../infrastructure/auth/github-connection.store';
+import { GitHubOAuthService } from '../infrastructure/auth/github-oauth.service';
 import { JwtStrategy } from '../infrastructure/auth/jwt.strategy';
 import { RolesGuard } from '../infrastructure/auth/roles.guard';
 
@@ -22,7 +26,24 @@ import { RolesGuard } from '../infrastructure/auth/roles.guard';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, UsersService, UserStore, JwtStrategy, RolesGuard],
-  exports: [AuthService, JwtModule, RolesGuard, UsersService],
+  providers: [
+    AuthService,
+    GitHubAuthUseCase,
+    GitHubTokenResolverService,
+    GitHubOAuthService,
+    GitHubConnectionStore,
+    UsersService,
+    UserStore,
+    JwtStrategy,
+    RolesGuard,
+  ],
+  exports: [
+    AuthService,
+    GitHubTokenResolverService,
+    GitHubConnectionStore,
+    JwtModule,
+    RolesGuard,
+    UsersService,
+  ],
 })
 export class AuthModule {}

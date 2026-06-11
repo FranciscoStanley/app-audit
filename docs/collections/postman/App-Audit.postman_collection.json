@@ -35,6 +35,18 @@
       "name": "Auth",
       "item": [
         {
+          "name": "GitHub OAuth Config",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "url": "{{baseUrl}}/auth/github/config"
+          }
+        },
+        {
+          "name": "GitHub Status",
+          "request": { "method": "GET", "url": "{{baseUrl}}/auth/github/status" }
+        },
+        {
           "name": "Login",
           "event": [
             {

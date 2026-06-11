@@ -6,7 +6,7 @@
 
 ## Autenticação
 
-Todas as rotas (exceto `/health` e `POST /auth/login`) exigem header:
+Todas as rotas (exceto `/health`, `POST /auth/login`, `GET /auth/github`, `GET /auth/github/callback`, `GET /auth/github/config`) exigem header:
 
 ```
 Authorization: Bearer <accessToken>
@@ -30,9 +30,36 @@ Authorization: Bearer <accessToken>
 }
 ```
 
+### GET /auth/github/config
+
+```json
+{ "enabled": true }
+```
+
+### GET /auth/github
+
+Redireciona ao GitHub OAuth (`read:user`, `user:email`, `repo`).
+
+### GET /auth/github/callback
+
+Callback OAuth — redireciona ao frontend com `?token=<JWT>`.
+
+### GET /auth/github/status
+
+**Auth:** JWT
+
+```json
+{
+  "enabled": true,
+  "connected": true,
+  "githubUsername": "usuario",
+  "connectedAt": "2026-06-10T12:00:00.000Z"
+}
+```
+
 ### GET /auth/me
 
-Retorna o perfil do usuário autenticado.
+Retorna o perfil do usuário autenticado (inclui `githubConnected`, `githubUsername`).
 
 ### POST /auth/users
 

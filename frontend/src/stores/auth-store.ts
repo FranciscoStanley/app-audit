@@ -8,6 +8,8 @@ interface User {
   email: string;
   name: string;
   role: string;
+  githubConnected?: boolean;
+  githubUsername?: string;
 }
 
 interface AuthState {

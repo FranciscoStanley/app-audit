@@ -10,6 +10,7 @@ async function main() {
   try {
     const useCase = app.get(RunMiasmaAuditUseCase);
     const result = await useCase.execute({
+      userId: 'cli',
       saveReportPath: 'docs/security/miasma-worm-audit-report.md',
     });
 

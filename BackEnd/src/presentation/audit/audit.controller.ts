@@ -20,6 +20,7 @@ import { RolesGuard } from '../../infrastructure/auth/roles.guard';
 import { PdfReportGenerator } from '../../infrastructure/report/pdf-report.generator';
 import { VulnerabilityReportGenerator } from '../../infrastructure/report/vulnerability-report.generator';
 import { AuditReportStore } from '../../infrastructure/storage/audit-report.store';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { Permissions } from '../auth/decorators/permissions.decorator';
 import { AuditRunResponseDto } from './dto/audit-report-response.dto';
 
@@ -41,9 +42,13 @@ export class AuditController {
   @ApiOperation({ summary: 'Executar auditoria completa de segurança' })
   @ApiQuery({ name: 'save', required: false, type: Boolean })
   @ApiResponse({ status: 200, type: AuditRunResponseDto })
-  async runAudit(@Query('save') save?: string): Promise<AuditRunResponseDto> {
+  async runAudit(
+    @CurrentUser() user: { id: string },
+    @Query('save') save?: string,
+  ): Promise<AuditRunResponseDto> {
     const shouldSave = save === 'true' || save === '1';
     const result = await this.auditUseCase.execute({
+      userId: user.id,
       saveReportPath: shouldSave ? 'docs/security/miasma-worm-audit-report.md' : undefined,
     });
     return { report: result.report, savedTo: result.savedTo, auditId: result.auditId };
@@ -52,8 +57,11 @@ export class AuditController {
   @Post('miasma')
   @Permissions('audit:run')
   @ApiOperation({ summary: 'Alias — executar auditoria Miasma/completa' })
-  async executeMiasmaAudit(@Query('save') save?: string) {
-    return this.runAudit(save);
+  async executeMiasmaAudit(
+    @CurrentUser() user: { id: string },
+    @Query('save') save?: string,
+  ) {
+    return this.runAudit(user, save);
   }
 
   @Get('reports')

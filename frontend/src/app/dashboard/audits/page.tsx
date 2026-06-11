@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Play, ExternalLink } from 'lucide-react';
-import { api } from '@/lib/api';
+import { Play, ExternalLink, Github, AlertTriangle } from 'lucide-react';
+import { api, type GitHubStatus } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth-store';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
@@ -15,6 +15,8 @@ export default function AuditsPage() {
   const canRun = useAuthStore((s) => s.can('audit:run'));
   const [reports, setReports] = useState<Array<{ id: string; createdAt: string; report: { verdict: string; githubUsername: string; totalVulnerabilities: number } }>>([]);
   const [running, setRunning] = useState(false);
+  const [github, setGithub] = useState<GitHubStatus | null>(null);
+  const [auditError, setAuditError] = useState('');
 
   async function load() {
     if (!token) return;
@@ -22,14 +24,20 @@ export default function AuditsPage() {
     setReports(data as typeof reports);
   }
 
-  useEffect(() => { load(); }, [token]);
+  useEffect(() => {
+    load();
+    if (token) api.githubStatus(token).then(setGithub).catch(() => null);
+  }, [token]);
 
   async function runAudit() {
     if (!token) return;
     setRunning(true);
+    setAuditError('');
     try {
       await api.runAudit(token);
       await load();
+    } catch (e) {
+      setAuditError(e instanceof Error ? e.message : 'Falha ao executar auditoria');
     } finally {
       setRunning(false);
     }
@@ -37,6 +45,36 @@ export default function AuditsPage() {
 
   return (
     <div className="space-y-6">
+      {github && !github.connected && github.enabled && (
+        <Card>
+          <CardContent className="flex flex-wrap items-center justify-between gap-4 py-4">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="mt-0.5 h-5 w-5 text-amber-400" />
+              <div>
+                <p className="font-medium text-white">Conecte o GitHub para auditar seus repositórios</p>
+                <p className="text-sm text-slate-400">
+                  O login com GitHub concede acesso a repositórios públicos e privados da sua conta.
+                </p>
+              </div>
+            </div>
+            <a href={api.githubLoginUrl()}>
+              <Button variant="secondary">
+                <Github className="h-4 w-4" />
+                Conectar GitHub
+              </Button>
+            </a>
+          </CardContent>
+        </Card>
+      )}
+
+      {github?.connected && (
+        <p className="text-sm text-emerald-400">
+          GitHub conectado como @{github.githubUsername}
+        </p>
+      )}
+
+      {auditError && <p className="text-sm text-red-400">{auditError}</p>}
+
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-white">Auditorias</h1>

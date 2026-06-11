@@ -1,14 +1,16 @@
-import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Post, Query, Res, UseGuards } from '@nestjs/common';
+import type { Response } from 'express';
 import { Permissions } from './decorators/permissions.decorator';
 import { AuthGuard } from '@nestjs/passport';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { AuthService } from '../../application/use-cases/auth.service';
+import { GitHubAuthUseCase } from '../../application/use-cases/github-auth.use-case';
 import { UsersService } from '../../infrastructure/auth/users.service';
 import { RolesGuard } from '../../infrastructure/auth/roles.guard';
 import { Roles } from './decorators/roles.decorator';
 import { CurrentUser } from './decorators/current-user.decorator';
 import { UserRole } from '../../domain/entities/user.entity';
-import { AuthResponseDto, LoginDto } from './dto/auth.dto';
+import { AuthResponseDto, GitHubStatusDto, LoginDto } from './dto/auth.dto';
 import { CreateUserDto } from './dto/create-user.dto';
 
 @ApiTags('Authentication')
@@ -17,6 +19,7 @@ export class AuthController {
   constructor(
     private readonly authService: AuthService,
     private readonly usersService: UsersService,
+    private readonly githubAuth: GitHubAuthUseCase,
   ) {}
 
   @Post('login')
@@ -24,6 +27,43 @@ export class AuthController {
   @ApiResponse({ status: 200, type: AuthResponseDto })
   login(@Body() dto: LoginDto): Promise<AuthResponseDto> {
     return this.authService.login(dto.email, dto.password);
+  }
+
+  @Get('github/config')
+  @ApiOperation({ summary: 'Verificar se login GitHub OAuth está habilitado' })
+  githubConfig() {
+    return { enabled: this.githubAuth.isEnabled() };
+  }
+
+  @Get('github')
+  @ApiOperation({ summary: 'Iniciar login OAuth com GitHub' })
+  githubLogin(@Res() res: Response) {
+    return res.redirect(this.githubAuth.getAuthorizeUrl());
+  }
+
+  @Get('github/callback')
+  @ApiOperation({ summary: 'Callback OAuth GitHub — redireciona ao frontend com JWT' })
+  async githubCallback(
+    @Query('code') code: string,
+    @Query('state') state: string,
+    @Res() res: Response,
+  ) {
+    const auth = await this.githubAuth.handleCallback(code, state);
+    const redirect = this.githubAuth.getFrontendRedirectUrl(auth.accessToken);
+    return res.redirect(redirect);
+  }
+
+  @Get('github/status')
+  @UseGuards(AuthGuard('jwt'))
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Status da conexão GitHub do usuário' })
+  @ApiResponse({ status: 200, type: GitHubStatusDto })
+  async githubStatus(@CurrentUser() user: { id: string }): Promise<GitHubStatusDto> {
+    const status = await this.githubAuth.getGitHubStatus(user.id);
+    return {
+      enabled: this.githubAuth.isEnabled(),
+      ...status,
+    };
   }
 
   @Get('me')

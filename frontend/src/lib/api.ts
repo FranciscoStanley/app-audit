@@ -1,4 +1,4 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000';
+export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000';
 
 export class ApiError extends Error {
   constructor(
@@ -19,7 +19,16 @@ async function request<T>(path: string, options: RequestInit = {}, token?: strin
   const res = await fetch(`${API_URL}${path}`, { ...options, headers });
   if (!res.ok) {
     const body = await res.text();
-    throw new ApiError(body || res.statusText, res.status);
+    let message = body || res.statusText;
+    try {
+      const json = JSON.parse(body) as { message?: string | string[] };
+      if (json.message) {
+        message = Array.isArray(json.message) ? json.message.join(', ') : json.message;
+      }
+    } catch {
+      // keep raw body
+    }
+    throw new ApiError(message, res.status);
   }
   if (res.headers.get('content-type')?.includes('application/json')) {
     return res.json() as Promise<T>;
@@ -27,15 +36,45 @@ async function request<T>(path: string, options: RequestInit = {}, token?: strin
   return res.text() as unknown as T;
 }
 
+export interface AuthUser {
+  id: string;
+  email: string;
+  name: string;
+  role: string;
+  githubConnected?: boolean;
+  githubUsername?: string;
+}
+
+export interface GitHubStatus {
+  enabled: boolean;
+  connected: boolean;
+  githubUsername: string | null;
+  connectedAt: string | null;
+}
+
 export const api = {
+  githubLoginUrl: () => `${API_URL}/auth/github`,
+
+  githubOAuthEnabled: async () => {
+    try {
+      const res = await fetch(`${API_URL}/auth/github/config`);
+      if (!res.ok) return false;
+      const data = (await res.json()) as { enabled: boolean };
+      return data.enabled;
+    } catch {
+      return false;
+    }
+  },
+
   login: (email: string, password: string) =>
-    request<{ accessToken: string; user: { id: string; email: string; name: string; role: string } }>(
+    request<{ accessToken: string; user: AuthUser }>(
       '/auth/login',
       { method: 'POST', body: JSON.stringify({ email, password }) },
     ),
 
-  me: (token: string) =>
-    request<{ id: string; email: string; name: string; role: string }>('/auth/me', {}, token),
+  me: (token: string) => request<AuthUser>('/auth/me', {}, token),
+
+  githubStatus: (token: string) => request<GitHubStatus>('/auth/github/status', {}, token),
 
   runAudit: (token: string) =>
     request<{ report: unknown; auditId?: string }>('/audit/run?save=true', { method: 'POST' }, token),
