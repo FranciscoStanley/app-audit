@@ -70,8 +70,9 @@ app-audit/
 2. Implementar detecção em `AdditionalSecurityScanner` ou `MiasmaRepositoryScanner`.
 3. Registrar categoria em `finding.factory.ts`.
 4. Adicionar plano de remediação em `RemediationUseCase.buildPlan()`.
-5. Adicionar recomendações em `VulnerabilityReportGenerator`.
-6. Atualizar testes e documentação.
+5. Se envolver dependências: alterações via `RemediationGitWorkspace` + lockfile.
+6. Adicionar recomendações em `VulnerabilityReportGenerator`.
+7. Atualizar testes, Swagger, `docs/api.md` e collections Postman/Insomnia.
 
 ## Skills Cursor
 

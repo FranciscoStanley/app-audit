@@ -45,7 +45,7 @@ npm install -w frontend
 | `CORS_ORIGIN` | Não | Origem do frontend (padrão: http://localhost:3001) |
 | `JWT_SECRET` | Sim (prod) | Segredo para assinar tokens |
 | `JWT_EXPIRES_IN` | Não | Expiração do JWT (padrão: 8h) |
-| `GITHUB_TOKEN` | Sim | Token GitHub para API e advisories |
+| `GITHUB_TOKEN` | Sim | Token GitHub para API, advisories e **remediação** (escopos `repo`, `security_events`) |
 | `OSM_API_TOKEN` | Não | Token OpenSourceMalware |
 | `THREAT_INTEL_REFRESH_HOURS` | Não | Intervalo de sync (padrão: 6) |
 | `THREAT_INTEL_SYNC_ON_STARTUP` | Não | Sync ao iniciar (padrão: true) |
@@ -88,12 +88,25 @@ Base: `http://localhost:3000`
 | GET | `/audit/reports/:id/findings/:findingId/pdf` | JWT | audit:download |
 | GET | `/audit/remediation/:findingId/preview` | JWT | remediation:preview |
 | POST | `/audit/remediation/:findingId/apply` | JWT | remediation:apply |
+| POST | `/audit/reports/:id/remediate-all` | JWT | remediation:apply |
 | GET | `/threat-intel/status` | JWT | threat-intel:read |
 | POST | `/threat-intel/sync` | JWT | threat-intel:sync |
 | GET | `/threat-intel/packages` | JWT | threat-intel:read |
 | GET | `/threat-intel/check` | JWT | threat-intel:read |
 
 Swagger interativo: `http://localhost:3000/api/docs`
+
+## Remediação automática
+
+| Capacidade | Detalhe |
+|------------|---------|
+| Git workspace | Clone shallow → alterações → lockfile → commit único |
+| Lockfiles | pnpm, npm, yarn, pip (`requirements.txt`) |
+| Branch protegida | Fallback automático para Pull Request |
+| Dependabot | Scanner lê alertas abertos; correção atualiza manifesto + lockfile |
+| Em lote | `POST /audit/reports/:id/remediate-all` |
+
+Requisitos no servidor: `git`, `gh` autenticado, `pnpm`/`npm` no PATH (Dockerfile inclui git, gh, pnpm).
 
 ## Usuários
 

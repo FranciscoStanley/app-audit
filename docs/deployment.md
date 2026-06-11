@@ -6,7 +6,7 @@
 
 - [ ] `NODE_ENV=production`
 - [ ] `JWT_SECRET` com 32+ caracteres (`openssl rand -base64 48`)
-- [ ] `GITHUB_TOKEN` com escopos mínimos necessários
+- [ ] `GITHUB_TOKEN` com escopos `repo` e `security_events` (remediação Dependabot)
 - [ ] `CORS_ORIGIN` com URL exata do frontend (sem `*`)
 - [ ] `ADMIN_EMAIL` + `ADMIN_PASSWORD` (12+ chars) ou `data/users.json` pré-populado
 - [ ] `SWAGGER_ENABLED=false` (recomendado)
@@ -64,6 +64,14 @@ npm run docker:down    # parar containers
 ```
 
 O volume `app-audit-data` persiste `data/users.json` e relatórios de auditoria.
+
+## Remediação em produção (Docker)
+
+A imagem `backend` inclui `git`, `gh`, `pnpm` e `python3-pip` para remediação automática (clone, lockfile, PR).
+
+- Configure `GITHUB_TOKEN` com permissão de escrita nos repositórios auditados
+- OAuth do usuário também pode ser usado via conexão GitHub (fluxo login)
+- Workspace temporário: `BackEnd/data/remediation-workspace/` (dentro do volume)
 
 ## Sem Docker
 

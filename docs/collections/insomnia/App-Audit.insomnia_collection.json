@@ -196,6 +196,18 @@
       "parentId": "fld_audit"
     },
     {
+      "_id": "req_remediate_all",
+      "_type": "request",
+      "name": "Remediate All (audit report)",
+      "method": "POST",
+      "url": "{{ _.baseUrl }}/audit/reports/{{ _.auditId }}/remediate-all",
+      "authentication": {
+        "type": "bearer",
+        "token": "{{ _.accessToken }}"
+      },
+      "parentId": "fld_audit"
+    },
+    {
       "_id": "fld_threat",
       "_type": "request_group",
       "name": "Threat Intel",

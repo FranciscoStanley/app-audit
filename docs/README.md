@@ -38,9 +38,9 @@
 |----------------------|------------------|
 | ![Detalhe](./screenshots/04-detalhe-auditoria.png) | ![Vulnerabilidades](./screenshots/05-vulnerabilidades.png) |
 
-| Threat Intelligence |
-|---------------------|
-| ![Threat Intel](./screenshots/06-threat-intel.png) |
+| Remediação automática | Threat Intelligence |
+|-----------------------|---------------------|
+| ![Remediação](./screenshots/07-remediacao.png) | ![Threat Intel](./screenshots/06-threat-intel.png) |
 
 Detalhes e instruções para atualizar as capturas de tela: [screenshots.md](./screenshots.md).
 

@@ -38,9 +38,15 @@ Relatório consolidado em Markdown, download PDF e lista de vulnerabilidades por
 
 ## Vulnerabilidades
 
-Todas as categorias detectadas (Secrets, Supply Chain, CI/CD, etc.) com filtros por categoria.
+Todas as categorias detectadas (Secrets, Supply Chain, CI/CD, Dependabot) com filtros por categoria e botão **Corrigir todas**.
 
 ![Vulnerabilidades](./screenshots/05-vulnerabilidades.png)
+
+## Remediação automática
+
+Plano de remediação, aplicação automática via Git workspace (manifesto + lockfile) e Pull Request quando o branch padrão é protegido.
+
+![Remediação automática](./screenshots/07-remediacao.png)
 
 ## Threat Intelligence
 

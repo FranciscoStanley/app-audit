@@ -3,7 +3,7 @@
 [![Security CI](https://github.com/FranciscoStanley/app-audit/actions/workflows/security.yml/badge.svg)](https://github.com/FranciscoStanley/app-audit/actions/workflows/security.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 
-Plataforma de auditoria de segurança para repositórios GitHub — detecção de malware (Miasma), supply chain, secrets, CI/CD e dependências comprometidas.
+Plataforma de auditoria de segurança para repositórios GitHub — detecção de malware (Miasma), supply chain, secrets, CI/CD, dependências comprometidas e **remediação automática** (Dependabot, lockfile, PR).
 
 **Autor:** Francisco Stanley Rodrigues Albuquerque
 
@@ -138,11 +138,24 @@ Relatório Markdown, download PDF e vulnerabilidades por repositório.
 
 ![Detalhe da auditoria](./docs/screenshots/04-detalhe-auditoria.png)
 
+## Remediação automática
+
+- **Individual:** botão *Resolver* → *Aplicar correção* no card da vulnerabilidade
+- **Em lote:** botão *Corrigir todas (N)* na página Vulnerabilidades
+- **Dependabot:** alertas GitHub detectados na auditoria com tag `[Dependabot]`
+- **PR automático:** quando `main` é branch protegida
+
 ### Vulnerabilidades
 
-Todas as categorias detectadas (Secrets, Supply Chain, CI/CD, etc.) com filtros.
+Todas as categorias detectadas (Secrets, Supply Chain, CI/CD, Dependabot) com filtros e remediação automática.
 
 ![Vulnerabilidades](./docs/screenshots/05-vulnerabilidades.png)
+
+### Remediação automática
+
+Plano de remediação expandido, botão *Corrigir todas* e resultado com passos aplicados / link de PR.
+
+![Remediação automática](./docs/screenshots/07-remediacao.png)
 
 ### Threat Intelligence
 

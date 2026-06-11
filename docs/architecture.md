@@ -35,6 +35,8 @@ flowchart TB
         subgraph Infrastructure["Infrastructure"]
             Scanner["ComprehensiveSecurityScanner"]
             GhCLI["GhCliGitHubAdapter"]
+            RemWorkspace["RemediationGitWorkspace"]
+            RemAdapter["GhCliRemediationAdapter"]
             ThreatStore["ThreatIntelligenceStore"]
             ReportStore["AuditReportStore"]
             PDF["PdfReportGenerator"]
@@ -68,6 +70,10 @@ flowchart TB
     AuthC --> AuthSvc
     AuditC --> RunAudit
     AuditC --> Remediation
+    Remediation --> RemWorkspace
+    Remediation --> RemAdapter
+    RemWorkspace --> GitHub
+    RemAdapter --> GitHub
     AuditC --> ReportStore
     ThreatC --> SyncIntel
     ThreatC --> ThreatStore
@@ -185,6 +191,31 @@ flowchart TB
     AS --> A1["Secrets expostos"]
     AS --> A2["Actions não fixadas"]
     AS --> A3["Dependências vulneráveis"]
+    AS --> A4["Alertas Dependabot (GitHub API)"]
+```
+
+## Fluxo de remediação automática
+
+```mermaid
+sequenceDiagram
+    participant U as Usuário
+    participant F as Frontend
+    participant API as AuditController
+    participant UC as RemediationUseCase
+    participant WS as RemediationGitWorkspace
+    participant GH as GitHub
+
+    U->>F: Aplicar correção / Corrigir todas
+    F->>API: POST /audit/remediation/:id/apply
+    API->>UC: apply(findingId, userId)
+    UC->>WS: clone(owner, repo)
+    UC->>WS: alterações locais (manifest, gitignore, workflows)
+    UC->>WS: regenerateLockfiles(pnpm/npm/yarn)
+    UC->>WS: deliver (push ou PR)
+    WS->>GH: git push / gh pr create
+    UC->>GH: enableDependabot / createSecurityIssue
+    UC-->>F: success + pullRequestUrl?
+    F-->>U: Resultado + link PR
 ```
 
 ## Estrutura de persistência

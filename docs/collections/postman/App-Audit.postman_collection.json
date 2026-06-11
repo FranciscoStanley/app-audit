@@ -175,6 +175,10 @@
         {
           "name": "Remediation Apply",
           "request": { "method": "POST", "url": "{{baseUrl}}/audit/remediation/{{findingId}}/apply" }
+        },
+        {
+          "name": "Remediate All (audit report)",
+          "request": { "method": "POST", "url": "{{baseUrl}}/audit/reports/{{auditId}}/remediate-all" }
         }
       ]
     },

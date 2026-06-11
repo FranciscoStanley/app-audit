@@ -28,19 +28,19 @@ const mockFinding = {
   id: 'finding-secrets-001',
   type: 'exposed_secret',
   severity: 'critical',
-  message: 'Possível AWS Access Key exposta em workflow CI/CD',
-  evidence: '.github/workflows/deploy.yml',
+  message: 'Arquivo sensível exposto no repositório: .npmrc',
+  evidence: '.npmrc',
   category: 'Secrets Exposure',
   remediationAvailable: true,
 };
 
-const mockFinding2 = {
+const mockFindingDependabot = {
   id: 'finding-deps-001',
-  type: 'malicious_dependency',
-  severity: 'high',
-  message: 'Dependência com indicadores de supply chain attack',
-  evidence: 'package-lock.json → suspicious-pkg@1.2.3',
-  category: 'Supply Chain',
+  type: 'vulnerable_dependency',
+  severity: 'critical',
+  message: '[Dependabot] When Vitest UI server is listening, arbitrary file can be read',
+  evidence: 'frontend/package.json|vitest|3.2.4|dependabot-42',
+  category: 'Dependency Vulnerabilities',
   remediationAvailable: true,
 };
 
@@ -64,7 +64,7 @@ const mockReport = {
       fullName: 'demo-user/legacy-app',
       isPrivate: true,
       language: 'JavaScript',
-      findings: [mockFinding2],
+      findings: [mockFindingDependabot],
       vulnerabilityCount: 1,
     },
   ],
@@ -107,14 +107,14 @@ const mockReportsList = [
 
 const mockFindings = [
   { ...mockFinding, repository: 'demo-user/api-gateway', auditId: AUDIT_ID },
-  { ...mockFinding2, repository: 'demo-user/legacy-app', auditId: AUDIT_ID },
+  { ...mockFindingDependabot, repository: 'demo-user/legacy-app', auditId: AUDIT_ID },
   {
     id: 'finding-cicd-001',
-    type: 'unsafe_workflow',
+    type: 'unpinned_action',
     severity: 'medium',
-    message: 'Workflow permite execução de código não confiável em pull_request',
-    category: 'CI/CD',
-    remediationAvailable: false,
+    message: 'GitHub Action referenciada por tag mutável (@v*)',
+    category: 'CI/CD Security',
+    remediationAvailable: true,
     repository: 'demo-user/ci-templates',
     auditId: AUDIT_ID,
   },
@@ -194,6 +194,19 @@ function handleApiRoute(route) {
       connectedAt: '2026-06-10T10:00:00.000Z',
     });
   }
+  if (path === `/audit/remediation/${mockFinding.id}/preview`) {
+    return fulfillJson(route, {
+      findingId: mockFinding.id,
+      repository: 'demo-user/api-gateway',
+      canAutoApply: true,
+      steps: [
+        { order: 1, title: 'Remover arquivo sensível', description: 'Remover .npmrc', automated: true },
+        { order: 2, title: 'Adicionar ao .gitignore', description: 'Proteger .npmrc', automated: true },
+        { order: 3, title: 'Abrir issue de rotação de credenciais', description: 'Rastrear rotação', automated: true },
+      ],
+    });
+  }
+
   if (path === '/audit/reports' && route.request().method() === 'GET') {
     return fulfillJson(route, mockReportsList);
   }
@@ -292,6 +305,16 @@ async function main() {
     waitForExact: true,
   });
   await capture(page, '05-vulnerabilidades', '/dashboard/vulnerabilities', { waitFor: 'Vulnerabilidades' });
+
+  // Remediação: expandir plano no primeiro card com botão Resolver
+  await page.goto(`${BASE_URL}/dashboard/vulnerabilities`, { waitUntil: 'networkidle' });
+  await page.getByRole('button', { name: /Resolver/i }).first().click();
+  await page.waitForTimeout(600);
+  await page.getByRole('button', { name: /Aplicar correção/i }).waitFor({ timeout: 10_000 });
+  await page.waitForTimeout(400);
+  await page.screenshot({ path: resolve(OUT_DIR, '07-remediacao.png') });
+  console.log('  ✓ 07-remediacao.png');
+
   await capture(page, '06-threat-intel', '/dashboard/threat-intel', { waitFor: 'Threat Intelligence' });
 
   await authContext.close();
