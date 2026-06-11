@@ -8,25 +8,84 @@ Plataforma de auditoria de segurança para repositórios GitHub — detecção d
 
 ```mermaid
 flowchart TB
-    subgraph Monorepo["app-audit/"]
-        Root["package.json + node_modules hoisted"]
-        BE["BackEnd :3000"]
-        FE["frontend :3001"]
+    classDef client fill:#1e293b,stroke:#818cf8,color:#f8fafc,stroke-width:2px
+    classDef frontend fill:#3730a3,stroke:#a78bfa,color:#f8fafc,stroke-width:2px
+    classDef backend fill:#075985,stroke:#38bdf8,color:#f8fafc,stroke-width:2px
+    classDef storage fill:#166534,stroke:#4ade80,color:#f8fafc,stroke-width:2px
+    classDef external fill:#9a3412,stroke:#fb923c,color:#f8fafc,stroke-width:2px
+
+    Browser["Navegador"]:::client
+
+    subgraph Monorepo["app-audit/ — monorepo npm workspaces"]
+        direction LR
+
+        subgraph FE["frontend · Next.js :3001"]
+            direction TB
+            FE_UI["App Router · Dashboard"]
+            FE_LGPD["Login · Consentimento LGPD"]
+            FE_UI --- FE_LGPD
+        end
+
+        subgraph BE["BackEnd · NestJS :3000"]
+            direction TB
+            BE_API["REST API · JWT · OAuth"]
+            BE_AUDIT["Motor Miasma · Threat Intel"]
+            BE_API --- BE_AUDIT
+        end
+
+        FE ==>|REST + JWT| BE
     end
-    FE -->|JWT| BE
-    BE --> Data["data/users.json + data/audits/"]
-    BE --> GitHub["GitHub API / gh CLI"]
+
+    subgraph Layer["Persistência e integrações"]
+        direction LR
+        Data["Volume audit-data<br/>users · audits · consents · tokens cifrados"]:::storage
+        GitHub["GitHub OAuth + API"]:::external
+        Intel["OSM · GitHub Advisories"]:::external
+    end
+
+    Browser -->|HTTPS :3001| FE
+    BE --> Data
+    BE_AUDIT --> GitHub
+    BE_AUDIT --> Intel
+
+    class Browser client
+    class FE_UI,FE_LGPD frontend
+    class BE_API,BE_AUDIT backend
 ```
 
-## Início rápido (desenvolvimento)
+Diagrama detalhado (camadas Clean Architecture): [docs/architecture.md](./docs/architecture.md)
+
+## Início rápido (Docker)
+
+```bash
+cp .env.docker.example .env
+# Preencha JWT_SECRET, ADMIN_PASSWORD, GITHUB_TOKEN e OAuth (opcional)
+docker compose up -d --build
+```
+
+| Serviço | URL |
+|---------|-----|
+| Frontend | http://localhost:3001 |
+| API | http://localhost:3000 |
+| Health | http://localhost:3000/health |
+
+Após alterações no código:
+
+```bash
+docker compose stop
+docker compose up -d --build
+```
+
+Atalhos npm: `npm run docker:up` · `npm run docker:stop` · `npm run docker:restart`
+
+Detalhes: [docs/deployment.md](./docs/deployment.md)
+
+## Desenvolvimento local (sem Docker)
 
 ```bash
 npm install
-cd BackEnd
-npm run setup          # gera .env com JWT_SECRET
-# Configure ADMIN_EMAIL e ADMIN_PASSWORD no .env (mín. 12 caracteres)
-# OU: npm run users:create -- --email ... --password ... --name ... --role admin
-cd ..
+cd BackEnd && npm run setup && cd ..
+# Configure ADMIN_EMAIL e ADMIN_PASSWORD no BackEnd/.env
 npm run dev
 ```
 
@@ -39,21 +98,6 @@ npm run dev
 ## Telas
 
 Screenshots das interfaces em [docs/screenshots.md](./docs/screenshots.md).
-
-## Docker (produção local)
-
-```bash
-cp .env.docker.example .env
-# Preencha JWT_SECRET, ADMIN_PASSWORD, GITHUB_TOKEN
-npm run docker:up
-```
-
-| Serviço | URL |
-|---------|-----|
-| Frontend | http://localhost:3001 |
-| API | http://localhost:3000 |
-
-Detalhes: [docs/deployment.md](./docs/deployment.md)
 
 ## Usuários
 

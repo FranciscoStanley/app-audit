@@ -15,6 +15,8 @@
     "test": "npm run test -w BackEnd && npm run test -w frontend",
     "docker:build": "docker compose build",
     "docker:up": "docker compose up -d --build",
+    "docker:stop": "docker compose stop",
+    "docker:restart": "docker compose stop && docker compose up -d --build",
     "docker:down": "docker compose down",
     "docker:logs": "docker compose logs -f",
     "security:scan": "node scripts/check-secrets.mjs",

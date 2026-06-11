@@ -25,6 +25,8 @@ services:
       THREAT_INTEL_REFRESH_HOURS: ${THREAT_INTEL_REFRESH_HOURS:-6}
       THREAT_INTEL_SYNC_ON_STARTUP: ${THREAT_INTEL_SYNC_ON_STARTUP:-true}
       GITHUB_ADVISORY_MAX_PAGES: ${GITHUB_ADVISORY_MAX_PAGES:-10}
+      DATA_CONTROLLER_NAME: ${DATA_CONTROLLER_NAME:-App Audit}
+      PRIVACY_CONTACT_EMAIL: ${PRIVACY_CONTACT_EMAIL:-privacidade@exemplo.com}
     volumes:
       - audit-data:/app/data
     restart: unless-stopped
