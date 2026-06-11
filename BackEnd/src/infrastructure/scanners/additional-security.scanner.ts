@@ -1,6 +1,5 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { ThreatFinding } from '../../domain/entities/repository-scan.entity';
-import { GITHUB_REPOSITORY_PORT } from '../../domain/ports/github-repository.port';
 import type { GitHubRepositoryInfo, GitHubRepositoryPort } from '../../domain/ports/github-repository.port';
 import { ThreatIntelligenceStore } from '../threat-intel/threat-intelligence.store';
 import { createFinding } from './finding.factory';
@@ -27,7 +26,7 @@ const SECRET_PATTERNS = [
 @Injectable()
 export class AdditionalSecurityScanner {
   constructor(
-    @Inject(GITHUB_REPOSITORY_PORT) private readonly github: GitHubRepositoryPort,
+    private readonly github: GitHubRepositoryPort,
     private readonly threatStore: ThreatIntelligenceStore,
   ) {}
 

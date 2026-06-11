@@ -37,7 +37,12 @@ export class UsersService implements OnModuleInit {
     return this.users.get(id);
   }
 
+  async findByGithubId(githubId: string): Promise<User | undefined> {
+    return [...this.users.values()].find((u) => u.githubId === githubId);
+  }
+
   async validatePassword(user: User, password: string): Promise<boolean> {
+    if (!user.passwordHash) return false;
     return bcrypt.compare(password, user.passwordHash);
   }
 
@@ -61,6 +66,7 @@ export class UsersService implements OnModuleInit {
       email,
       name: input.name,
       role: input.role,
+      authProvider: 'local',
       passwordHash: await this.hashPassword(input.password),
     };
 
@@ -95,12 +101,52 @@ export class UsersService implements OnModuleInit {
       email,
       name,
       role: UserRole.ADMIN,
+      authProvider: 'local',
       passwordHash: await this.hashPassword(password),
     };
 
     this.users.set(admin.id, admin);
     await this.persist();
     this.logger.log(`Administrador inicial criado: ${email}`);
+  }
+
+  async upsertFromGitHub(profile: {
+    githubId: string;
+    githubUsername: string;
+    email: string;
+    name: string;
+  }): Promise<User> {
+    const existing =
+      (await this.findByGithubId(profile.githubId)) ??
+      (await this.findByEmail(profile.email));
+
+    if (existing) {
+      const updated: User = {
+        ...existing,
+        name: profile.name || existing.name,
+        githubId: profile.githubId,
+        githubUsername: profile.githubUsername,
+        authProvider: existing.authProvider ?? 'github',
+      };
+      this.users.set(updated.id, updated);
+      await this.persist();
+      return updated;
+    }
+
+    const user: User = {
+      id: randomUUID(),
+      email: profile.email.toLowerCase(),
+      name: profile.name || profile.githubUsername,
+      role: UserRole.AUDITOR,
+      authProvider: 'github',
+      githubId: profile.githubId,
+      githubUsername: profile.githubUsername,
+    };
+
+    this.users.set(user.id, user);
+    await this.persist();
+    this.logger.log(`Usuário GitHub criado: @${profile.githubUsername}`);
+    return user;
   }
 
   private async hashPassword(password: string): Promise<string> {

@@ -13,6 +13,8 @@ const execFileAsync = promisify(execFile);
 export class GhCliGitHubAdapter implements GitHubRepositoryPort {
   private readonly logger = new Logger(GhCliGitHubAdapter.name);
 
+  constructor(private readonly accessToken?: string) {}
+
   async getAuthenticatedUser(): Promise<string> {
     const { stdout } = await this.runGh(['api', 'user', '--jq', '.login']);
     return stdout.trim();
@@ -121,10 +123,15 @@ export class GhCliGitHubAdapter implements GitHubRepositoryPort {
   }
 
   private async runGh(args: string[]): Promise<{ stdout: string; stderr: string }> {
+    const env = { ...process.env };
+    const token = this.accessToken ?? process.env.GITHUB_TOKEN;
+    if (token) env.GITHUB_TOKEN = token;
+
     try {
       return await execFileAsync('gh', args, {
         maxBuffer: 50 * 1024 * 1024,
         windowsHide: true,
+        env,
       });
     } catch (error: unknown) {
       const err = error as { stderr?: string; message?: string };

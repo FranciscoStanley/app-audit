@@ -12,15 +12,44 @@ export class LoginDto {
   password!: string;
 }
 
+export class AuthUserDto {
+  @ApiProperty()
+  id!: string;
+
+  @ApiProperty()
+  email!: string;
+
+  @ApiProperty()
+  name!: string;
+
+  @ApiProperty()
+  role!: string;
+
+  @ApiProperty({ required: false })
+  githubConnected?: boolean;
+
+  @ApiProperty({ required: false })
+  githubUsername?: string;
+}
+
 export class AuthResponseDto {
   @ApiProperty()
   accessToken!: string;
 
+  @ApiProperty({ type: AuthUserDto })
+  user!: AuthUserDto;
+}
+
+export class GitHubStatusDto {
   @ApiProperty()
-  user!: {
-    id: string;
-    email: string;
-    name: string;
-    role: string;
-  };
+  enabled!: boolean;
+
+  @ApiProperty()
+  connected!: boolean;
+
+  @ApiProperty({ nullable: true })
+  githubUsername!: string | null;
+
+  @ApiProperty({ nullable: true })
+  connectedAt!: string | null;
 }

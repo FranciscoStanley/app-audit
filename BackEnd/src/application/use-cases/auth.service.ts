@@ -1,6 +1,6 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { UserRole } from '../../domain/entities/user.entity';
+import { User, UserRole } from '../../domain/entities/user.entity';
 import { UsersService } from '../../infrastructure/auth/users.service';
 
 export interface JwtPayload {
@@ -8,6 +8,17 @@ export interface JwtPayload {
   email: string;
   role: UserRole;
   name: string;
+  githubConnected?: boolean;
+  githubUsername?: string;
+}
+
+export interface AuthUserView {
+  id: string;
+  email: string;
+  name: string;
+  role: UserRole;
+  githubConnected?: boolean;
+  githubUsername?: string;
 }
 
 @Injectable()
@@ -23,22 +34,51 @@ export class AuthService {
       throw new UnauthorizedException('Credenciais inválidas');
     }
 
+    return this.buildAuthResponse(user);
+  }
+
+  buildAuthResponse(
+    user: User,
+    github?: { githubConnected: boolean; githubUsername?: string },
+  ) {
+    const githubConnected =
+      github?.githubConnected ?? Boolean(user.githubId && user.githubUsername);
+    const githubUsername = github?.githubUsername ?? user.githubUsername;
+
     const payload: JwtPayload = {
       sub: user.id,
       email: user.email,
       role: user.role,
       name: user.name,
+      githubConnected,
+      githubUsername,
+    };
+
+    const view: AuthUserView = {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+      githubConnected,
+      githubUsername,
     };
 
     return {
       accessToken: this.jwt.sign(payload),
-      user: { id: user.id, email: user.email, name: user.name, role: user.role },
+      user: view,
     };
   }
 
-  async validatePayload(payload: JwtPayload) {
+  async validatePayload(payload: JwtPayload): Promise<AuthUserView> {
     const user = await this.users.findById(payload.sub);
     if (!user) throw new UnauthorizedException();
-    return { id: user.id, email: user.email, name: user.name, role: user.role };
+    return {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+      githubConnected: Boolean(user.githubId),
+      githubUsername: user.githubUsername,
+    };
   }
 }

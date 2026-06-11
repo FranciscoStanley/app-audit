@@ -1,8 +1,6 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { RepositoryScan, ThreatFinding } from '../../domain/entities/repository-scan.entity';
-import { GITHUB_REPOSITORY_PORT } from '../../domain/ports/github-repository.port';
 import type { GitHubRepositoryInfo, GitHubRepositoryPort } from '../../domain/ports/github-repository.port';
-import { OPEN_SOURCE_MALWARE_PORT } from '../../domain/ports/threat-intelligence.port';
 import type { OpenSourceMalwarePort } from '../../domain/ports/threat-intelligence.port';
 import { ThreatIntelligenceStore } from '../threat-intel/threat-intelligence.store';
 import { createFinding } from './finding.factory';
@@ -10,9 +8,9 @@ import { createFinding } from './finding.factory';
 @Injectable()
 export class MiasmaRepositoryScanner {
   constructor(
-    @Inject(GITHUB_REPOSITORY_PORT) private readonly github: GitHubRepositoryPort,
+    private readonly github: GitHubRepositoryPort,
     private readonly threatStore: ThreatIntelligenceStore,
-    @Inject(OPEN_SOURCE_MALWARE_PORT) private readonly osm: OpenSourceMalwarePort,
+    private readonly osm: OpenSourceMalwarePort,
   ) {}
 
   async scan(repo: GitHubRepositoryInfo): Promise<RepositoryScan> {

@@ -4,10 +4,15 @@ export enum UserRole {
   VIEWER = 'viewer',
 }
 
+export type AuthProvider = 'local' | 'github';
+
 export interface User {
   id: string;
   email: string;
-  passwordHash: string;
+  passwordHash?: string;
   name: string;
   role: UserRole;
+  authProvider?: AuthProvider;
+  githubId?: string;
+  githubUsername?: string;
 }
