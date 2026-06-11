@@ -59,7 +59,10 @@ export default function VulnerabilitiesPage() {
         pullRequests,
       });
     } catch (e) {
-      setBulkResult(e instanceof Error ? e.message : 'Falha na remediação em lote');
+      setBulkResult({
+        message: e instanceof Error ? e.message : 'Falha na remediação em lote',
+        pullRequests: [],
+      });
     } finally {
       setRemediating(false);
     }
