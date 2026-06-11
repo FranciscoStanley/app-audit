@@ -41,6 +41,7 @@ describe('RemediationUseCase', () => {
       | 'regenerateLockfiles'
       | 'deliver'
       | 'cleanup'
+      | 'resolveLatestNpmVersion'
     >
   >;
   let remediationConsent: jest.Mocked<
@@ -74,6 +75,9 @@ describe('RemediationUseCase', () => {
       updatePackageVersion: jest.fn(),
       removePackage: jest.fn(),
       regenerateLockfiles: jest.fn().mockResolvedValue(['pnpm-lock.yaml']),
+      resolveLatestNpmVersion: jest
+        .fn()
+        .mockResolvedValue('^0.15.1'),
       deliver: jest.fn().mockResolvedValue({
         method: 'direct_push',
         branch: 'main',
@@ -220,5 +224,26 @@ describe('RemediationUseCase', () => {
     );
     expect(github.enableDependabotSecurityUpdates).toHaveBeenCalled();
     expect(result.success).toBe(true);
+  });
+
+  it('atualiza dependência 0.x instável para última versão no npm', async () => {
+    auditStore.findFindingById.mockResolvedValue({
+      ...finding,
+      type: 'vulnerable_dependency',
+      message: 'Dependência em versão inicial instável: class-validator@^0.14.0',
+      evidence: 'class-validator@^0.14.0',
+    });
+
+    await useCase.apply('finding-1', 'user-1');
+
+    expect(workspace.resolveLatestNpmVersion).toHaveBeenCalledWith(
+      'class-validator',
+    );
+    expect(workspace.updatePackageVersion).toHaveBeenCalledWith(
+      '/tmp/repo',
+      'package.json',
+      'class-validator',
+      '^0.15.1',
+    );
   });
 });

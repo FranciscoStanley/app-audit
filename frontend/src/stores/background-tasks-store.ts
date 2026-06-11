@@ -6,6 +6,7 @@ import { persist } from 'zustand/middleware';
 import {
   api,
   type BackgroundJobResponse,
+  type RemediationPlan,
   type RemediationResult,
 } from '@/lib/api';
 
@@ -53,7 +54,11 @@ export interface BackgroundTask {
 
 interface BackgroundTasksState {
   tasks: Record<string, BackgroundTask>;
+  /** Planos de remediação já carregados (preview) — sobrevivem à navegação */
+  previewPlans: Record<string, RemediationPlan>;
   upsertTask: (task: BackgroundTask) => void;
+  setPreviewPlan: (findingId: string, plan: RemediationPlan) => void;
+  clearPreviewPlan: (findingId: string) => void;
   completeTask: (id: string, result?: BackgroundTask['result']) => void;
   failTask: (id: string, error: string) => void;
   updateProgress: (id: string, progress: BackgroundTask['progress']) => void;
@@ -277,10 +282,20 @@ export const useBackgroundTasksStore = create<BackgroundTasksState>()(
   persist(
     (set, get) => ({
       tasks: {},
+      previewPlans: {},
       upsertTask: (task) =>
         set((state) => ({
           tasks: { ...state.tasks, [task.id]: task },
         })),
+      setPreviewPlan: (findingId, plan) =>
+        set((state) => ({
+          previewPlans: { ...state.previewPlans, [findingId]: plan },
+        })),
+      clearPreviewPlan: (findingId) =>
+        set((state) => {
+          const { [findingId]: _, ...rest } = state.previewPlans;
+          return { previewPlans: rest };
+        }),
       completeTask: (id, result) =>
         set((state) => {
           const current = state.tasks[id];
@@ -344,6 +359,7 @@ export const useBackgroundTasksStore = create<BackgroundTasksState>()(
       merge: (persisted, current) => {
         const merged = { ...current, ...(persisted as BackgroundTasksState) };
         merged.tasks = normalizeStaleRunningTasks(merged.tasks ?? {});
+        merged.previewPlans = merged.previewPlans ?? {};
         return merged;
       },
     },
@@ -413,6 +429,9 @@ export async function applyRemediationInBackground(
     status: 'running',
     metadata: { findingId, repository },
     startedAt: new Date().toISOString(),
+    error: undefined,
+    result: undefined,
+    completedAt: undefined,
   });
 
   try {

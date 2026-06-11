@@ -22,7 +22,7 @@ vi.mock('@/lib/api', () => ({
 
 describe('background-tasks-store', () => {
   beforeEach(() => {
-    useBackgroundTasksStore.setState({ tasks: {} });
+    useBackgroundTasksStore.setState({ tasks: {}, previewPlans: {} });
   });
 
   it('tracks running and completed audit task', () => {
@@ -87,6 +87,25 @@ describe('background-tasks-store', () => {
     expect(useBackgroundTasksStore.getState().tasks[AUDIT_TASK_ID]?.serverJobId).toBe(
       'server-job-1',
     );
+  });
+
+  it('stores remediation preview plans by finding id', () => {
+    const { setPreviewPlan } = useBackgroundTasksStore.getState();
+    setPreviewPlan('finding-1', {
+      findingId: 'finding-1',
+      repository: 'owner/repo',
+      canAutoApply: true,
+      steps: [
+        {
+          order: 1,
+          title: 'Remover pacote',
+          description: 'axios',
+          automated: true,
+        },
+      ],
+    });
+
+    expect(useBackgroundTasksStore.getState().previewPlans['finding-1']?.steps).toHaveLength(1);
   });
 
   it('dismisses completed tasks', () => {

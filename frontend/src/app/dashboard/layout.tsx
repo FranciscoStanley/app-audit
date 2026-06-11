@@ -5,11 +5,13 @@ import { useRouter } from 'next/navigation';
 import { BackgroundTasksBanner } from '@/components/layout/background-tasks-banner';
 import { Sidebar } from '@/components/layout/sidebar';
 import { useBackgroundJobPolling } from '@/hooks/use-background-job-polling';
+import { useBackgroundTasksHydrated } from '@/stores/background-tasks-store';
 import { useAuthHydrated, useAuthStore } from '@/stores/auth-store';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const hydrated = useAuthHydrated();
+  const tasksHydrated = useBackgroundTasksHydrated();
   const token = useAuthStore((s) => s.token);
   useBackgroundJobPolling();
 
@@ -17,7 +19,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     if (hydrated && !token) router.replace('/login');
   }, [hydrated, token, router]);
 
-  if (!hydrated || !token) return null;
+  if (!hydrated || !tasksHydrated || !token) return null;
 
   return (
     <div className="flex min-h-screen">

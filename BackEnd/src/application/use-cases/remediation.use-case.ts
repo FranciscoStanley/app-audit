@@ -273,8 +273,14 @@ export class RemediationUseCase {
       }
 
       case 'update_dependency': {
-        const { packageName, version, manifestPath } =
+        let { packageName, version, manifestPath } =
           this.parseDependencyEvidence(evidence, message);
+        if (
+          this.isUnstableInitialVersion(version) ||
+          /versão inicial instável/i.test(message)
+        ) {
+          version = await workspace.resolveLatestNpmVersion(packageName);
+        }
         await workspace.updatePackageVersion(
           repoPath,
           manifestPath ?? 'package.json',
@@ -358,6 +364,11 @@ export class RemediationUseCase {
           optionalFailed.length > 0
             ? `Remediação aplicada via PR — ${optionalFailed.length} passo(s) manual(is) pendente(s)`
             : `Remediação aplicada — Pull Request criado: ${delivery.pullRequestUrl}`;
+      } else if (delivery?.method === 'no_changes') {
+        message =
+          optionalFailed.length > 0
+            ? `Repositório já atualizado — ${optionalFailed.length} passo(s) manual(is) pendente(s)`
+            : 'Remediação concluída — repositório já estava atualizado (nenhum commit necessário)';
       } else if (delivery?.lockfilesUpdated?.length) {
         message =
           optionalFailed.length > 0
@@ -680,6 +691,10 @@ export class RemediationUseCase {
       version: 'latest',
       manifestPath: 'package.json',
     };
+  }
+
+  private isUnstableInitialVersion(version: string): boolean {
+    return /^\^?0\.|^~?0\./.test(version.trim());
   }
 
   private extractPackageFromMessage(message?: string): string | null {

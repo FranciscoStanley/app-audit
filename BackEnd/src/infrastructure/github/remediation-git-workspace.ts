@@ -64,6 +64,12 @@ export class RemediationGitWorkspace {
       cwd: repoPath,
     });
 
+    await this.run(
+      'git',
+      ['fetch', 'origin', defaultBranch, '--deepen', '50'],
+      { cwd: repoPath, timeout: 120_000 },
+    ).catch(() => undefined);
+
     return { repoPath, defaultBranch };
   }
 
@@ -155,9 +161,11 @@ export class RemediationGitWorkspace {
       Record<string, string>
     >;
     const version =
-      targetVersion.startsWith('^') || targetVersion.startsWith('~')
-        ? targetVersion
-        : `^${targetVersion.replace(/^[\^~]/, '')}`;
+      targetVersion === 'latest'
+        ? await this.resolveLatestNpmVersion(packageName)
+        : targetVersion.startsWith('^') || targetVersion.startsWith('~')
+          ? targetVersion
+          : `^${targetVersion.replace(/^[\^~]/, '')}`;
 
     let updated = false;
     for (const field of [
@@ -362,6 +370,26 @@ export class RemediationGitWorkspace {
     return updated;
   }
 
+  async resolveLatestNpmVersion(packageName: string): Promise<string> {
+    try {
+      const { stdout } = await this.run(
+        'npm',
+        ['view', packageName, 'version', '--registry', 'https://registry.npmjs.org'],
+        { timeout: 60_000 },
+      );
+      const version = stdout.trim();
+      if (!version || version === 'undefined') return 'latest';
+      return version.startsWith('^') || version.startsWith('~')
+        ? version
+        : `^${version}`;
+    } catch (error) {
+      this.logger.warn(
+        `npm view falhou para ${packageName}: ${(error as Error).message}`,
+      );
+      return 'latest';
+    }
+  }
+
   async deliver(
     repoPath: string,
     owner: string,
@@ -382,15 +410,42 @@ export class RemediationGitWorkspace {
       };
     }
 
+    const branch = `security/app-audit-${Date.now()}`;
+    await this.run('git', ['checkout', '-b', branch], { cwd: repoPath });
     await this.run('git', ['add', '-A'], { cwd: repoPath });
+
+    const staged = await this.run('git', ['diff', '--cached', '--name-only'], {
+      cwd: repoPath,
+    });
+    if (!staged.stdout.trim()) {
+      return {
+        method: 'no_changes',
+        branch: defaultBranch,
+        lockfilesUpdated: [],
+      };
+    }
+
     await this.run('git', ['commit', '-m', commitMessage], { cwd: repoPath });
 
     const sha = (
       await this.run('git', ['rev-parse', 'HEAD'], { cwd: repoPath })
     ).stdout.trim();
 
+    const ahead = (
+      await this.run('git', ['rev-list', '--count', `${defaultBranch}..HEAD`], {
+        cwd: repoPath,
+      })
+    ).stdout.trim();
+    if (ahead === '0') {
+      return {
+        method: 'no_changes',
+        branch: defaultBranch,
+        lockfilesUpdated: [],
+      };
+    }
+
     try {
-      await this.run('git', ['push', 'origin', `HEAD:${defaultBranch}`], {
+      await this.run('git', ['push', 'origin', `${branch}:${defaultBranch}`], {
         cwd: repoPath,
         timeout: 120_000,
       });
@@ -406,12 +461,33 @@ export class RemediationGitWorkspace {
       );
     }
 
-    const branch = `security/app-audit-${Date.now()}`;
-    await this.run('git', ['checkout', '-b', branch], { cwd: repoPath });
-    await this.run('git', ['push', '-u', 'origin', branch], {
-      cwd: repoPath,
-      timeout: 120_000,
-    });
+    await this.pushBranchWithRetry(repoPath, branch);
+
+    const aheadOnRemote = await this.compareBranchesAhead(
+      owner,
+      repo,
+      defaultBranch,
+      branch,
+    );
+    if (aheadOnRemote === 0) {
+      const onBase = await this.isCommitOnBranch(
+        owner,
+        repo,
+        sha,
+        defaultBranch,
+      );
+      this.logger.warn(
+        onBase
+          ? `Branch ${branch} ≡ ${defaultBranch}; commit ${sha.slice(0, 7)} já na base.`
+          : `Branch ${branch} ≡ ${defaultBranch} após push; nenhum diff remoto.`,
+      );
+      return {
+        method: onBase ? 'direct_push' : 'no_changes',
+        branch: defaultBranch,
+        commitSha: sha,
+        lockfilesUpdated: [],
+      };
+    }
 
     const prUrl = await this.createPullRequest(
       owner,
@@ -421,6 +497,14 @@ export class RemediationGitWorkspace {
       prTitle,
       prBody,
     );
+    if (!prUrl) {
+      return {
+        method: 'no_changes',
+        branch: defaultBranch,
+        commitSha: sha,
+        lockfilesUpdated: [],
+      };
+    }
     return {
       method: 'pull_request',
       branch,
@@ -428,6 +512,46 @@ export class RemediationGitWorkspace {
       commitSha: sha,
       lockfilesUpdated: [],
     };
+  }
+
+  private async pushBranchWithRetry(
+    repoPath: string,
+    branch: string,
+  ): Promise<void> {
+    try {
+      await this.run('git', ['push', '-u', 'origin', branch], {
+        cwd: repoPath,
+        timeout: 120_000,
+      });
+    } catch (firstError) {
+      this.logger.warn(
+        `Push da branch falhou, tentando deepen/unshallow: ${(firstError as Error).message}`,
+      );
+      await this.run('git', ['fetch', 'origin', '--unshallow'], {
+        cwd: repoPath,
+        timeout: 120_000,
+      }).catch(() =>
+        this.run('git', ['fetch', 'origin', '--deepen', '50'], {
+          cwd: repoPath,
+          timeout: 120_000,
+        }),
+      );
+      await this.run('git', ['push', '-u', 'origin', branch], {
+        cwd: repoPath,
+        timeout: 120_000,
+      });
+    }
+  }
+
+  private formatExecError(error: unknown): string {
+    if (!(error instanceof Error)) return String(error);
+    const execErr = error as Error & { stderr?: string | Buffer };
+    const stderr = execErr.stderr
+      ? Buffer.isBuffer(execErr.stderr)
+        ? execErr.stderr.toString()
+        : execErr.stderr
+      : '';
+    return [error.message, stderr].filter(Boolean).join(' ');
   }
 
   async cleanup(repoPath: string): Promise<void> {
@@ -448,6 +572,52 @@ export class RemediationGitWorkspace {
     return stdout.trim() || 'main';
   }
 
+  private async compareBranchesAhead(
+    owner: string,
+    repo: string,
+    base: string,
+    head: string,
+  ): Promise<number> {
+    try {
+      const { stdout } = await this.runGh([
+        'api',
+        `repos/${owner}/${repo}/compare/${base}...${head}`,
+        '--jq',
+        '.ahead_by',
+      ]);
+      return Number.parseInt(stdout.trim(), 10) || 0;
+    } catch {
+      return -1;
+    }
+  }
+
+  private async isCommitOnBranch(
+    owner: string,
+    repo: string,
+    sha: string,
+    branch: string,
+  ): Promise<boolean> {
+    try {
+      const { stdout: branchSha } = await this.runGh([
+        'api',
+        `repos/${owner}/${repo}/git/ref/heads/${branch}`,
+        '--jq',
+        '.object.sha',
+      ]);
+      if (branchSha.trim() === sha) return true;
+      const { stdout: status } = await this.runGh([
+        'api',
+        `repos/${owner}/${repo}/compare/${sha}...${branch}`,
+        '--jq',
+        '.status',
+      ]);
+      const normalized = status.trim();
+      return normalized === 'behind' || normalized === 'identical';
+    } catch {
+      return false;
+    }
+  }
+
   private async createPullRequest(
     owner: string,
     repo: string,
@@ -455,22 +625,35 @@ export class RemediationGitWorkspace {
     base: string,
     title: string,
     body: string,
-  ): Promise<string> {
-    const { stdout } = await this.runGh([
-      'pr',
-      'create',
-      '--repo',
-      `${owner}/${repo}`,
-      '--head',
-      head,
-      '--base',
-      base,
-      '--title',
-      title,
-      '--body',
-      body,
-    ]);
-    return stdout.trim();
+  ): Promise<string | null> {
+    const ahead = await this.compareBranchesAhead(owner, repo, base, head);
+    if (ahead === 0) {
+      return null;
+    }
+
+    try {
+      const { stdout } = await this.runGh([
+        'pr',
+        'create',
+        '--repo',
+        `${owner}/${repo}`,
+        '--head',
+        head,
+        '--base',
+        base,
+        '--title',
+        title,
+        '--body',
+        body,
+      ]);
+      return stdout.trim();
+    } catch (prError) {
+      const msg = this.formatExecError(prError);
+      if (/No commits between/i.test(msg)) {
+        return null;
+      }
+      throw prError;
+    }
   }
 
   private async resolveActionSha(
