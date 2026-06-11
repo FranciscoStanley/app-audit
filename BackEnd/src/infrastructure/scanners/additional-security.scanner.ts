@@ -140,7 +140,7 @@ export class AdditionalSecurityScanner {
           type: 'vulnerable_dependency',
           severity,
           message: `[Dependabot] ${alert.summary}`,
-          evidence: `${alert.packageName}@${patched}@${alert.manifestPath}#dependabot-${alert.number}`,
+          evidence: `${alert.manifestPath}|${alert.packageName}|${patched}|dependabot-${alert.number}`,
           category: 'Dependency Vulnerabilities',
         }),
       );

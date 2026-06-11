@@ -78,7 +78,7 @@ describe('RemediationUseCase', () => {
     auditStore.findFindingById.mockResolvedValue({
       ...finding,
       type: 'vulnerable_dependency',
-      evidence: 'vitest@3.0.5@frontend/package.json#dependabot-42',
+      evidence: 'frontend/package.json|vitest|3.0.5|dependabot-42',
     });
 
     const result = await useCase.apply('finding-1', 'user-1');

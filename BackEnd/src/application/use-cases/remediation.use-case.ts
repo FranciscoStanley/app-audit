@@ -222,7 +222,7 @@ export class RemediationUseCase {
         break;
 
       case 'vulnerable_dependency':
-        if (evidence.includes('#dependabot-')) {
+        if (evidence.includes('dependabot-')) {
           steps.push({
             order: 1,
             title: 'Corrigir alerta Dependabot',
@@ -294,7 +294,7 @@ export class RemediationUseCase {
   }
 
   private parseDependabotAlertNumber(evidence: string): number {
-    const match = evidence.match(/#dependabot-(\d+)/);
+    const match = evidence.match(/dependabot-(\d+)/);
     if (!match) throw new Error(`Número de alerta Dependabot inválido: ${evidence}`);
     return Number.parseInt(match[1], 10);
   }
@@ -304,20 +304,12 @@ export class RemediationUseCase {
     version: string;
     manifestPath?: string;
   } {
-    const manifestMatch = evidence.match(/^(.+?)@(.+?)@(.+?)#dependabot-\d+$/);
-    if (manifestMatch) {
+    const dependabotPipe = evidence.match(/^(.+?)\|(.+?)\|(.+?)\|dependabot-(\d+)$/);
+    if (dependabotPipe) {
       return {
-        packageName: manifestMatch[1],
-        version: manifestMatch[2],
-        manifestPath: manifestMatch[3],
-      };
-    }
-
-    const dependabotMatch = evidence.match(/^(.+?)@(.+?)#dependabot-\d+$/);
-    if (dependabotMatch) {
-      return {
-        packageName: dependabotMatch[1],
-        version: dependabotMatch[2],
+        manifestPath: dependabotPipe[1],
+        packageName: dependabotPipe[2],
+        version: dependabotPipe[3],
       };
     }
 
