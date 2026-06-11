@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
@@ -38,6 +39,21 @@ export const useAuthStore = create<AuthState>()(
         return ROLE_PERMISSIONS[role]?.includes(permission) ?? false;
       },
     }),
-    { name: 'app-audit-auth' },
+    { name: 'app-audit-auth', skipHydration: true },
   ),
 );
+
+/** Aguarda reidratação do persist no cliente (padrão Next.js App Router) */
+export function useAuthHydrated(): boolean {
+  const [hydrated, setHydrated] = useState(false);
+
+  useEffect(() => {
+    const unsub = useAuthStore.persist.onFinishHydration(() => setHydrated(true));
+    void useAuthStore.persist.rehydrate().then(() => {
+      if (useAuthStore.persist.hasHydrated()) setHydrated(true);
+    });
+    return unsub;
+  }, []);
+
+  return hydrated;
+}

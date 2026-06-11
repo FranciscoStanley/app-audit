@@ -3,17 +3,18 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Sidebar } from '@/components/layout/sidebar';
-import { useAuthStore } from '@/stores/auth-store';
+import { useAuthHydrated, useAuthStore } from '@/stores/auth-store';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
+  const hydrated = useAuthHydrated();
   const token = useAuthStore((s) => s.token);
 
   useEffect(() => {
-    if (!token) router.replace('/login');
-  }, [token, router]);
+    if (hydrated && !token) router.replace('/login');
+  }, [hydrated, token, router]);
 
-  if (!token) return null;
+  if (!hydrated || !token) return null;
 
   return (
     <div className="flex min-h-screen">

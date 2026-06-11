@@ -194,14 +194,23 @@ async function setupApiMocks(context) {
   });
 }
 
-function authInitScript(user) {
-  localStorage.setItem(
-    'app-audit-auth',
-    JSON.stringify({
-      state: { token: 'screenshot-demo-token', user },
-      version: 0,
-    }),
-  );
+function buildStorageState() {
+  return {
+    origins: [
+      {
+        origin: BASE_URL.replace(/\/$/, ''),
+        localStorage: [
+          {
+            name: 'app-audit-auth',
+            value: JSON.stringify({
+              state: { token: 'screenshot-demo-token', user: mockUser },
+              version: 0,
+            }),
+          },
+        ],
+      },
+    ],
+  };
 }
 
 async function capture(page, name, path, { waitFor } = {}) {
@@ -232,16 +241,13 @@ async function main() {
   await loginContext.close();
 
   // —— Telas autenticadas ——
-  const authContext = await browser.newContext({ viewport: VIEWPORT, colorScheme: 'dark' });
+  const authContext = await browser.newContext({
+    viewport: VIEWPORT,
+    colorScheme: 'dark',
+    storageState: buildStorageState(),
+  });
   await setupApiMocks(authContext);
-  await authContext.addInitScript(authInitScript, mockUser);
   const page = await authContext.newPage();
-
-  // Zustand persist: garantir reidratação antes do layout redirecionar ao login
-  await page.goto(`${BASE_URL}/login`, { waitUntil: 'domcontentloaded' });
-  await page.waitForTimeout(500);
-  await page.goto(`${BASE_URL}/dashboard`, { waitUntil: 'networkidle' });
-  await page.waitForURL('**/dashboard**', { timeout: 15_000 });
 
   await capture(page, '02-dashboard', '/dashboard', { waitFor: 'Dashboard' });
   await capture(page, '03-auditorias', '/dashboard/audits', { waitFor: 'Auditorias' });
