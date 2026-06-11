@@ -33,6 +33,7 @@ export class RemediationUseCase {
       finding.repository,
       finding.evidence ?? '',
       findingId,
+      finding.message,
     );
   }
 
@@ -50,10 +51,12 @@ export class RemediationUseCase {
       finding.repository,
       finding.evidence ?? '',
       findingId,
+      finding.message,
     );
 
     const applied: string[] = [];
     const failed: string[] = [];
+    const optionalFailed: string[] = [];
     let delivery: DeliveryResult | undefined;
 
     const workspaceSteps = plan.steps.filter(
@@ -84,6 +87,7 @@ export class RemediationUseCase {
               repo,
               finding.type,
               finding.evidence ?? '',
+              finding.message,
               step,
             );
             applied.push(step.title);
@@ -97,6 +101,7 @@ export class RemediationUseCase {
               needsLockfile = true;
               manifestPath = this.parseDependencyEvidence(
                 finding.evidence ?? '',
+                finding.message,
               ).manifestPath;
             }
           } catch (error) {
@@ -150,11 +155,16 @@ export class RemediationUseCase {
         await this.executeApiStep(github, owner, repo, step);
         applied.push(step.title);
       } catch (error) {
-        failed.push(`${step.title}: ${(error as Error).message}`);
+        const detail = `${step.title}: ${(error as Error).message}`;
+        if (step.action === 'security_issue') {
+          optionalFailed.push(this.formatSecurityIssueFailure(step, error));
+        } else {
+          failed.push(detail);
+        }
       }
     }
 
-    return this.buildResult(failed, applied, delivery);
+    return this.buildResult(failed, applied, delivery, optionalFailed);
   }
 
   async applyAll(
@@ -229,6 +239,7 @@ export class RemediationUseCase {
     repo: string,
     type: ThreatFindingType,
     evidence: string,
+    message: string,
     step: RemediationStep,
   ): Promise<void> {
     switch (step.action) {
@@ -263,7 +274,7 @@ export class RemediationUseCase {
 
       case 'update_dependency': {
         const { packageName, version, manifestPath } =
-          this.parseDependencyEvidence(evidence);
+          this.parseDependencyEvidence(evidence, message);
         await workspace.updatePackageVersion(
           repoPath,
           manifestPath ?? 'package.json',
@@ -274,8 +285,10 @@ export class RemediationUseCase {
       }
 
       case 'remove_dependency': {
-        const { packageName, manifestPath } =
-          this.parseDependencyEvidence(evidence);
+        const { packageName, manifestPath } = this.parseDependencyEvidence(
+          evidence,
+          message,
+        );
         await workspace.removePackage(
           repoPath,
           manifestPath ?? 'package.json',
@@ -318,23 +331,44 @@ export class RemediationUseCase {
     }
   }
 
+  private formatSecurityIssueFailure(
+    step: RemediationStep,
+    error: unknown,
+  ): string {
+    const msg = (error as Error).message ?? String(error);
+    if (/issues has been disabled|issues are disabled|410/i.test(msg)) {
+      return `${step.title}: Issues desabilitadas no repositório — rotacione credenciais manualmente`;
+    }
+    return `${step.title}: ${msg}`;
+  }
+
   private buildResult(
     failed: string[],
     applied: string[],
     delivery?: DeliveryResult,
+    optionalFailed: string[] = [],
   ): RemediationResult {
     if (failed.length === 0) {
       let message = 'Remediação aplicada com sucesso';
+      if (optionalFailed.length > 0) {
+        message = `Remediação aplicada — ${optionalFailed.length} passo(s) manual(is) pendente(s)`;
+      }
       if (delivery?.method === 'pull_request' && delivery.pullRequestUrl) {
-        message = `Remediação aplicada — Pull Request criado: ${delivery.pullRequestUrl}`;
+        message =
+          optionalFailed.length > 0
+            ? `Remediação aplicada via PR — ${optionalFailed.length} passo(s) manual(is) pendente(s)`
+            : `Remediação aplicada — Pull Request criado: ${delivery.pullRequestUrl}`;
       } else if (delivery?.lockfilesUpdated?.length) {
-        message = `Remediação aplicada — lockfiles atualizados: ${delivery.lockfilesUpdated.join(', ')}`;
+        message =
+          optionalFailed.length > 0
+            ? `Remediação aplicada — lockfiles atualizados; ${optionalFailed.length} passo(s) manual(is) pendente(s)`
+            : `Remediação aplicada — lockfiles atualizados: ${delivery.lockfilesUpdated.join(', ')}`;
       }
       return {
         success: true,
         message,
         appliedSteps: applied,
-        requiresManualSteps: [],
+        requiresManualSteps: optionalFailed,
         delivery,
       };
     }
@@ -343,7 +377,7 @@ export class RemediationUseCase {
       success: false,
       message: `Remediação parcial — ${failed.length} passo(s) falharam`,
       appliedSteps: applied,
-      requiresManualSteps: failed,
+      requiresManualSteps: [...failed, ...optionalFailed],
       delivery,
     };
   }
@@ -374,6 +408,7 @@ export class RemediationUseCase {
     repository: string,
     evidence: string,
     findingId: string,
+    message?: string,
   ): RemediationPlan {
     const steps: RemediationStep[] = [];
 
@@ -436,12 +471,16 @@ export class RemediationUseCase {
         break;
 
       case 'compromised_dependency':
-      case 'malware_advisory':
+      case 'malware_advisory': {
+        const parsed = this.parseDependencyEvidence(evidence, message);
+        const description = this.looksLikeNonPackageEvidence(evidence)
+          ? parsed.packageName
+          : evidence;
         steps.push(
           {
             order: 1,
             title: 'Remover dependência comprometida',
-            description: evidence,
+            description,
             action: 'remove_dependency',
             automated: true,
           },
@@ -461,6 +500,7 @@ export class RemediationUseCase {
           },
         );
         break;
+      }
 
       case 'vulnerable_dependency':
         if (evidence.includes('dependabot-')) {
@@ -565,12 +605,28 @@ export class RemediationUseCase {
     return Number.parseInt(match[1], 10);
   }
 
-  private parseDependencyEvidence(evidence: string): {
+  private parseDependencyEvidence(
+    evidence: string,
+    message?: string,
+  ): {
     packageName: string;
     version: string;
     manifestPath?: string;
   } {
-    const dependabotPipe = evidence.match(
+    const normalizedEvidence = evidence.trim();
+
+    if (this.looksLikeNonPackageEvidence(normalizedEvidence)) {
+      const fromMessage = this.extractPackageFromMessage(message);
+      if (fromMessage) {
+        return {
+          packageName: fromMessage,
+          version: 'latest',
+          manifestPath: 'package.json',
+        };
+      }
+    }
+
+    const dependabotPipe = normalizedEvidence.match(
       /^(.+?)\|(.+?)\|(.+?)\|dependabot-(\d+)$/,
     );
     if (dependabotPipe) {
@@ -581,12 +637,76 @@ export class RemediationUseCase {
       };
     }
 
-    const atMatch = evidence.match(/^(.+?)@(.+)$/);
-    if (atMatch) {
+    const structuredPipe = normalizedEvidence.match(
+      /^(.+?)\|([^|]+)\|([^|]+)\|(osm|ghsa|threat-intel|scope)$/i,
+    );
+    if (structuredPipe) {
+      return {
+        manifestPath: structuredPipe[1],
+        packageName: structuredPipe[2],
+        version: structuredPipe[3],
+      };
+    }
+
+    const osmUrlMatch = normalizedEvidence.match(
+      /opensourcemalware\.com\/(?:npm|pypi)\/([^/?#\s]+)/i,
+    );
+    if (osmUrlMatch) {
+      return {
+        packageName: osmUrlMatch[1],
+        version: 'latest',
+        manifestPath: 'package.json',
+      };
+    }
+
+    const atMatch = normalizedEvidence.match(
+      /^([^@/\\]+(?:\/[^@/\\]+)?)@(.+)$/,
+    );
+    if (atMatch && !normalizedEvidence.startsWith('http')) {
       return { packageName: atMatch[1], version: atMatch[2] };
     }
 
-    return { packageName: evidence, version: 'latest' };
+    const fromMessage = this.extractPackageFromMessage(message);
+    if (fromMessage && this.looksLikeNonPackageEvidence(normalizedEvidence)) {
+      return {
+        packageName: fromMessage,
+        version: 'latest',
+        manifestPath: 'package.json',
+      };
+    }
+
+    return {
+      packageName: normalizedEvidence,
+      version: 'latest',
+      manifestPath: 'package.json',
+    };
+  }
+
+  private extractPackageFromMessage(message?: string): string | null {
+    if (!message) return null;
+    const patterns = [
+      /(?:malicioso|comprometida|monitorado):\s*([@\w][\w./-]*)/i,
+      /Dependência npm comprometida:\s*([@\w][\w./-]*)/i,
+      /Pacote npm malicioso:\s*([@\w][\w./-]*)/i,
+      /Pacote PyPI comprometido:\s*([@\w][\w./-]*)/i,
+    ];
+    for (const pattern of patterns) {
+      const match = message.match(pattern);
+      if (match?.[1]) {
+        return match[1].split('@')[0] ?? null;
+      }
+    }
+    return null;
+  }
+
+  private looksLikeNonPackageEvidence(evidence: string): boolean {
+    const value = evidence.trim();
+    return (
+      value.startsWith('http') ||
+      value.includes('opensourcemalware.com') ||
+      value.includes('github.com/advisories') ||
+      value.includes('://')
+    );
   }
 
   private parseC2Evidence(evidence: string): {

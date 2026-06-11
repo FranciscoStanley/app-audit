@@ -132,6 +132,58 @@ describe('RemediationUseCase', () => {
     expect(result.delivery?.method).toBe('direct_push');
   });
 
+  it('considera sucesso quando issue de segurança falha por issues desabilitadas', async () => {
+    github.createSecurityIssue.mockRejectedValue(
+      new Error(
+        'gh: Issues has been disabled in this repository. (HTTP 410)',
+      ),
+    );
+
+    const result = await useCase.apply('finding-1', 'user-1');
+
+    expect(workspace.deliver).toHaveBeenCalled();
+    expect(result.success).toBe(true);
+    expect(result.message).toContain('passo(s) manual(is) pendente(s)');
+    expect(result.requiresManualSteps).toHaveLength(1);
+    expect(result.requiresManualSteps[0]).toContain('Issues desabilitadas');
+  });
+
+  it('remove dependência comprometida quando evidence é URL OpenSourceMalware', async () => {
+    auditStore.findFindingById.mockResolvedValue({
+      ...finding,
+      type: 'compromised_dependency',
+      message: '[OpenSourceMalware] Pacote npm malicioso: axios',
+      evidence: 'https://opensourcemalware.com/npm/axios',
+    });
+
+    const result = await useCase.apply('finding-1', 'user-1');
+
+    expect(workspace.removePackage).toHaveBeenCalledWith(
+      '/tmp/repo',
+      'package.json',
+      'axios',
+    );
+    expect(workspace.deliver).toHaveBeenCalled();
+    expect(result.success).toBe(true);
+  });
+
+  it('remove dependência com evidence estruturada package.json|pkg|ver|osm', async () => {
+    auditStore.findFindingById.mockResolvedValue({
+      ...finding,
+      type: 'compromised_dependency',
+      message: '[OpenSourceMalware] Pacote npm malicioso: axios',
+      evidence: 'package.json|axios|1.6.0|osm',
+    });
+
+    await useCase.apply('finding-1', 'user-1');
+
+    expect(workspace.removePackage).toHaveBeenCalledWith(
+      '/tmp/repo',
+      'package.json',
+      'axios',
+    );
+  });
+
   it('corrige alerta dependabot com lockfile', async () => {
     auditStore.findFindingById.mockResolvedValue({
       ...finding,

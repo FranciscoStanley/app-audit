@@ -4,6 +4,7 @@ import {
   access,
   mkdir,
   readFile,
+  readdir,
   rm,
   unlink,
   writeFile,
@@ -182,7 +183,92 @@ export class RemediationGitWorkspace {
     manifestPath: string,
     packageName: string,
   ): Promise<void> {
+    const normalized = packageName.trim();
+    if (this.looksLikeInvalidPackageName(normalized)) {
+      throw new Error(
+        `Nome de pacote inválido (${normalized}). Reexecute a auditoria ou informe o nome correto do pacote.`,
+      );
+    }
+
+    const manifests =
+      manifestPath === 'package.json'
+        ? await this.findPackageManifests(repoPath)
+        : [manifestPath];
+
+    for (const manifest of manifests) {
+      if (await this.tryRemoveFromManifest(repoPath, manifest, normalized)) {
+        return;
+      }
+    }
+
+    throw new Error(
+      `Pacote ${normalized} não encontrado como dependência direta em package.json (pode ser dependência transitiva)`,
+    );
+  }
+
+  private looksLikeInvalidPackageName(name: string): boolean {
+    return name.includes('://') || name.includes('opensourcemalware.com');
+  }
+
+  private async findPackageManifests(repoPath: string): Promise<string[]> {
+    const manifests: string[] = [];
+    await this.collectPackageManifests(repoPath, repoPath, '', manifests);
+    return manifests.length > 0 ? manifests : ['package.json'];
+  }
+
+  private async collectPackageManifests(
+    repoPath: string,
+    currentDir: string,
+    relativeDir: string,
+    manifests: string[],
+  ): Promise<void> {
+    const manifestRelative = relativeDir
+      ? `${relativeDir.replace(/\\/g, '/')}/package.json`
+      : 'package.json';
+
+    try {
+      await access(join(currentDir, 'package.json'));
+      if (!manifests.includes(manifestRelative)) {
+        manifests.push(manifestRelative);
+      }
+    } catch {
+      // sem package.json neste diretório
+    }
+
+    let entries: Array<{ name: string; isDirectory: () => boolean }>;
+    try {
+      entries = await readdir(currentDir, { withFileTypes: true });
+    } catch {
+      return;
+    }
+
+    for (const entry of entries) {
+      if (!entry.isDirectory()) continue;
+      if (['node_modules', '.git', 'dist', 'build', '.next'].includes(entry.name)) {
+        continue;
+      }
+      const nextRelative = relativeDir ? `${relativeDir}/${entry.name}` : entry.name;
+      await this.collectPackageManifests(
+        repoPath,
+        join(currentDir, entry.name),
+        nextRelative,
+        manifests,
+      );
+    }
+  }
+
+  private async tryRemoveFromManifest(
+    repoPath: string,
+    manifestPath: string,
+    packageName: string,
+  ): Promise<boolean> {
     const fullPath = join(repoPath, manifestPath);
+    try {
+      await access(fullPath);
+    } catch {
+      return false;
+    }
+
     const pkg = JSON.parse(await readFile(fullPath, 'utf-8')) as Record<
       string,
       Record<string, string>
@@ -199,11 +285,9 @@ export class RemediationGitWorkspace {
         removed = true;
       }
     }
-    if (!removed)
-      throw new Error(
-        `Pacote ${packageName} não encontrado em ${manifestPath}`,
-      );
+    if (!removed) return false;
     await writeFile(fullPath, `${JSON.stringify(pkg, null, 2)}\n`, 'utf-8');
+    return true;
   }
 
   async regenerateLockfiles(
