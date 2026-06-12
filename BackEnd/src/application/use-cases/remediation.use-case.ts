@@ -9,6 +9,7 @@ import {
 } from '../../domain/entities/remediation.entity';
 import { ThreatFindingType } from '../../domain/entities/repository-scan.entity';
 import { GitHubRemediationFactory } from '../../infrastructure/github/github-remediation.factory';
+import { sanitizeGitError } from '../../infrastructure/github/git-error.util';
 import { RemediationGitWorkspace } from '../../infrastructure/github/remediation-git-workspace';
 import { AuditReportStore } from '../../infrastructure/storage/audit-report.store';
 import { GitHubTokenResolverService } from './github-token-resolver.service';
@@ -111,7 +112,7 @@ export class RemediationUseCase {
               ).manifestPath;
             }
           } catch (error) {
-            failed.push(`${step.title}: ${(error as Error).message}`);
+            failed.push(`${step.title}: ${sanitizeGitError((error as Error).message)}`);
           }
         }
 
@@ -129,7 +130,7 @@ export class RemediationUseCase {
               );
             }
           } catch (error) {
-            failed.push(`Regenerar lockfile: ${(error as Error).message}`);
+            failed.push(`Regenerar lockfile: ${sanitizeGitError((error as Error).message)}`);
           }
         }
 
@@ -150,7 +151,7 @@ export class RemediationUseCase {
           delivery = { ...delivery, lockfilesUpdated };
         }
       } catch (error) {
-        failed.push(`Workspace: ${(error as Error).message}`);
+        failed.push(`Workspace: ${sanitizeGitError((error as Error).message)}`);
       } finally {
         if (repoPath) await workspace.cleanup(repoPath);
       }
@@ -161,7 +162,7 @@ export class RemediationUseCase {
         await this.executeApiStep(github, owner, repo, step);
         applied.push(step.title);
       } catch (error) {
-        const detail = `${step.title}: ${(error as Error).message}`;
+        const detail = `${step.title}: ${sanitizeGitError((error as Error).message)}`;
         if (step.action === 'security_issue') {
           optionalFailed.push(this.formatSecurityIssueFailure(step, error));
         } else {

@@ -17,6 +17,10 @@ import {
   readPackageManagerField,
   type PackageManager,
 } from './package-manager.util';
+import {
+  mapGitCloneFailure,
+  sanitizeGitError,
+} from './git-error.util';
 
 const execFileAsync = promisify(execFile);
 
@@ -43,18 +47,95 @@ export class RemediationGitWorkspace {
     await mkdir(this.workRoot, { recursive: true });
     const repoPath = join(this.workRoot, `${owner}-${repo}-${Date.now()}`);
 
+    await this.assertRepoCloneAccess(owner, repo);
     const defaultBranch = await this.getDefaultBranch(owner, repo);
 
-    await this.run('git', [
+    const strategies: Array<() => Promise<void>> = [
+      () => this.cloneViaGh(owner, repo, repoPath, defaultBranch),
+      () => this.cloneViaGitAuth(owner, repo, repoPath, defaultBranch),
+      () => this.cloneViaGitAuth(owner, repo, repoPath),
+    ];
+
+    let lastError: Error | undefined;
+    for (const strategy of strategies) {
+      await rm(repoPath, { recursive: true, force: true }).catch(() => undefined);
+      try {
+        await strategy();
+        await this.configureGitIdentity(repoPath);
+        await this.deepenClone(repoPath, defaultBranch);
+        return { repoPath, defaultBranch };
+      } catch (error) {
+        lastError = error as Error;
+        this.logger.warn(
+          `Estratégia de clone falhou (${owner}/${repo}): ${sanitizeGitError(lastError.message)}`,
+        );
+      }
+    }
+
+    throw new Error(
+      mapGitCloneFailure(owner, repo, defaultBranch, lastError ?? new Error('clone failed')),
+    );
+  }
+
+  private async assertRepoCloneAccess(owner: string, repo: string): Promise<void> {
+    try {
+      await this.runGh([
+        'api',
+        `repos/${owner}/${repo}`,
+        '--jq',
+        '.full_name',
+      ]);
+    } catch {
+      throw new Error(
+        `Sem acesso ao repositório ${owner}/${repo}. Conecte o GitHub com escopo repo e, se for organização, autorize SSO em github.com/settings/tokens.`,
+      );
+    }
+  }
+
+  private async cloneViaGh(
+    owner: string,
+    repo: string,
+    repoPath: string,
+    branch: string,
+  ): Promise<void> {
+    await this.runGh([
+      'repo',
+      'clone',
+      `${owner}/${repo}`,
+      repoPath,
+      '--',
+      '--depth',
+      '1',
+      '--single-branch',
+      '--branch',
+      branch,
+    ]);
+  }
+
+  private async cloneViaGitAuth(
+    owner: string,
+    repo: string,
+    repoPath: string,
+    branch?: string,
+  ): Promise<void> {
+    const args = [
+      '-c',
+      `http.extraHeader=Authorization: Bearer ${this.accessToken}`,
       'clone',
       '--depth',
       '1',
-      '--branch',
-      defaultBranch,
-      `https://x-access-token:${this.accessToken}@github.com/${owner}/${repo}.git`,
+    ];
+    if (branch) {
+      args.push('--single-branch', '--branch', branch);
+    }
+    args.push(
+      `https://github.com/${owner}/${repo}.git`,
       repoPath,
-    ]);
+    );
+    await this.run('git', args);
+  }
 
+  private async configureGitIdentity(repoPath: string): Promise<void> {
     await this.run(
       'git',
       ['config', 'user.email', 'security@app-audit.local'],
@@ -63,14 +144,14 @@ export class RemediationGitWorkspace {
     await this.run('git', ['config', 'user.name', 'App Audit Security Bot'], {
       cwd: repoPath,
     });
+  }
 
+  private async deepenClone(repoPath: string, defaultBranch: string): Promise<void> {
     await this.run(
       'git',
       ['fetch', 'origin', defaultBranch, '--deepen', '50'],
       { cwd: repoPath, timeout: 120_000 },
     ).catch(() => undefined);
-
-    return { repoPath, defaultBranch };
   }
 
   async deleteFile(repoPath: string, relativePath: string): Promise<void> {
@@ -544,14 +625,14 @@ export class RemediationGitWorkspace {
   }
 
   private formatExecError(error: unknown): string {
-    if (!(error instanceof Error)) return String(error);
+    if (!(error instanceof Error)) return sanitizeGitError(String(error));
     const execErr = error as Error & { stderr?: string | Buffer };
     const stderr = execErr.stderr
       ? Buffer.isBuffer(execErr.stderr)
         ? execErr.stderr.toString()
         : execErr.stderr
       : '';
-    return [error.message, stderr].filter(Boolean).join(' ');
+    return sanitizeGitError([error.message, stderr].filter(Boolean).join(' '));
   }
 
   async cleanup(repoPath: string): Promise<void> {
@@ -710,12 +791,24 @@ export class RemediationGitWorkspace {
     opts: { cwd?: string; timeout?: number } = {},
   ): Promise<{ stdout: string; stderr: string }> {
     const env = { ...process.env, GITHUB_TOKEN: this.accessToken };
-    return execFileAsync(cmd, args, {
-      maxBuffer: 50 * 1024 * 1024,
-      windowsHide: true,
-      env,
-      cwd: opts.cwd,
-      timeout: opts.timeout ?? 120_000,
-    });
+    try {
+      return await execFileAsync(cmd, args, {
+        maxBuffer: 50 * 1024 * 1024,
+        windowsHide: true,
+        env,
+        cwd: opts.cwd,
+        timeout: opts.timeout ?? 120_000,
+      });
+    } catch (error: unknown) {
+      const err = error as Error & { stderr?: string | Buffer };
+      const stderr = err.stderr
+        ? Buffer.isBuffer(err.stderr)
+          ? err.stderr.toString()
+          : err.stderr
+        : '';
+      throw new Error(
+        sanitizeGitError([err.message, stderr].filter(Boolean).join(' ')),
+      );
+    }
   }
 }
