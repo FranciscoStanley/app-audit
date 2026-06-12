@@ -15,6 +15,10 @@ import { GitHubTokenResolverService } from './github-token-resolver.service';
 
 const API_ONLY_ACTIONS = new Set(['enable_dependabot', 'security_issue']);
 
+interface RemediationApplyContext {
+  dependabotAlertNumbers: number[];
+}
+
 @Injectable()
 export class RemediationUseCase {
   constructor(
@@ -58,6 +62,7 @@ export class RemediationUseCase {
     const failed: string[] = [];
     const optionalFailed: string[] = [];
     let delivery: DeliveryResult | undefined;
+    const applyContext: RemediationApplyContext = { dependabotAlertNumbers: [] };
 
     const workspaceSteps = plan.steps.filter(
       (s) => s.action && !API_ONLY_ACTIONS.has(s.action),
@@ -89,6 +94,7 @@ export class RemediationUseCase {
               finding.evidence ?? '',
               finding.message,
               step,
+              applyContext,
             );
             applied.push(step.title);
             if (
@@ -164,7 +170,37 @@ export class RemediationUseCase {
       }
     }
 
-    return this.buildResult(failed, applied, delivery, optionalFailed);
+    let dependabotSync: RemediationResult['dependabot'];
+    if (applyContext.dependabotAlertNumbers.length > 0 && failed.length === 0) {
+      dependabotSync = await this.syncDependabotAlertsAfterDelivery(
+        github,
+        owner,
+        repo,
+        applyContext.dependabotAlertNumbers,
+        delivery,
+      );
+      if (dependabotSync.closedAlertNumbers.length > 0) {
+        applied.push(
+          `Dependabot GitHub: ${dependabotSync.closedAlertNumbers.length} alerta(s) fechado(s)`,
+        );
+      }
+      if (
+        dependabotSync.stillOpenAlertNumbers.length > 0 &&
+        delivery?.method === 'pull_request'
+      ) {
+        optionalFailed.push(
+          `${dependabotSync.stillOpenAlertNumbers.length} alerta(s) Dependabot fecham após merge da PR na branch padrão`,
+        );
+      }
+    }
+
+    return this.buildResult(
+      failed,
+      applied,
+      delivery,
+      optionalFailed,
+      dependabotSync,
+    );
   }
 
   async applyAll(
@@ -201,6 +237,8 @@ export class RemediationUseCase {
         .map((f) => ({ ...f, repository: r.fullName })),
     );
 
+    const dedupedFindings = this.deduplicateFindings(findings);
+
     const results: Array<{
       findingId: string;
       message: string;
@@ -209,9 +247,9 @@ export class RemediationUseCase {
     }> = [];
     let succeeded = 0;
     let failed = 0;
-    const total = findings.length;
+    const total = dedupedFindings.length;
 
-    for (const finding of findings) {
+    for (const finding of dedupedFindings) {
       const result = await this.apply(finding.id, userId);
       results.push({
         findingId: finding.id,
@@ -228,7 +266,120 @@ export class RemediationUseCase {
       });
     }
 
-    return { total: findings.length, succeeded, failed, results };
+    return { total: dedupedFindings.length, succeeded, failed, results };
+  }
+
+  private deduplicateFindings<
+    T extends { id: string; repository: string; evidence?: string; message: string },
+  >(findings: T[]): T[] {
+    const seen = new Map<string, T>();
+    for (const finding of findings) {
+      const key = this.findingRemediationGroupKey(
+        finding.repository,
+        finding.evidence ?? '',
+        finding.message,
+        finding.id,
+      );
+      if (!seen.has(key)) {
+        seen.set(key, finding);
+      }
+    }
+    return [...seen.values()];
+  }
+
+  private findingRemediationGroupKey(
+    repository: string,
+    evidence: string,
+    message: string,
+    findingId: string,
+  ): string {
+    if (evidence.includes('dependabot-')) {
+      const { packageName, version } = this.parseDependencyEvidence(
+        evidence,
+        message,
+      );
+      return `${repository}|dependabot|${packageName}|${version}`;
+    }
+    return findingId;
+  }
+
+  private async syncDependabotAlertsAfterDelivery(
+    github: GitHubRemediationPort,
+    owner: string,
+    repo: string,
+    alertNumbers: number[],
+    delivery?: DeliveryResult,
+  ): Promise<NonNullable<RemediationResult['dependabot']>> {
+    const targeted = [...new Set(alertNumbers)];
+
+    if (delivery?.method === 'pull_request') {
+      return {
+        targetedAlertNumbers: targeted,
+        closedAlertNumbers: [],
+        stillOpenAlertNumbers: targeted,
+      };
+    }
+
+    const { closed, stillOpen } = await github.waitForDependabotAlertsClosed(
+      owner,
+      repo,
+      targeted,
+    );
+
+    return {
+      targetedAlertNumbers: targeted,
+      closedAlertNumbers: closed,
+      stillOpenAlertNumbers: stillOpen,
+    };
+  }
+
+  private async fixRelatedDependabotAlertsInWorkspace(
+    workspace: RemediationGitWorkspace,
+    github: GitHubRemediationPort,
+    repoPath: string,
+    owner: string,
+    repo: string,
+    alertNumber: number,
+  ): Promise<number[]> {
+    const alerts = await github.listDependabotAlerts(owner, repo);
+    const primary = alerts.find((a) => a.number === alertNumber);
+    if (!primary) {
+      throw new Error(
+        `Alerta Dependabot #${alertNumber} não encontrado ou já foi fechado no GitHub`,
+      );
+    }
+
+    const related = alerts.filter(
+      (a) =>
+        a.packageName === primary.packageName &&
+        (primary.ghsaId
+          ? a.ghsaId === primary.ghsaId
+          : a.summary === primary.summary),
+    );
+
+    const fixedNumbers: number[] = [];
+    for (const alert of related) {
+      if (!alert.patchedVersion) continue;
+      await workspace.updatePackageVersion(
+        repoPath,
+        alert.manifestPath,
+        alert.packageName,
+        alert.patchedVersion,
+      );
+      fixedNumbers.push(alert.number);
+    }
+
+    if (fixedNumbers.length === 0) {
+      if (!primary.patchedVersion) {
+        await github.fixDependabotAlert(owner, repo, alertNumber);
+        return [alertNumber];
+      }
+      throw new Error(
+        `Alerta #${alertNumber} (${primary.packageName}) sem versão corrigida disponível`,
+      );
+    }
+
+    return fixedNumbers;
   }
 
   private async applyWorkspaceStep(
@@ -241,6 +392,7 @@ export class RemediationUseCase {
     evidence: string,
     message: string,
     step: RemediationStep,
+    applyContext: RemediationApplyContext,
   ): Promise<void> {
     switch (step.action) {
       case 'delete_file':
@@ -257,18 +409,15 @@ export class RemediationUseCase {
 
       case 'fix_dependabot': {
         const alertNumber = this.parseDependabotAlertNumber(evidence);
-        const alerts = await github.listDependabotAlerts(owner, repo);
-        const alert = alerts.find((a) => a.number === alertNumber);
-        if (!alert?.patchedVersion) {
-          await github.fixDependabotAlert(owner, repo, alertNumber);
-          return;
-        }
-        await workspace.updatePackageVersion(
+        const fixed = await this.fixRelatedDependabotAlertsInWorkspace(
+          workspace,
+          github,
           repoPath,
-          alert.manifestPath,
-          alert.packageName,
-          alert.patchedVersion,
+          owner,
+          repo,
+          alertNumber,
         );
+        applyContext.dependabotAlertNumbers.push(...fixed);
         return;
       }
 
@@ -353,11 +502,17 @@ export class RemediationUseCase {
     applied: string[],
     delivery?: DeliveryResult,
     optionalFailed: string[] = [],
+    dependabot?: RemediationResult['dependabot'],
   ): RemediationResult {
     if (failed.length === 0) {
       let message = 'Remediação aplicada com sucesso';
+      if (dependabot?.closedAlertNumbers.length) {
+        message = `Remediação aplicada — ${dependabot.closedAlertNumbers.length} alerta(s) Dependabot fechado(s) no GitHub`;
+      }
       if (optionalFailed.length > 0) {
-        message = `Remediação aplicada — ${optionalFailed.length} passo(s) manual(is) pendente(s)`;
+        message = dependabot?.closedAlertNumbers.length
+          ? `${message} — ${optionalFailed.length} passo(s) manual(is) pendente(s)`
+          : `Remediação aplicada — ${optionalFailed.length} passo(s) manual(is) pendente(s)`;
       }
       if (delivery?.method === 'pull_request' && delivery.pullRequestUrl) {
         message =
@@ -381,6 +536,7 @@ export class RemediationUseCase {
         appliedSteps: applied,
         requiresManualSteps: optionalFailed,
         delivery,
+        dependabot,
       };
     }
 
@@ -390,6 +546,7 @@ export class RemediationUseCase {
       appliedSteps: applied,
       requiresManualSteps: [...failed, ...optionalFailed],
       delivery,
+      dependabot,
     };
   }
 
@@ -515,11 +672,14 @@ export class RemediationUseCase {
 
       case 'vulnerable_dependency':
         if (evidence.includes('dependabot-')) {
+          const alertNum = evidence.match(/dependabot-(\d+)/)?.[1];
           steps.push(
             {
               order: 1,
               title: 'Corrigir alerta Dependabot',
-              description: evidence,
+              description: alertNum
+                ? `Atualizar pacote em todos os manifestos do monorepo (alerta #${alertNum})`
+                : evidence,
               action: 'fix_dependabot',
               automated: true,
             },

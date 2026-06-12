@@ -103,6 +103,7 @@ function jobToTaskResult(
         appliedSteps: (job.result.appliedSteps as string[]) ?? [],
         requiresManualSteps: (job.result.requiresManualSteps as string[]) ?? [],
         delivery: job.result.delivery as RemediationResult['delivery'],
+        dependabot: job.result.dependabot as RemediationResult['dependabot'],
       },
     };
   }

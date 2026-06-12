@@ -62,6 +62,13 @@ export interface GitHubRemediationPort {
   ): Promise<void>;
   enableDependabotSecurityUpdates(owner: string, repo: string): Promise<void>;
   listDependabotAlerts(owner: string, repo: string): Promise<DependabotAlert[]>;
+  /** Aguarda alertas saírem da lista de abertos após push na branch padrão */
+  waitForDependabotAlertsClosed(
+    owner: string,
+    repo: string,
+    alertNumbers: number[],
+    options?: { maxWaitMs?: number; intervalMs?: number },
+  ): Promise<{ closed: number[]; stillOpen: number[] }>;
   createSecurityIssue(
     owner: string,
     repo: string,

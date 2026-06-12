@@ -221,7 +221,9 @@ Remediação **100% automática** via Git workspace + GitHub API:
 - Clone shallow do repositório, alterações locais, **regeneração de lockfile** (pnpm/npm/yarn/pip)
 - Commit único por vulnerabilidade
 - Push direto ao branch padrão ou **Pull Request automático** se branch protegida
-- Alertas Dependabot fechados após atualizar manifesto + lockfile
+- **Monorepo:** alertas Dependabot do mesmo pacote/GHSA corrigidos em todos os `package.json` num único commit
+- **Sincronização GitHub Security:** após push na branch padrão, aguarda até 90s e reporta quantos alertas Dependabot fecharam (`dependabot.closedAlertNumbers` na resposta)
+- Com PR aberta, alertas só fecham após **merge** na branch padrão (GitHub reavalia o lockfile)
 
 ### GET /v1/audit/remediation/consent
 

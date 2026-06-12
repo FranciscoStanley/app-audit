@@ -61,6 +61,9 @@ describe('RemediationUseCase', () => {
       removePackageFromManifest: jest.fn(),
       enableDependabotSecurityUpdates: jest.fn(),
       listDependabotAlerts: jest.fn().mockResolvedValue([]),
+      waitForDependabotAlertsClosed: jest
+        .fn()
+        .mockResolvedValue({ closed: [], stillOpen: [] }),
       createSecurityIssue: jest.fn(),
     };
 
@@ -224,6 +227,52 @@ describe('RemediationUseCase', () => {
     );
     expect(github.enableDependabotSecurityUpdates).toHaveBeenCalled();
     expect(result.success).toBe(true);
+  });
+
+  it('corrige alertas dependabot relacionados em monorepo num único commit', async () => {
+    auditStore.findFindingById.mockResolvedValue({
+      ...finding,
+      type: 'vulnerable_dependency',
+      message: '[Dependabot] vitest vulnerability',
+      evidence: 'services/a/package.json|vitest|3.0.5|dependabot-42',
+    });
+
+    github.listDependabotAlerts.mockResolvedValue([
+      {
+        number: 42,
+        state: 'open',
+        packageName: 'vitest',
+        manifestPath: 'services/a/package.json',
+        severity: 'critical',
+        summary: 'vitest vuln',
+        vulnerableVersionRange: '< 3.0.5',
+        patchedVersion: '3.0.5',
+        ghsaId: 'GHSA-xxxx',
+      },
+      {
+        number: 43,
+        state: 'open',
+        packageName: 'vitest',
+        manifestPath: 'services/b/package.json',
+        severity: 'critical',
+        summary: 'vitest vuln',
+        vulnerableVersionRange: '< 3.0.5',
+        patchedVersion: '3.0.5',
+        ghsaId: 'GHSA-xxxx',
+      },
+    ]);
+    github.waitForDependabotAlertsClosed.mockResolvedValue({
+      closed: [42, 43],
+      stillOpen: [],
+    });
+
+    const result = await useCase.apply('finding-1', 'user-1');
+
+    expect(workspace.updatePackageVersion).toHaveBeenCalledTimes(2);
+    expect(result.dependabot?.closedAlertNumbers).toEqual([42, 43]);
+    expect(
+      result.appliedSteps.some((s) => s.includes('Dependabot GitHub')),
+    ).toBe(true);
   });
 
   it('atualiza dependência 0.x instável para última versão no npm', async () => {

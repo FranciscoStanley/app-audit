@@ -131,6 +131,7 @@ export class BackgroundJobProcessor implements OnModuleInit {
       appliedSteps: result.appliedSteps,
       requiresManualSteps: result.requiresManualSteps,
       delivery: result.delivery,
+      dependabot: result.dependabot,
     });
   }
 

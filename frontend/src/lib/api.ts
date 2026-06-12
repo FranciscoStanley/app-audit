@@ -304,6 +304,11 @@ export interface RemediationResult {
     lockfilesUpdated: string[];
     commitSha?: string;
   };
+  dependabot?: {
+    targetedAlertNumbers: number[];
+    closedAlertNumbers: number[];
+    stillOpenAlertNumbers: number[];
+  };
 }
 
 export interface BackgroundJobResponse {
