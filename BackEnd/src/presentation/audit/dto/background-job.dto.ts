@@ -1,4 +1,14 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsEnum, IsOptional } from 'class-validator';
+import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
+import type { BackgroundJobStatus } from '../../../domain/entities/background-job.entity';
+
+export class ListJobsQueryDto extends PaginationQueryDto {
+  @ApiPropertyOptional({ enum: ['pending', 'running', 'completed', 'failed'] })
+  @IsOptional()
+  @IsEnum(['pending', 'running', 'completed', 'failed'])
+  status?: BackgroundJobStatus;
+}
 
 export class BackgroundJobProgressDto {
   @ApiProperty({ example: 'scanning' })

@@ -34,7 +34,7 @@ export function useSessionData() {
       const [me, status, reports, intel] = await Promise.all([
         api.me(token),
         api.githubStatus(token).catch(() => null),
-        api.listReports(token).catch(() => []),
+        api.listReports(token, { page: 1, pageSize: 1 }).catch(() => ({ data: [], meta: null })),
         api.threatIntelStatus(token).catch(() => null),
       ]);
 
@@ -42,8 +42,13 @@ export function useSessionData() {
       if (status) setGithub(status);
       if (intel) setThreatIntel(intel as ThreatIntelStatus);
 
-      const first = reports[0] as { id: string; report: AuditReport } | undefined;
-      setLatestReport(first ? { id: first.id, report: first.report } : null);
+      const first = reports.data[0];
+      if (first) {
+        const full = await api.getReport(token, first.id);
+        setLatestReport({ id: first.id, report: full.report });
+      } else {
+        setLatestReport(null);
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Falha ao carregar dados da sessão');
     } finally {

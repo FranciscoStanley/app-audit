@@ -117,7 +117,7 @@
       "_type": "request",
       "name": "List Reports",
       "method": "GET",
-      "url": "{{ _.baseUrl }}/v1/audit/reports",
+      "url": "{{ _.baseUrl }}/v1/audit/reports?page=1&pageSize=20",
       "authentication": {
         "type": "bearer",
         "token": "{{ _.accessToken }}"
@@ -165,7 +165,7 @@
       "_type": "request",
       "name": "List Findings",
       "method": "GET",
-      "url": "{{ _.baseUrl }}/v1/audit/reports/{{ _.auditId }}/findings",
+      "url": "{{ _.baseUrl }}/v1/audit/reports/{{ _.auditId }}/findings?page=1&pageSize=20",
       "authentication": {
         "type": "bearer",
         "token": "{{ _.accessToken }}"

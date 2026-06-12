@@ -227,10 +227,12 @@ export async function resumeRunningTasks(token: string): Promise<void> {
     }
   }
 
-  const serverJobs = await api.listBackgroundJobs(token, 'running');
-  const pendingJobs = await api.listBackgroundJobs(token, 'pending');
+  const serverJobs = [
+    ...(await api.listBackgroundJobs(token, { status: 'running', pageSize: 100 })).data,
+    ...(await api.listBackgroundJobs(token, { status: 'pending', pageSize: 100 })).data,
+  ];
 
-  for (const job of [...serverJobs, ...pendingJobs]) {
+  for (const job of serverJobs) {
     const taskId = resolveTaskIdFromJob(job);
     if (!taskId) continue;
     syncTaskFromJob(taskId, job);

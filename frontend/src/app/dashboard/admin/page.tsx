@@ -2,10 +2,11 @@
 
 import { useEffect, useState } from 'react';
 import { UserPlus, Users } from 'lucide-react';
-import { api } from '@/lib/api';
+import { api, type PaginationMeta } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth-store';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Pagination } from '@/components/ui/pagination';
 
 interface AdminUser {
   id: string;
@@ -14,10 +15,14 @@ interface AdminUser {
   role: string;
 }
 
+const PAGE_SIZE = 15;
+
 export default function AdminPage() {
   const token = useAuthStore((s) => s.token);
   const isAdmin = useAuthStore((s) => s.user?.role === 'admin');
   const [users, setUsers] = useState<AdminUser[]>([]);
+  const [meta, setMeta] = useState<PaginationMeta | null>(null);
+  const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [form, setForm] = useState({ email: '', password: '', name: '', role: 'auditor' });
@@ -27,11 +32,14 @@ export default function AdminPage() {
     if (!token || !isAdmin) return;
     setLoading(true);
     api
-      .listUsers(token)
-      .then(setUsers)
+      .listUsers(token, { page, pageSize: PAGE_SIZE })
+      .then((result) => {
+        setUsers(result.data);
+        setMeta(result.meta);
+      })
       .catch((e) => setError(e instanceof Error ? e.message : 'Falha ao carregar usuários'))
       .finally(() => setLoading(false));
-  }, [token, isAdmin]);
+  }, [token, isAdmin, page]);
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
@@ -100,6 +108,7 @@ export default function AdminPage() {
               </table>
             </div>
           )}
+          {meta && <Pagination meta={meta} onPageChange={setPage} className="mt-4" />}
         </CardContent>
       </Card>
 

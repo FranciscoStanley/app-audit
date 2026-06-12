@@ -109,6 +109,19 @@ Troca o código de uso único por JWT (evita expor token na URL).
 
 Retorna o perfil do usuário autenticado (inclui `githubConnected`, `githubUsername`).
 
+### GET /v1/auth/users?page=1&pageSize=20
+
+**Permissão:** `users:manage` (admin)
+
+Lista usuários com paginação. Resposta:
+
+```json
+{
+  "data": [{ "id": "uuid", "email": "...", "name": "...", "role": "auditor" }],
+  "meta": { "page": 1, "pageSize": 20, "total": 3, "totalPages": 1, "hasNextPage": false, "hasPreviousPage": false }
+}
+```
+
 ### POST /v1/auth/users
 
 **Permissão:** `users:manage` (admin)
@@ -157,9 +170,9 @@ Consulta status do job (polling). Inclui `progress` durante execução.
 
 Quando `status` = `completed`, `result` contém `auditId` (varredura) ou detalhes de remediação.
 
-### GET /v1/audit/jobs?status=running
+### GET /v1/audit/jobs?page=1&pageSize=20&status=running
 
-Lista jobs do usuário autenticado (filtro opcional por status).
+Lista jobs do usuário autenticado (paginado). Query opcional: `status` (`pending`, `running`, `completed`, `failed`). `pageSize` máximo: **100**.
 
 ### POST /v1/audit/jobs/remediation
 
@@ -184,9 +197,9 @@ Executa auditoria **de forma síncrona** (legado/CLI). Preferir `POST /audit/job
 }
 ```
 
-### GET /v1/audit/reports
+### GET /v1/audit/reports?page=1&pageSize=20
 
-Lista relatórios armazenados.
+Lista **resumos** de relatórios (sem payload completo). Campos em `data[]`: `id`, `createdAt`, `githubUsername`, `verdict`, `totalVulnerabilities`, `repositoryCount`.
 
 ### GET /v1/audit/reports/:id
 
@@ -200,9 +213,9 @@ Download do relatório consolidado em Markdown.
 
 Download do relatório consolidado em PDF.
 
-### GET /v1/audit/reports/:id/findings
+### GET /v1/audit/reports/:id/findings?page=1&pageSize=20
 
-Lista todas as vulnerabilidades do relatório.
+Lista vulnerabilidades do relatório (paginado). Filtros opcionais: `category`, `severity`, `remediationAvailable=true`.
 
 ### GET /v1/audit/reports/:id/findings/:findingId/markdown
 
@@ -272,9 +285,9 @@ Status da base local de threat intel.
 
 Força sincronização com GitHub Advisories e OpenSourceMalware.
 
-### GET /v1/threat-intel/packages?ecosystem=npm
+### GET /v1/threat-intel/packages?page=1&pageSize=20&ecosystem=npm
 
-Lista pacotes comprometidos conhecidos.
+Lista pacotes comprometidos conhecidos (paginado). Filtro opcional: `ecosystem`.
 
 ### GET /v1/threat-intel/check
 

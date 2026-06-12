@@ -3,6 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import type { PaginatedResult } from '../../domain/pagination/pagination';
 import {
   BackgroundJob,
   BackgroundJobStatus,
@@ -85,9 +86,11 @@ export class BackgroundJobUseCase {
 
   async listJobs(
     userId: string,
+    page: number,
+    pageSize: number,
     status?: BackgroundJobStatus,
-  ): Promise<BackgroundJob[]> {
-    return this.jobStore.listByUser(userId, status);
+  ): Promise<PaginatedResult<BackgroundJob>> {
+    return this.jobStore.listByUserPaginated(userId, page, pageSize, status);
   }
 
   private async findActiveRemediation(

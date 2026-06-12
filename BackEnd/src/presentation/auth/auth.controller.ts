@@ -27,7 +27,7 @@ import { UsersService } from '../../infrastructure/auth/users.service';
 import { RolesGuard } from '../../infrastructure/auth/roles.guard';
 import { Roles } from './decorators/roles.decorator';
 import { CurrentUser } from './decorators/current-user.decorator';
-import { UserRole } from '../../domain/entities/user.entity';
+import { UserRole, type User } from '../../domain/entities/user.entity';
 import {
   AuthResponseDto,
   GitHubConsentAcceptDto,
@@ -36,6 +36,8 @@ import {
   LoginDto,
 } from './dto/auth.dto';
 import { CreateUserDto } from './dto/create-user.dto';
+import { PaginationQueryDto } from '../common/dto/pagination-query.dto';
+import type { PaginatedResult } from '../../domain/pagination/pagination';
 
 @ApiTags('Authentication')
 @Controller('auth')
@@ -206,9 +208,12 @@ export class AuthController {
   @Roles(UserRole.ADMIN)
   @Permissions('users:manage')
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Listar usuários (admin)' })
-  listUsers() {
-    return this.usersService.listUsers();
+  @ApiOperation({ summary: 'Listar usuários (admin, paginado)' })
+  listUsers(
+    @Query() query: PaginationQueryDto,
+  ): PaginatedResult<Omit<User, 'passwordHash'>> {
+    const { page, pageSize } = query.toParams();
+    return this.usersService.listUsersPaginated(page, pageSize);
   }
 
   @Post('users')

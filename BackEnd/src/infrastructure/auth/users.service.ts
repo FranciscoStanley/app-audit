@@ -9,6 +9,10 @@ import * as bcrypt from 'bcryptjs';
 import { randomUUID } from 'node:crypto';
 import { isProduction } from '../../config/env.validation';
 import { User, UserRole } from '../../domain/entities/user.entity';
+import {
+  paginateArray,
+  type PaginatedResult,
+} from '../../domain/pagination/pagination';
 import { UserStore } from './user.store';
 
 @Injectable()
@@ -57,6 +61,16 @@ export class UsersService implements OnModuleInit {
 
   listUsers(): Omit<User, 'passwordHash'>[] {
     return [...this.users.values()].map(({ passwordHash: _, ...user }) => user);
+  }
+
+  listUsersPaginated(
+    page: number,
+    pageSize: number,
+  ): PaginatedResult<Omit<User, 'passwordHash'>> {
+    const all = this.listUsers().sort((a, b) =>
+      a.email.localeCompare(b.email),
+    );
+    return paginateArray(all, page, pageSize);
   }
 
   async createUser(input: {

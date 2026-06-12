@@ -9,6 +9,10 @@ import {
   BackgroundJobType,
   BackgroundJobPayload,
 } from '../../domain/entities/background-job.entity';
+import {
+  paginateArray,
+  type PaginatedResult,
+} from '../../domain/pagination/pagination';
 
 export interface CreateBackgroundJobInput {
   type: BackgroundJobType;
@@ -57,11 +61,22 @@ export class BackgroundJobStore {
     userId: string,
     status?: BackgroundJobStatus,
   ): Promise<BackgroundJob[]> {
-    const jobs = await this.listAll();
+    const jobs = await this.listAllForUser(userId);
     return jobs
-      .filter((j) => j.userId === userId)
       .filter((j) => !status || j.status === status)
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  }
+
+  async listByUserPaginated(
+    userId: string,
+    page: number,
+    pageSize: number,
+    status?: BackgroundJobStatus,
+  ): Promise<PaginatedResult<BackgroundJob>> {
+    const filtered = (await this.listAllForUser(userId))
+      .filter((j) => !status || j.status === status)
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    return paginateArray(filtered, page, pageSize);
   }
 
   async findActiveByUserAndType(
@@ -150,6 +165,20 @@ export class BackgroundJobStore {
       count++;
     }
     return count;
+  }
+
+  private async listAllForUser(userId: string): Promise<BackgroundJob[]> {
+    try {
+      const dirs = await readdir(this.baseDir);
+      const jobs: BackgroundJob[] = [];
+      for (const id of dirs) {
+        const job = await this.getById(id);
+        if (job && job.userId === userId) jobs.push(job);
+      }
+      return jobs;
+    } catch {
+      return [];
+    }
   }
 
   private async listAll(): Promise<BackgroundJob[]> {

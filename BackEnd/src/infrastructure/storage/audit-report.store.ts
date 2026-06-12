@@ -3,11 +3,27 @@ import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { AuditReport } from '../../domain/entities/audit-report.entity';
+import { AuditReportSummary } from '../../domain/entities/audit-report-summary.entity';
 import { StoredAuditReport } from '../../domain/entities/stored-audit.entity';
+import {
+  paginateArray,
+  type PaginatedResult,
+} from '../../domain/pagination/pagination';
 import {
   RepositoryScan,
   ThreatFinding,
 } from '../../domain/entities/repository-scan.entity';
+
+export interface FindingListItem extends ThreatFinding {
+  repository: string;
+  auditId: string;
+}
+
+export interface ListFindingsFilters {
+  category?: string;
+  severity?: string;
+  remediationAvailable?: boolean;
+}
 
 @Injectable()
 export class AuditReportStore {
@@ -35,18 +51,68 @@ export class AuditReportStore {
     };
   }
 
+  /** @deprecated Prefer listSummariesPaginated — carrega relatórios completos */
   async list(): Promise<StoredAuditReport[]> {
-    try {
-      const dirs = await readdir(this.baseDir);
-      const reports: StoredAuditReport[] = [];
-      for (const id of dirs) {
-        const stored = await this.getById(id);
-        if (stored) reports.push(stored);
-      }
-      return reports.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-    } catch {
-      return [];
+    const ids = await this.listIds();
+    const reports: StoredAuditReport[] = [];
+    for (const id of ids) {
+      const stored = await this.getById(id);
+      if (stored) reports.push(stored);
     }
+    return reports.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  }
+
+  async listSummariesPaginated(
+    page: number,
+    pageSize: number,
+  ): Promise<PaginatedResult<AuditReportSummary>> {
+    const ids = await this.listIds();
+    const summaries: AuditReportSummary[] = [];
+    for (const id of ids) {
+      const summary = await this.getSummaryById(id);
+      if (summary) summaries.push(summary);
+    }
+    summaries.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    return paginateArray(summaries, page, pageSize);
+  }
+
+  async listFindingsPaginated(
+    auditId: string,
+    page: number,
+    pageSize: number,
+    filters: ListFindingsFilters = {},
+  ): Promise<PaginatedResult<FindingListItem>> {
+    const stored = await this.getById(auditId);
+    if (!stored) {
+      return paginateArray([], page, pageSize);
+    }
+
+    const repos =
+      stored.report.allRepositories ?? stored.report.affectedRepositories ?? [];
+    let items: FindingListItem[] = repos.flatMap((repo) =>
+      repo.findings.map((f) => ({
+        ...f,
+        repository: repo.fullName,
+        auditId,
+      })),
+    );
+
+    if (filters.category) {
+      items = items.filter((f) => f.category === filters.category);
+    }
+    if (filters.severity) {
+      items = items.filter((f) => f.severity === filters.severity);
+    }
+    if (filters.remediationAvailable === true) {
+      items = items.filter((f) => f.remediationAvailable);
+    }
+
+    return paginateArray(items, page, pageSize);
+  }
+
+  async getLatestSummary(): Promise<AuditReportSummary | null> {
+    const { data } = await this.listSummariesPaginated(1, 1);
+    return data[0] ?? null;
   }
 
   async getById(id: string): Promise<StoredAuditReport | null> {
@@ -56,6 +122,26 @@ export class AuditReportStore {
       const content = await readFile(jsonPath, 'utf-8');
       const report = JSON.parse(content) as AuditReport;
       return { id, createdAt: report.auditedAt, report, markdownPath };
+    } catch {
+      return null;
+    }
+  }
+
+  async getSummaryById(id: string): Promise<AuditReportSummary | null> {
+    try {
+      const jsonPath = join(this.baseDir, id, 'report.json');
+      const content = await readFile(jsonPath, 'utf-8');
+      const parsed = JSON.parse(content) as AuditReport;
+      const repos =
+        parsed.allRepositories ?? parsed.affectedRepositories ?? [];
+      return {
+        id,
+        createdAt: parsed.auditedAt,
+        githubUsername: parsed.githubUsername,
+        verdict: parsed.verdict,
+        totalVulnerabilities: parsed.totalVulnerabilities,
+        repositoryCount: repos.length,
+      };
     } catch {
       return null;
     }
@@ -81,9 +167,11 @@ export class AuditReportStore {
   async findFindingById(
     findingId: string,
   ): Promise<(ThreatFinding & { repository: string; auditId: string }) | null> {
-    const reports = await this.list();
-    for (const stored of reports) {
-      const match = this.findInReport(stored.id, stored.report, findingId);
+    const ids = await this.listIds();
+    for (const id of ids) {
+      const stored = await this.getById(id);
+      if (!stored) continue;
+      const match = this.findInReport(id, stored.report, findingId);
       if (match) return match;
     }
     return null;
@@ -190,5 +278,13 @@ export class AuditReportStore {
       }
     }
     return count;
+  }
+
+  private async listIds(): Promise<string[]> {
+    try {
+      return await readdir(this.baseDir);
+    } catch {
+      return [];
+    }
   }
 }

@@ -13,7 +13,7 @@ vi.mock('@/lib/api', () => ({
     enqueueRemediationJob: vi.fn(),
     enqueueRemediationAllJob: vi.fn(),
     getBackgroundJob: vi.fn(),
-    listBackgroundJobs: vi.fn().mockResolvedValue([]),
+    listBackgroundJobs: vi.fn().mockResolvedValue({ data: [], meta: { page: 1, pageSize: 20, total: 0, totalPages: 0, hasNextPage: false, hasPreviousPage: false } }),
     runAudit: vi.fn(),
     applyRemediation: vi.fn(),
     applyAllRemediation: vi.fn(),

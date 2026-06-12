@@ -81,7 +81,7 @@
         },
         {
           "name": "List Users (admin)",
-          "request": { "method": "GET", "url": "{{baseUrl}}/v1/auth/users" }
+          "request": { "method": "GET", "url": "{{baseUrl}}/v1/auth/users?page=1&pageSize=20" }
         },
         {
           "name": "Create User (admin)",
@@ -127,7 +127,7 @@
         },
         {
           "name": "List Jobs (running)",
-          "request": { "method": "GET", "url": "{{baseUrl}}/v1/audit/jobs?status=running" }
+          "request": { "method": "GET", "url": "{{baseUrl}}/v1/audit/jobs?page=1&pageSize=20&status=running" }
         },
         {
           "name": "Enqueue Remediation Job",
@@ -170,7 +170,7 @@
         },
         {
           "name": "List Reports",
-          "request": { "method": "GET", "url": "{{baseUrl}}/v1/audit/reports" }
+          "request": { "method": "GET", "url": "{{baseUrl}}/v1/audit/reports?page=1&pageSize=20" }
         },
         {
           "name": "Get Report",
@@ -200,7 +200,7 @@
               }
             }
           ],
-          "request": { "method": "GET", "url": "{{baseUrl}}/v1/audit/reports/{{auditId}}/findings" }
+          "request": { "method": "GET", "url": "{{baseUrl}}/v1/audit/reports/{{auditId}}/findings?page=1&pageSize=20" }
         },
         {
           "name": "Download Finding Markdown",

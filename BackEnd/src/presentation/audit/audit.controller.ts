@@ -36,13 +36,20 @@ import { AuditReportStore } from '../../infrastructure/storage/audit-report.stor
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { Permissions } from '../auth/decorators/permissions.decorator';
 import { AuditRunResponseDto } from './dto/audit-report-response.dto';
+import { BackgroundJob } from '../../domain/entities/background-job.entity';
 import {
   BackgroundJobResponseDto,
   CreateBackgroundJobResponseDto,
   CreateRemediationAllJobDto,
   CreateRemediationJobDto,
+  ListJobsQueryDto,
 } from './dto/background-job.dto';
-import { BackgroundJob } from '../../domain/entities/background-job.entity';
+import { PaginationQueryDto } from '../common/dto/pagination-query.dto';
+import {
+  AuditReportSummaryDto,
+  ListFindingsQueryDto,
+} from './dto/audit-list.dto';
+import type { PaginatedResult } from '../../domain/pagination/pagination';
 
 @ApiTags('Security Audit')
 @ApiBearerAuth()
@@ -111,15 +118,32 @@ export class AuditController {
 
   @Get('jobs')
   @Permissions('audit:read')
-  @ApiOperation({ summary: 'Listar jobs assíncronos do usuário autenticado' })
-  @ApiQuery({ name: 'status', required: false, enum: ['pending', 'running', 'completed', 'failed'] })
-  @ApiResponse({ status: 200, type: [BackgroundJobResponseDto] })
+  @ApiOperation({ summary: 'Listar jobs assíncronos do usuário autenticado (paginado)' })
+  @ApiResponse({
+    status: 200,
+    description: 'Lista paginada de jobs',
+    schema: {
+      properties: {
+        data: { type: 'array', items: { $ref: '#/components/schemas/BackgroundJobResponseDto' } },
+        meta: { $ref: '#/components/schemas/PaginationMetaDto' },
+      },
+    },
+  })
   async listJobs(
     @CurrentUser() user: { id: string },
-    @Query('status') status?: BackgroundJob['status'],
-  ): Promise<BackgroundJobResponseDto[]> {
-    const jobs = await this.backgroundJobs.listJobs(user.id, status);
-    return jobs.map((job) => this.toJobDto(job));
+    @Query() query: ListJobsQueryDto,
+  ): Promise<PaginatedResult<BackgroundJobResponseDto>> {
+    const { page, pageSize } = query.toParams();
+    const result = await this.backgroundJobs.listJobs(
+      user.id,
+      page,
+      pageSize,
+      query.status,
+    );
+    return {
+      data: result.data.map((job) => this.toJobDto(job)),
+      meta: result.meta,
+    };
   }
 
   @Get('jobs/:id')
@@ -169,9 +193,16 @@ export class AuditController {
 
   @Get('reports')
   @Permissions('audit:read')
-  @ApiOperation({ summary: 'Listar relatórios de auditoria' })
-  listReports() {
-    return this.auditStore.list();
+  @ApiOperation({ summary: 'Listar relatórios de auditoria (resumo paginado)' })
+  @ApiResponse({
+    status: 200,
+    description: 'Lista paginada de resumos — sem payload completo do relatório',
+  })
+  async listReports(
+    @Query() query: PaginationQueryDto,
+  ): Promise<PaginatedResult<AuditReportSummaryDto>> {
+    const { page, pageSize } = query.toParams();
+    return this.auditStore.listSummariesPaginated(page, pageSize);
   }
 
   @Get('reports/:id')
@@ -226,20 +257,20 @@ export class AuditController {
 
   @Get('reports/:id/findings')
   @Permissions('audit:read')
-  @ApiOperation({ summary: 'Listar vulnerabilidades de um relatório' })
-  async listFindings(@Param('id') id: string) {
+  @ApiOperation({ summary: 'Listar vulnerabilidades de um relatório (paginado)' })
+  async listFindings(
+    @Param('id') id: string,
+    @Query() query: ListFindingsQueryDto,
+  ) {
     const stored = await this.auditStore.getById(id);
     if (!stored) throw new NotFoundException('Relatório não encontrado');
 
-    const repos =
-      stored.report.allRepositories ?? stored.report.affectedRepositories;
-    return repos.flatMap((repo) =>
-      repo.findings.map((f) => ({
-        ...f,
-        repository: repo.fullName,
-        auditId: id,
-      })),
-    );
+    const { page, pageSize } = query.toParams();
+    return this.auditStore.listFindingsPaginated(id, page, pageSize, {
+      category: query.category,
+      severity: query.severity,
+      remediationAvailable: query.remediationAvailable,
+    });
   }
 
   @Get('reports/:id/findings/:findingId/markdown')
