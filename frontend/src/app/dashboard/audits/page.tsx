@@ -47,6 +47,12 @@ export default function AuditsPage() {
     return result.data;
   }, [token, page]);
 
+  const runAudit = useCallback(async () => {
+    if (!token || running) return;
+    setAuditError('');
+    void runAuditInBackground(token);
+  }, [token, running]);
+
   useEffect(() => {
     if (!token) return;
     setLoaded(false);
@@ -56,12 +62,6 @@ export default function AuditsPage() {
       api.me(token).then(setUser).catch(() => null),
     ]).finally(() => setLoaded(true));
   }, [token, setUser, page, load]);
-
-  async function runAudit() {
-    if (!token || running) return;
-    setAuditError('');
-    void runAuditInBackground(token);
-  }
 
   useEffect(() => {
     if (!token) return;
@@ -88,7 +88,18 @@ export default function AuditsPage() {
 
     autostartDone.current = true;
     void runAudit();
-  }, [searchParams, loaded, token, canRun, github, reports.length, meta?.total, running, router]);
+  }, [
+    searchParams,
+    loaded,
+    token,
+    canRun,
+    github,
+    reports.length,
+    meta?.total,
+    running,
+    router,
+    runAudit,
+  ]);
 
   async function disconnectGitHub() {
     if (!token) return;
