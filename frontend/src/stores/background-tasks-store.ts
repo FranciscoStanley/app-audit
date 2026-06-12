@@ -261,11 +261,19 @@ export async function resumeRunningTasks(token: string): Promise<void> {
   const { tasks } = useBackgroundTasksStore.getState();
   const running = Object.values(tasks).filter((t) => t.status === 'running');
 
+  if (running.length === 0) return;
+
+  const polledJobIds = new Set<string>();
+
   for (const task of running) {
     if (task.serverJobId) {
+      polledJobIds.add(task.serverJobId);
       await pollServerJob(token, task.id, task.serverJobId);
     }
   }
+
+  const needsDiscovery = running.some((t) => !t.serverJobId);
+  if (!needsDiscovery) return;
 
   const serverJobs = [
     ...(await api.listBackgroundJobs(token, { status: 'running', pageSize: 100 })).data,
@@ -273,10 +281,12 @@ export async function resumeRunningTasks(token: string): Promise<void> {
   ];
 
   for (const job of serverJobs) {
+    if (polledJobIds.has(job.id)) continue;
     const taskId = resolveTaskIdFromJob(job);
     if (!taskId) continue;
     syncTaskFromJob(taskId, job);
     if (job.status === 'pending' || job.status === 'running') {
+      polledJobIds.add(job.id);
       await pollServerJob(token, taskId, job.id);
     }
   }

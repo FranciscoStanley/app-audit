@@ -21,6 +21,7 @@ import {
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
+import { SkipThrottle } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
 import { access, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -67,6 +68,7 @@ export class AuditController {
   ) {}
 
   @Post('jobs/audit-run')
+  @SkipThrottle()
   @HttpCode(HttpStatus.ACCEPTED)
   @Permissions('audit:run')
   @ApiOperation({
@@ -81,6 +83,7 @@ export class AuditController {
   }
 
   @Post('jobs/remediation')
+  @SkipThrottle()
   @HttpCode(HttpStatus.ACCEPTED)
   @Permissions('remediation:apply')
   @ApiOperation({
@@ -99,6 +102,7 @@ export class AuditController {
   }
 
   @Post('jobs/remediation-all')
+  @SkipThrottle()
   @HttpCode(HttpStatus.ACCEPTED)
   @Permissions('remediation:apply')
   @ApiOperation({
@@ -117,6 +121,7 @@ export class AuditController {
   }
 
   @Get('jobs')
+  @SkipThrottle()
   @Permissions('audit:read')
   @ApiOperation({
     summary: 'Listar jobs assíncronos do usuário autenticado (paginado)',
@@ -152,6 +157,7 @@ export class AuditController {
   }
 
   @Get('jobs/:id')
+  @SkipThrottle()
   @Permissions('audit:read')
   @ApiOperation({ summary: 'Status de um job assíncrono (polling)' })
   @ApiResponse({ status: 200, type: BackgroundJobResponseDto })

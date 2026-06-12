@@ -94,6 +94,18 @@
             },
             "url": "{{baseUrl}}/v1/auth/users"
           }
+        },
+        {
+          "name": "Update User (admin)",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Francisco Stanley Rodrigues Albuquerque\",\n  \"role\": \"admin\"\n}"
+            },
+            "url": "{{baseUrl}}/v1/auth/users/{{userId}}"
+          }
         }
       ]
     },

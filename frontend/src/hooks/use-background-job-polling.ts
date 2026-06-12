@@ -5,17 +5,21 @@ import { useAuthStore } from '@/stores/auth-store';
 import {
   pollServerJob,
   resumeRunningTasks,
+  useBackgroundTasksStore,
 } from '@/stores/background-tasks-store';
 
-const POLL_INTERVAL_MS = 2500;
+const POLL_INTERVAL_MS = 4000;
 
-/** Mantém polling de jobs do servidor enquanto o dashboard estiver montado. */
+/** Mantém polling de jobs do servidor enquanto houver tarefas em execução. */
 export function useBackgroundJobPolling(): void {
   const token = useAuthStore((s) => s.token);
+  const hasRunning = useBackgroundTasksStore((s) =>
+    Object.values(s.tasks).some((t) => t.status === 'running'),
+  );
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
-    if (!token) return;
+    if (!token || !hasRunning) return;
 
     void resumeRunningTasks(token);
 
@@ -26,7 +30,7 @@ export function useBackgroundJobPolling(): void {
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
-  }, [token]);
+  }, [token, hasRunning]);
 }
 
 export { pollServerJob };

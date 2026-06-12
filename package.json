@@ -23,6 +23,7 @@
     "docker:down": "docker compose down",
     "docker:logs": "docker compose logs -f",
     "security:scan": "node scripts/check-secrets.mjs",
+    "docs:screenshots": "node scripts/capture-screenshots.mjs",
     "users:update": "npm run users:update -w BackEnd",
     "setup:oauth": "node scripts/setup-github-oauth.mjs"
   },

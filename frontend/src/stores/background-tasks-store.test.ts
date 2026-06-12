@@ -181,8 +181,41 @@ describe('background-tasks-store', () => {
     expect(task?.error).toBe('timeout');
   });
 
-  it('rehydrateBackgroundTasksOnce resolves even without persisted state', async () => {
-    localStorage.removeItem('app-audit-background-tasks');
-    await expect(rehydrateBackgroundTasksOnce()).resolves.toBeUndefined();
+  it('resumeRunningTasks skips API when no running tasks', async () => {
+    const { api } = await import('@/lib/api');
+    const { resumeRunningTasks } = await import('./background-tasks-store');
+
+    await resumeRunningTasks('token');
+
+    expect(api.listBackgroundJobs).not.toHaveBeenCalled();
+    expect(api.getBackgroundJob).not.toHaveBeenCalled();
+  });
+
+  it('resumeRunningTasks polls only known server jobs without duplicate list calls', async () => {
+    const { api } = await import('@/lib/api');
+    const { resumeRunningTasks } = await import('./background-tasks-store');
+
+    vi.mocked(api.getBackgroundJob).mockResolvedValue({
+      id: 'job-1',
+      type: 'audit_run',
+      status: 'running',
+      label: 'Varredura',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
+
+    useBackgroundTasksStore.getState().upsertTask({
+      id: AUDIT_TASK_ID,
+      serverJobId: 'job-1',
+      type: 'audit',
+      label: 'Varredura',
+      status: 'running',
+      startedAt: new Date().toISOString(),
+    });
+
+    await resumeRunningTasks('token');
+
+    expect(api.getBackgroundJob).toHaveBeenCalledTimes(1);
+    expect(api.listBackgroundJobs).not.toHaveBeenCalled();
   });
 });
