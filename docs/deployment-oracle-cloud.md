@@ -144,11 +144,14 @@ NEXT_PUBLIC_API_URL=http://132.145.10.20:3000
 GITHUB_OAUTH_CALLBACK_URL=http://132.145.10.20:3000/v1/auth/github/callback
 FRONTEND_URL=http://132.145.10.20:3001
 
-JWT_SECRET=<sua-chave-48-bytes-base64>
-ADMIN_PASSWORD=<senha-forte-12+>
-GITHUB_TOKEN=ghp_xxxxxxxx
+# openssl rand -base64 48
+JWT_SECRET=
+ADMIN_PASSWORD=
+GITHUB_TOKEN=
 SWAGGER_ENABLED=false
 ```
+
+Preencha `JWT_SECRET`, `ADMIN_PASSWORD` e `GITHUB_TOKEN` antes do deploy (modelo completo em `.env.oracle.example`).
 
 | Variável | Obrigatória | Notas |
 |----------|-------------|-------|
