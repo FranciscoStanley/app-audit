@@ -117,7 +117,7 @@ Capturar de tela das interfaces (dados de demonstração). Galeria completa: [do
 
 ### Login
 
-Autenticação por e-mail/senha e **Entrar com GitHub** (OAuth).
+Autenticação por e-mail/senha (com aceite de Termos e Privacidade) e **Entrar com GitHub** (OAuth).
 
 ![Tela de login](./docs/screenshots/01-login.png)
 
@@ -129,19 +129,19 @@ Modal exibido antes do redirect ao GitHub: finalidades, permissões OAuth e dire
 
 ### Dashboard
 
-Métricas da última auditoria: repositórios, vulnerabilidades, pacotes monitorados e veredito.
+Card de conta GitHub conectada, métricas da última auditoria (repositórios, vulnerabilidades, pacotes monitorados, veredito) e atalhos para relatório.
 
 ![Dashboard](./docs/screenshots/02-dashboard.png)
 
 ### Auditorias
 
-Histórico de varredura, status da conexão GitHub e nova auditoria em todos os repositórios. Varreduras, remediações e sync de Threat Intel **continuam em segundo plano** — você pode navegar entre telas enquanto o job executa; o banner no topo exibe progresso e status.
+Histórico paginado, status da conexão GitHub (desconectar/revogar consentimento) e **Nova auditoria**. Varreduras, remediações e sync de Threat Intel **continuam em segundo plano** — você pode navegar entre telas enquanto o job executa; o banner no topo e a sidebar exibem progresso.
 
 ![Auditorias](./docs/screenshots/03-auditorias.png)
 
 ### Detalhe da auditoria
 
-Relatório Markdown, download PDF e vulnerabilidades por repositório.
+Relatório Markdown, download PDF/MD e vulnerabilidades paginadas por repositório.
 
 ![Detalhe da auditoria](./docs/screenshots/04-detalhe-auditoria.png)
 
@@ -155,21 +155,27 @@ Relatório Markdown, download PDF e vulnerabilidades por repositório.
 
 ### Vulnerabilidades
 
-Todas as categorias detectadas (Secrets, Supply Chain, CI/CD, Dependabot) com filtros e remediação automática.
+Todas as categorias detectadas (Secrets, Supply Chain, CI/CD, Dependabot) com filtros, paginação e remediação automática em lote.
 
 ![Vulnerabilidades](./docs/screenshots/05-vulnerabilidades.png)
 
 ### Remediação automática
 
-Plano de remediação expandido, botão *Corrigir todas* e resultado com passos aplicados / link de PR.
+Plano de remediação expandido, passos automatizados e botão *Aplicar correção* (job assíncrono).
 
 ![Remediação automática](./docs/screenshots/07-remediacao.png)
 
 ### Threat Intelligence
 
-Sincronização com GitHub Advisories e OpenSourceMalware. A UI mantém o estado de sync em segundo plano via `background-tasks-store` (mesmo banner e sidebar das auditorias).
+Sincronização com GitHub Advisories e OpenSourceMalware (pacotes, repositórios baseline, fontes habilitadas). A UI mantém o estado de sync em segundo plano via `background-tasks-store`.
 
 ![Threat Intelligence](./docs/screenshots/06-threat-intel.png)
+
+### Administração
+
+Gestão de usuários e papéis RBAC — visível apenas para `admin`.
+
+![Administração](./docs/screenshots/08-administracao.png)
 
 Para regenerar as capturas de tela: `npm run docs:screenshots` (frontend em `http://localhost:3001`).
 

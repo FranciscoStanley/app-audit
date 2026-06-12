@@ -47,6 +47,10 @@
 |-----------------------|---------------------|
 | ![Remediação](./screenshots/07-remediacao.png) | ![Threat Intel](./screenshots/06-threat-intel.png) |
 
+| Administração (admin) |
+|-----------------------|
+| ![Administração](./screenshots/08-administracao.png) |
+
 Detalhes e instruções para atualizar as capturas de tela: [screenshots.md](./screenshots.md).
 
 ## Collections API
