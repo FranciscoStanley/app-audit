@@ -66,7 +66,7 @@ Revogação GitHub: `DELETE /auth/github/disconnect` ou botão **Desconectar** n
 
 ## Scopes solicitados
 
-`read:user`, `user:email`, `repo` — necessários para auditar repositórios públicos e privados.
+`read:user`, `user:email`, `repo`, `security_events` — necessários para auditar repositórios públicos/privados e alertas Dependabot.
 
 ## Produção
 

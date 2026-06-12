@@ -26,6 +26,12 @@ export const GITHUB_OAUTH_SCOPES = [
     description:
       'Acesso aos seus repositórios públicos e privados para varreduras de segurança (código-fonte, workflows, manifestos e dependências). O escopo técnico do GitHub inclui permissão de escrita; utilizamos leitura por padrão e escrita somente quando você solicitar remediação automática (commits, branches, pull requests ou configurações de segurança).',
   },
+  {
+    scope: 'security_events',
+    title: 'Eventos de segurança (Dependabot)',
+    description:
+      'Leitura de alertas Dependabot e eventos de segurança do repositório para correlacionar vulnerabilidades na auditoria e validar correções após remediação.',
+  },
 ] as const;
 
 export const DATA_PROCESSING_PURPOSES = [

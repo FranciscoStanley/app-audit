@@ -12,7 +12,7 @@ const GITHUB_TOKEN = 'https://github.com/login/oauth/access_token';
 const GITHUB_USER = 'https://api.github.com/user';
 const GITHUB_EMAILS = 'https://api.github.com/user/emails';
 
-const SCOPES = ['read:user', 'user:email', 'repo'].join(' ');
+const SCOPES = ['read:user', 'user:email', 'repo', 'security_events'].join(' ');
 
 export interface GitHubProfile {
   id: string;
