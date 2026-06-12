@@ -336,8 +336,9 @@ export const useBackgroundTasksStore = create<BackgroundTasksState>()(
         })),
       clearPreviewPlan: (findingId) =>
         set((state) => {
-          const { [findingId]: _, ...rest } = state.previewPlans;
-          return { previewPlans: rest };
+          const next = { ...state.previewPlans };
+          delete next[findingId];
+          return { previewPlans: next };
         }),
       completeTask: (id, result) =>
         set((state) => {
@@ -385,8 +386,9 @@ export const useBackgroundTasksStore = create<BackgroundTasksState>()(
         }),
       dismissTask: (id) =>
         set((state) => {
-          const { [id]: _, ...rest } = state.tasks;
-          return { tasks: rest };
+          const next = { ...state.tasks };
+          delete next[id];
+          return { tasks: next };
         }),
       clearCompleted: () =>
         set((state) => ({

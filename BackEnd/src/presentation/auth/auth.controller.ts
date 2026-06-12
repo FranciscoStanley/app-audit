@@ -168,7 +168,7 @@ export class AuthController {
   @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @ApiOperation({ summary: 'Trocar código OAuth de uso único por JWT' })
   @ApiResponse({ status: 200, type: AuthResponseDto })
-  githubExchange(@Body() dto: GitHubExchangeDto): Promise<AuthResponseDto> {
+  githubExchange(@Body() dto: GitHubExchangeDto): AuthResponseDto {
     return this.githubAuth.exchangeCode(dto.code);
   }
 

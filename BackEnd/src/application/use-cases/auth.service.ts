@@ -79,7 +79,7 @@ export class AuthService {
     };
   }
 
-  async validatePayload(payload: JwtPayload): Promise<AuthUserView> {
+  validatePayload(payload: JwtPayload): AuthUserView {
     const user = this.users.findById(payload.sub);
     if (!user) throw new UnauthorizedException();
     return {
@@ -92,10 +92,10 @@ export class AuthService {
     };
   }
 
-  async validateAccessToken(accessToken: string) {
+  validateAccessToken(accessToken: string) {
     try {
       const payload = this.jwt.verify<JwtPayload>(accessToken);
-      const user = await this.validatePayload(payload);
+      const user = this.validatePayload(payload);
       return { accessToken, user };
     } catch {
       throw new UnauthorizedException('Token inválido ou expirado');

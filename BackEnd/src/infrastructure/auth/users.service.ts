@@ -146,8 +146,7 @@ export class UsersService implements OnModuleInit {
     name: string;
   }): Promise<User> {
     const existing =
-      this.findByGithubId(profile.githubId) ??
-      this.findByEmail(profile.email);
+      this.findByGithubId(profile.githubId) ?? this.findByEmail(profile.email);
 
     if (existing) {
       const updated: User = {

@@ -221,9 +221,9 @@ describe('RemediationUseCase', () => {
       '/tmp/repo',
       'frontend/package.json',
     ]);
-    expect(github.enableDependabotSecurityUpdates.mock.calls.length).toBeGreaterThan(
-      0,
-    );
+    expect(
+      github.enableDependabotSecurityUpdates.mock.calls.length,
+    ).toBeGreaterThan(0);
     expect(result.success).toBe(true);
   });
 
