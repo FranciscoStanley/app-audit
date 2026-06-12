@@ -94,7 +94,7 @@ docker compose up -d --build
 
 Atalhos npm: `npm run docker:up` · `npm run docker:stop` · `npm run docker:restart`
 
-Detalhes: [docs/deployment.md](./docs/deployment.md)
+Detalhes: [docs/deployment.md](./docs/deployment.md) · **Oracle Cloud (free):** [docs/deployment-oracle-cloud.md](./docs/deployment-oracle-cloud.md)
 
 ## Desenvolvimento local (sem Docker)
 

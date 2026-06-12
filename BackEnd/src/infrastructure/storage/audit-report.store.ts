@@ -252,6 +252,42 @@ export class AuditReportStore {
     }
   }
 
+  async removeFindings(auditId: string, findingIds: string[]): Promise<number> {
+    if (findingIds.length === 0) return 0;
+
+    const stored = await this.getById(auditId);
+    if (!stored) return 0;
+
+    const remove = new Set(findingIds);
+    const report = stored.report;
+    const repos =
+      report.allRepositories ?? report.affectedRepositories ?? [];
+
+    let removed = 0;
+    for (const repo of repos) {
+      const before = repo.findings.length;
+      repo.findings = repo.findings.filter((f) => !remove.has(f.id));
+      removed += before - repo.findings.length;
+      repo.vulnerabilityCount = repo.findings.length;
+      repo.isAffected = repo.findings.length > 0;
+    }
+
+    if (removed === 0) return 0;
+
+    report.affectedRepositories = repos.filter((r) => r.isAffected);
+    report.cleanRepositories = repos.length - report.affectedRepositories.length;
+    report.totalVulnerabilities = repos.reduce(
+      (sum, r) => sum + r.vulnerabilityCount,
+      0,
+    );
+    report.verdict =
+      report.totalVulnerabilities > 0 ? 'affected' : 'not_affected';
+
+    const jsonPath = join(this.baseDir, auditId, 'report.json');
+    await writeFile(jsonPath, JSON.stringify(report, null, 2), 'utf-8');
+    return removed;
+  }
+
   async saveAllFindingReports(
     auditId: string,
     report: AuditReport,

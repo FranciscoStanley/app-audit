@@ -7,7 +7,10 @@ import {
   RemediationResult,
   RemediationStep,
 } from '../../domain/entities/remediation.entity';
-import { ThreatFindingType } from '../../domain/entities/repository-scan.entity';
+import {
+  ThreatFinding,
+  ThreatFindingType,
+} from '../../domain/entities/repository-scan.entity';
 import { GitHubRemediationFactory } from '../../infrastructure/github/github-remediation.factory';
 import { sanitizeGitError } from '../../infrastructure/github/git-error.util';
 import { RemediationGitWorkspace } from '../../infrastructure/github/remediation-git-workspace';
@@ -141,20 +144,26 @@ export class RemediationUseCase {
         }
 
         if (failed.length === 0) {
-          delivery = await workspace.deliver(
-            repoPath,
-            owner,
-            repo,
-            cloned.defaultBranch,
-            `security: automated remediation (${finding.type})`,
-            `security: correção automática — ${finding.message.slice(0, 80)}`,
-            this.buildPullRequestBody(
-              finding.type,
-              finding.message,
-              finding.evidence ?? '',
-            ),
-          );
-          delivery = { ...delivery, lockfilesUpdated };
+          try {
+            delivery = await workspace.deliver(
+              repoPath,
+              owner,
+              repo,
+              cloned.defaultBranch,
+              `security: automated remediation (${finding.type})`,
+              `security: correção automática — ${finding.message.slice(0, 80)}`,
+              this.buildPullRequestBody(
+                finding.type,
+                finding.message,
+                finding.evidence ?? '',
+              ),
+            );
+            delivery = { ...delivery, lockfilesUpdated };
+          } catch (error) {
+            failed.push(
+              `Entrega (commit/push): ${sanitizeGitError((error as Error).message)}`,
+            );
+          }
         }
       } catch (error) {
         failed.push(`Workspace: ${sanitizeGitError((error as Error).message)}`);
@@ -201,13 +210,19 @@ export class RemediationUseCase {
       }
     }
 
-    return this.buildResult(
+    const result = this.buildResult(
       failed,
       applied,
       delivery,
       optionalFailed,
       dependabotSync,
     );
+
+    if (result.success) {
+      await this.markFindingsRemediated(finding.auditId, finding);
+    }
+
+    return result;
   }
 
   async applyAll(
@@ -297,6 +312,87 @@ export class RemediationUseCase {
       }
     }
     return [...seen.values()];
+  }
+
+  private async markFindingsRemediated(
+    auditId: string,
+    finding: ThreatFinding & { repository: string },
+  ): Promise<void> {
+    const stored = await this.auditStore.getById(auditId);
+    if (!stored) return;
+
+    const idsToRemove = new Set<string>([finding.id]);
+    const repos =
+      stored.report.allRepositories ??
+      stored.report.affectedRepositories ??
+      [];
+
+    for (const repo of repos) {
+      if (repo.fullName !== finding.repository) continue;
+      for (const other of repo.findings) {
+        if (other.id === finding.id) continue;
+        if (this.areFindingsResolvedTogether(finding, other)) {
+          idsToRemove.add(other.id);
+        }
+      }
+    }
+
+    await this.auditStore.removeFindings(auditId, [...idsToRemove]);
+  }
+
+  private areFindingsResolvedTogether(
+    primary: ThreatFinding,
+    other: ThreatFinding,
+  ): boolean {
+    if (primary.type !== other.type) return false;
+
+    switch (primary.type) {
+      case 'unpinned_action':
+      case 'compromised_action':
+      case 'exposed_secret':
+      case 'malicious_file':
+      case 'malicious_pattern':
+      case 'c2_domain':
+        return primary.evidence === other.evidence;
+
+      case 'vulnerable_dependency':
+        if (
+          primary.evidence?.includes('dependabot-') &&
+          other.evidence?.includes('dependabot-')
+        ) {
+          return (
+            this.findingRemediationGroupKey(
+              '',
+              primary.evidence ?? '',
+              primary.message,
+              primary.id,
+            ) ===
+            this.findingRemediationGroupKey(
+              '',
+              other.evidence ?? '',
+              other.message,
+              other.id,
+            )
+          );
+        }
+        return primary.evidence === other.evidence;
+
+      case 'compromised_dependency':
+      case 'malware_advisory': {
+        const primaryPkg = this.parseDependencyEvidence(
+          primary.evidence ?? '',
+          primary.message,
+        ).packageName;
+        const otherPkg = this.parseDependencyEvidence(
+          other.evidence ?? '',
+          other.message,
+        ).packageName;
+        return primaryPkg === otherPkg;
+      }
+
+      default:
+        return false;
+    }
   }
 
   private findingRemediationGroupKey(

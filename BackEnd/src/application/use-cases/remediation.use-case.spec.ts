@@ -16,10 +16,11 @@ describe('RemediationUseCase', () => {
     category: 'Secrets Exposure',
     remediationAvailable: true,
     repository: 'owner/repo',
+    auditId: 'audit-1',
   };
 
   let auditStore: jest.Mocked<
-    Pick<AuditReportStore, 'findFindingById' | 'getById'>
+    Pick<AuditReportStore, 'findFindingById' | 'getById' | 'removeFindings'>
   >;
   let githubTokens: jest.Mocked<
     Pick<GitHubTokenResolverService, 'requireForAudit'>
@@ -90,7 +91,22 @@ describe('RemediationUseCase', () => {
 
     auditStore = {
       findFindingById: jest.fn().mockResolvedValue(finding),
-      getById: jest.fn(),
+      getById: jest.fn().mockResolvedValue({
+        id: 'audit-1',
+        createdAt: '2026-01-01T00:00:00.000Z',
+        report: {
+          allRepositories: [
+            {
+              fullName: 'owner/repo',
+              findings: [finding],
+              vulnerabilityCount: 1,
+              isAffected: true,
+            },
+          ],
+        },
+        markdownPath: '/tmp/report.md',
+      }),
+      removeFindings: jest.fn().mockResolvedValue(1),
     };
 
     githubTokens = {
@@ -135,6 +151,9 @@ describe('RemediationUseCase', () => {
     expect(workspace.cleanup).toHaveBeenCalledWith('/tmp/repo');
     expect(result.success).toBe(true);
     expect(result.delivery?.method).toBe('direct_push');
+    expect(auditStore.removeFindings).toHaveBeenCalledWith('audit-1', [
+      'finding-1',
+    ]);
   });
 
   it('considera sucesso quando issue de segurança falha por issues desabilitadas', async () => {

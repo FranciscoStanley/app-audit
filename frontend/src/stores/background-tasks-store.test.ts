@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { resolveTaskOutcomeFromJob } from '@/lib/background-task-outcome';
 import {
   AUDIT_TASK_ID,
   bulkRemediationTaskId,
@@ -189,6 +190,65 @@ describe('background-tasks-store', () => {
 
     expect(api.listBackgroundJobs).not.toHaveBeenCalled();
     expect(api.getBackgroundJob).not.toHaveBeenCalled();
+  });
+
+  it('warnTask marca remediação parcial sem status success', () => {
+    const { upsertTask, warnTask } = useBackgroundTasksStore.getState();
+
+    upsertTask({
+      id: 'remediation-f-1',
+      type: 'remediation-single',
+      label: 'Remediação',
+      status: 'running',
+      startedAt: new Date().toISOString(),
+    });
+
+    warnTask(
+      'remediation-f-1',
+      {
+        remediationResult: {
+          success: false,
+          message: 'Remediação parcial — 1 passo(s) falharam',
+          appliedSteps: ['Fixar GitHub Action por SHA'],
+          requiresManualSteps: ['Entrega: falhou'],
+        },
+      },
+      'Remediação parcial — 1 passo(s) falharam',
+    );
+
+    const task = useBackgroundTasksStore.getState().tasks['remediation-f-1'];
+    expect(task.status).toBe('warning');
+    expect(task.status).not.toBe('success');
+  });
+
+  it('resolveTaskOutcomeFromJob diferencia parcial de sucesso', () => {
+    expect(
+      resolveTaskOutcomeFromJob({
+        id: 'j1',
+        type: 'remediation_apply',
+        status: 'completed',
+        label: 'x',
+        createdAt: '',
+        updatedAt: '',
+        result: { success: true, message: 'OK' },
+      }),
+    ).toBe('success');
+
+    expect(
+      resolveTaskOutcomeFromJob({
+        id: 'j2',
+        type: 'remediation_apply',
+        status: 'completed',
+        label: 'x',
+        createdAt: '',
+        updatedAt: '',
+        result: {
+          success: false,
+          message: 'Parcial',
+          appliedSteps: ['passo'],
+        },
+      }),
+    ).toBe('warning');
   });
 
   it('resumeRunningTasks polls only known server jobs without duplicate list calls', async () => {

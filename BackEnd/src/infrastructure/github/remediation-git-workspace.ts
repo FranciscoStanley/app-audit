@@ -60,6 +60,7 @@ export class RemediationGitWorkspace {
       try {
         await strategy();
         await this.configureGitIdentity(repoPath);
+        await this.configureGitAuth(repoPath, owner, repo);
         await this.deepenClone(repoPath, defaultBranch);
         return { repoPath, defaultBranch };
       } catch (error) {
@@ -140,6 +141,24 @@ export class RemediationGitWorkspace {
       { cwd: repoPath },
     );
     await this.run('git', ['config', 'user.name', 'App Audit Security Bot'], {
+      cwd: repoPath,
+    });
+  }
+
+  /** Credenciais para fetch/push após clone (gh ou clone com header não persistem no remote). */
+  private async configureGitAuth(
+    repoPath: string,
+    owner: string,
+    repo: string,
+  ): Promise<void> {
+    const authHeader = `AUTHORIZATION: bearer ${this.accessToken}`;
+    await this.run(
+      'git',
+      ['config', 'http.https://github.com/.extraheader', authHeader],
+      { cwd: repoPath },
+    );
+    const authedUrl = `https://x-access-token:${this.accessToken}@github.com/${owner}/${repo}.git`;
+    await this.run('git', ['remote', 'set-url', 'origin', authedUrl], {
       cwd: repoPath,
     });
   }
@@ -626,7 +645,7 @@ export class RemediationGitWorkspace {
         this.run('git', ['fetch', 'origin', '--deepen', '50'], {
           cwd: repoPath,
           timeout: 120_000,
-        }),
+        }).catch(() => undefined),
       );
       await this.run('git', ['push', '-u', 'origin', branch], {
         cwd: repoPath,

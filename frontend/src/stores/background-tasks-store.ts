@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { resolveTaskOutcomeFromJob } from '@/lib/background-task-outcome';
 import {
   api,
   type BackgroundJobResponse,
@@ -16,7 +17,7 @@ export type BackgroundTaskType =
   | 'remediation-bulk'
   | 'threat-intel-sync';
 
-export type BackgroundTaskStatus = 'running' | 'success' | 'error';
+export type BackgroundTaskStatus = 'running' | 'success' | 'warning' | 'error';
 
 export interface BulkRemediationTaskResult {
   message: string;
@@ -64,6 +65,7 @@ interface BackgroundTasksState {
   setPreviewPlan: (findingId: string, plan: RemediationPlan) => void;
   clearPreviewPlan: (findingId: string) => void;
   completeTask: (id: string, result?: BackgroundTask['result']) => void;
+  warnTask: (id: string, result: BackgroundTask['result'], message: string) => void;
   failTask: (id: string, error: string) => void;
   updateProgress: (id: string, progress: BackgroundTask['progress']) => void;
   dismissTask: (id: string) => void;
@@ -203,7 +205,26 @@ function syncTaskFromJob(taskId: string, job: BackgroundJobResponse): void {
         startedAt: job.createdAt,
       });
     }
-    store.completeTask(taskId, jobToTaskResult(job));
+
+    const outcome = resolveTaskOutcomeFromJob(job);
+    const result = jobToTaskResult(job);
+
+    if (outcome === 'success') {
+      store.completeTask(taskId, result);
+    } else if (outcome === 'warning') {
+      const message =
+        job.type === 'remediation_apply'
+          ? String(job.result?.message ?? 'Remediação parcial')
+          : `${job.result?.succeeded ?? 0}/${job.result?.total ?? 0} vulnerabilidades corrigidas — algumas falharam`;
+      store.warnTask(taskId, result, message);
+    } else {
+      const message =
+        job.type === 'remediation_apply'
+          ? String(job.result?.message ?? 'Falha na remediação')
+          : String(job.error ?? 'Falha na remediação em lote');
+      store.failTask(taskId, message);
+    }
+
     const current = useBackgroundTasksStore.getState().tasks[taskId];
     if (current) {
       useBackgroundTasksStore.getState().upsertTask({
@@ -362,6 +383,23 @@ export const useBackgroundTasksStore = create<BackgroundTasksState>()(
                 status: 'success',
                 result,
                 error: undefined,
+                completedAt: new Date().toISOString(),
+              },
+            },
+          };
+        }),
+      warnTask: (id, result, message) =>
+        set((state) => {
+          const current = state.tasks[id];
+          if (!current) return state;
+          return {
+            tasks: {
+              ...state.tasks,
+              [id]: {
+                ...current,
+                status: 'warning',
+                result,
+                error: message,
                 completedAt: new Date().toISOString(),
               },
             },

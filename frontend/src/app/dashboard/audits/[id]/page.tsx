@@ -1,6 +1,7 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useBackgroundTasksStore } from '@/stores/background-tasks-store';
 import { useParams } from 'next/navigation';
 import { api, type AuditReport, type PaginationMeta, type ThreatFinding } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth-store';
@@ -19,6 +20,8 @@ export default function AuditDetailPage() {
   const [findings, setFindings] = useState<Array<ThreatFinding & { repository: string }>>([]);
   const [meta, setMeta] = useState<PaginationMeta | null>(null);
   const [page, setPage] = useState(1);
+  const remediationTasks = useBackgroundTasksStore((s) => s.tasks);
+  const processedRemediationCompletions = useRef(new Set<string>());
 
   const loadFindings = useCallback(async () => {
     if (!token || !id) return;
@@ -36,6 +39,30 @@ export default function AuditDetailPage() {
   useEffect(() => {
     void loadFindings();
   }, [loadFindings]);
+
+  useEffect(() => {
+    if (!token || !id) return;
+    let shouldRefresh = false;
+    for (const task of Object.values(remediationTasks)) {
+      if (
+        (task.type !== 'remediation-single' && task.type !== 'remediation-bulk') ||
+        (task.status !== 'success' && task.status !== 'error') ||
+        !task.completedAt
+      ) {
+        continue;
+      }
+      if (task.type === 'remediation-bulk' && task.metadata?.auditId !== id) {
+        continue;
+      }
+      const key = `${task.id}:${task.completedAt}`;
+      if (processedRemediationCompletions.current.has(key)) continue;
+      processedRemediationCompletions.current.add(key);
+      shouldRefresh = true;
+    }
+    if (!shouldRefresh) return;
+    void loadFindings();
+    api.getReport(token, id).then((r) => setReport(r.report));
+  }, [remediationTasks, token, id, loadFindings]);
 
   if (!report) return <p className="text-slate-400">Carregando...</p>;
 

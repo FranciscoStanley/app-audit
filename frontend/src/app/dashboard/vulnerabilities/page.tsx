@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { Play, Wrench } from 'lucide-react';
 import { RemediationConsentModal } from '@/components/auth/remediation-consent-modal';
@@ -37,13 +37,24 @@ export default function VulnerabilitiesPage() {
   const bulkTask = useBackgroundTasksStore((s) =>
     auditId ? s.tasks[bulkRemediationTaskId(auditId)] : undefined,
   );
+  const remediationTasks = useBackgroundTasksStore((s) => s.tasks);
+  const processedRemediationCompletions = useRef(new Set<string>());
   const remediating = bulkTask?.status === 'running';
   const bulkResult =
-    bulkTask?.status === 'success' && bulkTask.result && 'message' in bulkTask.result
-      ? (bulkTask.result as BulkRemediationTaskResult)
-      : bulkTask?.status === 'error'
-        ? { message: bulkTask.error ?? 'Falha na remediação em lote', pullRequests: [] as string[] }
-        : null;
+    bulkTask?.status === 'success' || bulkTask?.status === 'warning' || bulkTask?.status === 'error'
+      ? {
+          message:
+            bulkTask.status === 'error'
+              ? (bulkTask.error ?? 'Falha na remediação em lote')
+              : bulkTask.result && 'message' in bulkTask.result
+                ? bulkTask.result.message
+                : (bulkTask.error ?? 'Remediação concluída'),
+          pullRequests:
+            bulkTask.result && 'pullRequests' in bulkTask.result
+              ? bulkTask.result.pullRequests
+              : [],
+        }
+      : null;
 
   const loadFindings = useCallback(async () => {
     if (!token) return;
@@ -93,6 +104,27 @@ export default function VulnerabilitiesPage() {
   }, [loadFindings]);
 
   useEffect(() => {
+    let shouldRefresh = false;
+    for (const task of Object.values(remediationTasks)) {
+      if (
+        (task.type !== 'remediation-single' && task.type !== 'remediation-bulk') ||
+        (task.status !== 'success' && task.status !== 'error') ||
+        !task.completedAt
+      ) {
+        continue;
+      }
+      if (task.type === 'remediation-bulk' && task.metadata?.auditId !== auditId) {
+        continue;
+      }
+      const key = `${task.id}:${task.completedAt}`;
+      if (processedRemediationCompletions.current.has(key)) continue;
+      processedRemediationCompletions.current.add(key);
+      shouldRefresh = true;
+    }
+    if (shouldRefresh) void loadFindings();
+  }, [remediationTasks, auditId, loadFindings]);
+
+  useEffect(() => {
     setPage(1);
   }, [filter]);
 
@@ -128,7 +160,15 @@ export default function VulnerabilitiesPage() {
 
       {bulkResult && (
         <div className="space-y-1">
-          <p className={`text-sm ${bulkTask?.status === 'error' ? 'text-red-400' : 'text-emerald-400'}`}>
+          <p
+            className={`text-sm ${
+              bulkTask?.status === 'error'
+                ? 'text-red-400'
+                : bulkTask?.status === 'warning'
+                  ? 'text-amber-400'
+                  : 'text-emerald-400'
+            }`}
+          >
             {bulkResult.message}
           </p>
           {bulkResult.pullRequests.map((url) => (
