@@ -243,7 +243,7 @@
         },
         {
           "name": "List Packages",
-          "request": { "method": "GET", "url": "{{baseUrl}}/v1/threat-intel/packages" }
+          "request": { "method": "GET", "url": "{{baseUrl}}/v1/threat-intel/packages?page=1&pageSize=20" }
         },
         {
           "name": "Check Package",
