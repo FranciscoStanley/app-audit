@@ -3,6 +3,8 @@ import {
   Controller,
   Delete,
   Get,
+  Param,
+  Patch,
   Post,
   Query,
   Req,
@@ -36,6 +38,7 @@ import {
   LoginDto,
 } from './dto/auth.dto';
 import { CreateUserDto } from './dto/create-user.dto';
+import { UpdateUserDto } from './dto/update-user.dto';
 import { PaginationQueryDto } from '../common/dto/pagination-query.dto';
 import type { PaginatedResult } from '../../domain/pagination/pagination';
 
@@ -224,5 +227,19 @@ export class AuthController {
   @ApiOperation({ summary: 'Criar usuário (admin)' })
   createUser(@Body() dto: CreateUserDto) {
     return this.usersService.createUser(dto);
+  }
+
+  @Patch('users/:id')
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @Permissions('users:manage')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Atualizar usuário (nome, papel, senha opcional)' })
+  updateUser(
+    @CurrentUser() actor: { id: string },
+    @Param('id') id: string,
+    @Body() dto: UpdateUserDto,
+  ) {
+    return this.usersService.updateUser(id, dto, actor.id);
   }
 }

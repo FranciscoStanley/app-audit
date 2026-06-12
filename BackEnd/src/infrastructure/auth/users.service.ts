@@ -2,7 +2,9 @@ import {
   ConflictException,
   Injectable,
   Logger,
+  NotFoundException,
   OnModuleInit,
+  BadRequestException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcryptjs';
@@ -100,6 +102,65 @@ export class UsersService implements OnModuleInit {
     const { passwordHash, ...safe } = user;
     void passwordHash;
     return safe;
+  }
+
+  async updateUser(
+    id: string,
+    input: { name?: string; role?: UserRole; password?: string },
+    actorId?: string,
+  ): Promise<Omit<User, 'passwordHash'>> {
+    const user = this.users.get(id);
+    if (!user) {
+      throw new NotFoundException('Usuário não encontrado');
+    }
+
+    if (input.role && input.role !== user.role) {
+      this.assertCanChangeRole(user, input.role, actorId);
+    }
+
+    const updated: User = { ...user };
+
+    if (input.name !== undefined) {
+      updated.name = input.name.trim();
+    }
+
+    if (input.role !== undefined) {
+      updated.role = input.role;
+    }
+
+    if (input.password) {
+      updated.passwordHash = await this.hashPassword(input.password);
+    }
+
+    this.users.set(id, updated);
+    await this.persist();
+    const { passwordHash, ...safe } = updated;
+    void passwordHash;
+    return safe;
+  }
+
+  private countAdmins(): number {
+    return [...this.users.values()].filter((u) => u.role === UserRole.ADMIN)
+      .length;
+  }
+
+  private assertCanChangeRole(
+    target: User,
+    newRole: UserRole,
+    actorId?: string,
+  ): void {
+    if (target.role === UserRole.ADMIN && newRole !== UserRole.ADMIN) {
+      if (this.countAdmins() <= 1) {
+        throw new BadRequestException(
+          'Não é possível remover o último administrador do sistema.',
+        );
+      }
+      if (actorId && actorId === target.id) {
+        throw new BadRequestException(
+          'Você não pode rebaixar seu próprio papel de administrador.',
+        );
+      }
+    }
   }
 
   private async bootstrapAdmin(): Promise<void> {

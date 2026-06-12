@@ -156,6 +156,35 @@ const mockUsers = [
   },
 ];
 
+const mockRemediationConsent = {
+  accepted: true,
+  policyVersion: '1.0.0',
+  controllerName: 'App Audit',
+  contactEmail: 'franciscothestanley@gmail.com',
+  legalBasis: 'Art. 7º, I e V da LGPD — consentimento do titular para remediação automatizada.',
+  actions: [
+    {
+      action: 'clone',
+      title: 'Clone temporário de repositórios',
+      description: 'Clonar repositórios em workspace seguro para aplicar correções.',
+    },
+    {
+      action: 'modify',
+      title: 'Alteração de arquivos',
+      description: 'Modificar manifestos, lockfiles, workflows e .gitignore conforme o plano.',
+    },
+  ],
+  risks: [
+    'Alterações automatizadas podem exigir revisão manual antes do merge em produção.',
+    'Correções de dependências podem impactar builds ou testes.',
+  ],
+};
+
+const mockRemediationConsentPending = {
+  ...mockRemediationConsent,
+  accepted: false,
+};
+
 function paginate(items, page = 1, pageSize = 20) {
   const total = items.length;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
@@ -256,7 +285,7 @@ function handleApiRoute(route) {
     return fulfillJson(route, paginate([], page, pageSize));
   }
   if (path === '/audit/remediation/consent') {
-    return fulfillJson(route, { accepted: true, policyVersion: '1.0.0' });
+    return fulfillJson(route, mockRemediationConsent);
   }
   if (path === `/audit/remediation/${mockFinding.id}/preview`) {
     return fulfillJson(route, {
@@ -362,7 +391,6 @@ async function main() {
   await loginPage.goto(`${BASE_URL}/login`, { waitUntil: 'networkidle' });
   await loginPage.getByRole('heading', { name: 'App Audit' }).waitFor({ timeout: 10_000 });
   await loginPage.getByRole('button', { name: /Entrar com GitHub/i }).waitFor({ timeout: 10_000 });
-  await loginPage.waitForTimeout(800);
   await loginPage.screenshot({ path: resolve(OUT_DIR, '01-login.png') });
   console.log('  ✓ 01-login.png');
 
@@ -375,6 +403,16 @@ async function main() {
   console.log('  ✓ 01b-consentimento-lgpd.png');
 
   await loginContext.close();
+
+  // —— Páginas legais (públicas) ——
+  const legalContext = await browser.newContext({ viewport: VIEWPORT, colorScheme: 'dark' });
+  await setupApiMocks(legalContext);
+  const legalPage = await legalContext.newPage();
+  await capture(legalPage, '09-termos', '/legal/termos', { waitFor: 'Termo de Uso' });
+  await capture(legalPage, '10-privacidade', '/legal/privacidade', {
+    waitFor: 'Política de Privacidade',
+  });
+  await legalContext.close();
 
   // —— Telas autenticadas (auditor) ——
   const authContext = await browser.newContext({ viewport: VIEWPORT, colorScheme: 'dark' });
@@ -400,6 +438,24 @@ async function main() {
   await page.screenshot({ path: resolve(OUT_DIR, '07-remediacao.png') });
   console.log('  ✓ 07-remediacao.png');
 
+  // Consentimento de remediação (primeira utilização)
+  await page.route(/\/v1\/audit\/remediation\/consent/, (route) => {
+    if (route.request().method() === 'GET') {
+      return fulfillJson(route, mockRemediationConsentPending);
+    }
+    return route.continue();
+  });
+  await page.goto(`${BASE_URL}/dashboard/vulnerabilities`, { waitUntil: 'domcontentloaded' });
+  await page.getByRole('heading', { name: 'Vulnerabilidades' }).waitFor({ timeout: 20_000 });
+  await page.getByRole('button', { name: /Corrigir todas/i }).click();
+  await page
+    .getByRole('heading', { name: 'Consentimento — Remediação automática' })
+    .waitFor({ timeout: 10_000 });
+  await page.waitForTimeout(500);
+  await page.screenshot({ path: resolve(OUT_DIR, '11-remediacao-consentimento.png') });
+  console.log('  ✓ 11-remediacao-consentimento.png');
+  await page.unroute(/\/v1\/audit\/remediation\/consent/);
+
   await capture(page, '06-threat-intel', '/dashboard/threat-intel', { waitFor: 'Threat Intelligence' });
 
   await authContext.close();
@@ -409,7 +465,13 @@ async function main() {
   await setupApiMocks(adminContext, { admin: true });
   await seedAuthContext(adminContext, mockAdminUser);
   const adminPage = await adminContext.newPage();
-  await capture(adminPage, '08-administracao', '/dashboard/admin', { waitFor: 'Administração' });
+  await adminPage.goto(`${BASE_URL}/dashboard/admin`, { waitUntil: 'domcontentloaded' });
+  await adminPage.getByRole('heading', { name: 'Administração' }).waitFor({ timeout: 20_000 });
+  await adminPage.getByRole('button', { name: /Editar Auditor Demo/i }).click();
+  await adminPage.getByText('Editando auditor@empresa.com').waitFor({ timeout: 10_000 });
+  await adminPage.waitForTimeout(500);
+  await adminPage.screenshot({ path: resolve(OUT_DIR, '08-administracao.png') });
+  console.log('  ✓ 08-administracao.png');
   await adminContext.close();
 
   await browser.close();

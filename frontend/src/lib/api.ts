@@ -314,7 +314,23 @@ export const api = {
   createUser: (
     token: string,
     body: { email: string; password: string; name: string; role: string },
-  ) => request<{ id: string; email: string; name: string; role: string }>('/auth/users', { method: 'POST', body: JSON.stringify(body) }, token),
+  ) =>
+    request<{ id: string; email: string; name: string; role: string }>(
+      '/auth/users',
+      { method: 'POST', body: JSON.stringify(body) },
+      token,
+    ),
+
+  updateUser: (
+    token: string,
+    id: string,
+    body: { name?: string; role?: string; password?: string },
+  ) =>
+    request<{ id: string; email: string; name: string; role: string }>(
+      `/auth/users/${id}`,
+      { method: 'PATCH', body: JSON.stringify(body) },
+      token,
+    ),
 };
 
 export interface ThreatFinding {
