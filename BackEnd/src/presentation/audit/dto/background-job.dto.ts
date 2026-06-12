@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsEnum, IsOptional } from 'class-validator';
+import { IsEnum, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 import { PaginationQueryDto } from '../../common/dto/pagination-query.dto';
 import type { BackgroundJobStatus } from '../../../domain/entities/background-job.entity';
 
@@ -79,10 +79,14 @@ export class CreateBackgroundJobResponseDto {
 
 export class CreateRemediationJobDto {
   @ApiProperty()
+  @IsString()
+  @IsNotEmpty()
   findingId!: string;
 }
 
 export class CreateRemediationAllJobDto {
   @ApiProperty()
+  @IsString()
+  @IsNotEmpty()
   auditId!: string;
 }
