@@ -135,6 +135,20 @@ Lista usuários com paginação. Resposta:
 }
 ```
 
+### PATCH /v1/auth/users/:id
+
+**Permissão:** `users:manage` (admin) · Atualiza nome, papel e/ou senha (opcional).
+
+```json
+{
+  "name": "Francisco Stanley Rodrigues Albuquerque",
+  "role": "admin",
+  "password": "NovaSenhaForte12+"
+}
+```
+
+Campos omitidos permanecem inalterados. Não é permitido rebaixar o último administrador.
+
 ---
 
 ## Auditoria

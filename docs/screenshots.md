@@ -8,7 +8,7 @@ Interface do App Audit — plataforma de auditoria de segurança para repositór
 
 ## Login
 
-Tela de autenticação com **Entrar com GitHub** (OAuth), links para Termos e Privacidade, e login por e-mail/senha com aceite obrigatório dos termos (LGPD).
+Tela de autenticação com **Entrar com GitHub** (OAuth), links para Termos e Privacidade, e login por e-mail/senha com **checkboxes obrigatórios** de Termo de Uso e Política de Privacidade (LGPD).
 
 ![Tela de login](./screenshots/01-login.png)
 
@@ -17,6 +17,18 @@ Tela de autenticação com **Entrar com GitHub** (OAuth), links para Termos e Pr
 Modal de consentimento informado exibido antes do redirect ao GitHub: finalidades, permissões OAuth, direitos do titular e checkboxes obrigatórios.
 
 ![Consentimento LGPD](./screenshots/01b-consentimento-lgpd.png)
+
+## Termo de Uso
+
+Página legal pública (`/legal/termos`) com seções sobre serviço, GitHub OAuth, remediação automática, uso aceitável e contato.
+
+![Termo de Uso](./screenshots/09-termos.png)
+
+## Política de Privacidade
+
+Página legal pública (`/legal/privacidade`) com bases legais LGPD, dados tratados, retenção e direitos do titular.
+
+![Política de Privacidade](./screenshots/10-privacidade.png)
 
 ## Dashboard
 
@@ -44,9 +56,15 @@ Todas as categorias detectadas na última auditoria (Secrets, Supply Chain, CI/C
 
 ## Remediação automática
 
-Plano de remediação expandido no card da vulnerabilidade, passos automatizados e botão **Aplicar correção** (job assíncrono). Remediação exige consentimento informado na primeira utilização.
+Plano de remediação expandido no card da vulnerabilidade, passos automatizados e botão **Aplicar correção** (job assíncrono).
 
 ![Remediação automática](./screenshots/07-remediacao.png)
+
+## Consentimento de remediação
+
+Modal exibido na **primeira** tentativa de remediação (individual ou em lote): ações autorizadas, riscos e checkboxes de aceite (Termos, Privacidade, remediação e ciência de riscos).
+
+![Consentimento remediação](./screenshots/11-remediacao-consentimento.png)
 
 ## Threat Intelligence
 
@@ -56,7 +74,7 @@ Status da sincronização com GitHub Advisories e OpenSourceMalware: última syn
 
 ## Administração
 
-Visível apenas para usuários com papel **admin**. Listagem paginada de usuários (nome, e-mail, papel) e formulário para criar novos usuários com papéis RBAC (`admin`, `auditor`, `viewer`).
+Visível apenas para usuários com papel **admin**. Listagem paginada de usuários com botão **Editar** (nome, papel RBAC e senha opcional) e formulário para criar novos usuários.
 
 ![Administração](./screenshots/08-administracao.png)
 

@@ -127,6 +127,12 @@ Modal exibido antes do redirect ao GitHub: finalidades, permissões OAuth e dire
 
 ![Consentimento LGPD](./docs/screenshots/01b-consentimento-lgpd.png)
 
+### Termo de Uso e Privacidade
+
+Páginas legais públicas com conteúdo LGPD completo (OAuth, remediação, direitos do titular).
+
+![Termo de Uso](./docs/screenshots/09-termos.png) ![Política de Privacidade](./docs/screenshots/10-privacidade.png)
+
 ### Dashboard
 
 Card de conta GitHub conectada, métricas da última auditoria (repositórios, vulnerabilidades, pacotes monitorados, veredito) e atalhos para relatório.
@@ -165,6 +171,12 @@ Plano de remediação expandido, passos automatizados e botão *Aplicar correç�
 
 ![Remediação automática](./docs/screenshots/07-remediacao.png)
 
+### Consentimento de remediação
+
+Modal na primeira remediação (individual ou em lote): ações autorizadas, riscos e aceites LGPD.
+
+![Consentimento remediação](./docs/screenshots/11-remediacao-consentimento.png)
+
 ### Threat Intelligence
 
 Sincronização com GitHub Advisories e OpenSourceMalware (pacotes, repositórios baseline, fontes habilitadas). A UI mantém o estado de sync em segundo plano via `background-tasks-store`.
@@ -173,7 +185,7 @@ Sincronização com GitHub Advisories e OpenSourceMalware (pacotes, repositório
 
 ### Administração
 
-Gestão de usuários e papéis RBAC — visível apenas para `admin`.
+Gestão de usuários e papéis RBAC — editar cadastro existente (nome, permissão/papel, senha) e criar novos usuários. Visível apenas para `admin`.
 
 ![Administração](./docs/screenshots/08-administracao.png)
 

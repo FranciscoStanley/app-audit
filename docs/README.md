@@ -35,6 +35,10 @@
 |-------|-------------------|
 | ![Login](./screenshots/01-login.png) | ![Consentimento](./screenshots/01b-consentimento-lgpd.png) |
 
+| Termo de Uso | Política de Privacidade |
+|--------------|------------------------|
+| ![Termos](./screenshots/09-termos.png) | ![Privacidade](./screenshots/10-privacidade.png) |
+
 | Dashboard | Auditorias |
 |-----------|------------|
 | ![Dashboard](./screenshots/02-dashboard.png) | ![Auditorias](./screenshots/03-auditorias.png) |
@@ -47,9 +51,9 @@
 |-----------------------|---------------------|
 | ![Remediação](./screenshots/07-remediacao.png) | ![Threat Intel](./screenshots/06-threat-intel.png) |
 
-| Administração (admin) |
-|-----------------------|
-| ![Administração](./screenshots/08-administracao.png) |
+| Consentimento remediação | Administração |
+|--------------------------|---------------|
+| ![Consentimento remediação](./screenshots/11-remediacao-consentimento.png) | ![Administração](./screenshots/08-administracao.png) |
 
 Detalhes e instruções para atualizar as capturas de tela: [screenshots.md](./screenshots.md).
 
