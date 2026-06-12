@@ -2,13 +2,19 @@ import {
   ConflictException,
   Injectable,
   Logger,
+  NotFoundException,
   OnModuleInit,
+  BadRequestException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcryptjs';
 import { randomUUID } from 'node:crypto';
 import { isProduction } from '../../config/env.validation';
 import { User, UserRole } from '../../domain/entities/user.entity';
+import {
+  paginateArray,
+  type PaginatedResult,
+} from '../../domain/pagination/pagination';
 import { UserStore } from './user.store';
 
 @Injectable()
@@ -36,17 +42,17 @@ export class UsersService implements OnModuleInit {
     }
   }
 
-  async findByEmail(email: string): Promise<User | undefined> {
+  findByEmail(email: string): User | undefined {
     return [...this.users.values()].find(
       (u) => u.email === email.toLowerCase(),
     );
   }
 
-  async findById(id: string): Promise<User | undefined> {
+  findById(id: string): User | undefined {
     return this.users.get(id);
   }
 
-  async findByGithubId(githubId: string): Promise<User | undefined> {
+  findByGithubId(githubId: string): User | undefined {
     return [...this.users.values()].find((u) => u.githubId === githubId);
   }
 
@@ -56,7 +62,19 @@ export class UsersService implements OnModuleInit {
   }
 
   listUsers(): Omit<User, 'passwordHash'>[] {
-    return [...this.users.values()].map(({ passwordHash: _, ...user }) => user);
+    return [...this.users.values()].map((user) => {
+      const { passwordHash, ...safe } = user;
+      void passwordHash;
+      return safe;
+    });
+  }
+
+  listUsersPaginated(
+    page: number,
+    pageSize: number,
+  ): PaginatedResult<Omit<User, 'passwordHash'>> {
+    const all = this.listUsers().sort((a, b) => a.email.localeCompare(b.email));
+    return paginateArray(all, page, pageSize);
   }
 
   async createUser(input: {
@@ -66,7 +84,7 @@ export class UsersService implements OnModuleInit {
     role: UserRole;
   }): Promise<Omit<User, 'passwordHash'>> {
     const email = input.email.toLowerCase();
-    if (await this.findByEmail(email)) {
+    if (this.findByEmail(email)) {
       throw new ConflictException('Email já cadastrado');
     }
 
@@ -81,8 +99,68 @@ export class UsersService implements OnModuleInit {
 
     this.users.set(user.id, user);
     await this.persist();
-    const { passwordHash: _, ...safe } = user;
+    const { passwordHash, ...safe } = user;
+    void passwordHash;
     return safe;
+  }
+
+  async updateUser(
+    id: string,
+    input: { name?: string; role?: UserRole; password?: string },
+    actorId?: string,
+  ): Promise<Omit<User, 'passwordHash'>> {
+    const user = this.users.get(id);
+    if (!user) {
+      throw new NotFoundException('Usuário não encontrado');
+    }
+
+    if (input.role && input.role !== user.role) {
+      this.assertCanChangeRole(user, input.role, actorId);
+    }
+
+    const updated: User = { ...user };
+
+    if (input.name !== undefined) {
+      updated.name = input.name.trim();
+    }
+
+    if (input.role !== undefined) {
+      updated.role = input.role;
+    }
+
+    if (input.password) {
+      updated.passwordHash = await this.hashPassword(input.password);
+    }
+
+    this.users.set(id, updated);
+    await this.persist();
+    const { passwordHash, ...safe } = updated;
+    void passwordHash;
+    return safe;
+  }
+
+  private countAdmins(): number {
+    return [...this.users.values()].filter((u) => u.role === UserRole.ADMIN)
+      .length;
+  }
+
+  private assertCanChangeRole(
+    target: User,
+    newRole: UserRole,
+    actorId?: string,
+  ): void {
+    if (target.role === UserRole.ADMIN && newRole !== UserRole.ADMIN) {
+      if (this.countAdmins() <= 1) {
+        throw new BadRequestException(
+          'Não é possível remover o último administrador do sistema.',
+        );
+      }
+      if (actorId && actorId === target.id) {
+        throw new BadRequestException(
+          'Você não pode rebaixar seu próprio papel de administrador.',
+        );
+      }
+    }
   }
 
   private async bootstrapAdmin(): Promise<void> {
@@ -129,8 +207,7 @@ export class UsersService implements OnModuleInit {
     name: string;
   }): Promise<User> {
     const existing =
-      (await this.findByGithubId(profile.githubId)) ??
-      (await this.findByEmail(profile.email));
+      this.findByGithubId(profile.githubId) ?? this.findByEmail(profile.email);
 
     if (existing) {
       const updated: User = {

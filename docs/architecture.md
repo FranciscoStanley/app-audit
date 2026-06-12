@@ -111,7 +111,50 @@ flowchart LR
 | **infrastructure** | Adapters e I/O | `GhCliGitHubAdapter`, scanners, storage |
 | **presentation** | HTTP, Swagger, guards | Controllers, DTOs, decorators RBAC |
 
-## Fluxo de auditoria
+## Fluxo de auditoria (jobs assíncronos)
+
+```mermaid
+sequenceDiagram
+    participant U as Usuário
+    participant F as Frontend
+    participant API as AuditController
+    participant JQ as BackgroundJobStore
+    participant WP as BackgroundJobProcessor
+    participant UC as RunMiasmaAuditUseCase
+    participant ST as AuditReportStore
+
+    U->>F: Nova auditoria
+    F->>API: POST /audit/jobs/audit-run
+    API->>JQ: create(pending)
+    API-->>F: 202 jobId
+    WP->>JQ: markRunning + execute
+    UC->>ST: save(report)
+    WP->>JQ: markCompleted(auditId)
+
+    loop polling 2.5s
+        F->>API: GET /audit/jobs/:id
+        API-->>F: status + progress
+    end
+    F-->>U: Banner + dashboard atualizado
+```
+
+## Tarefas em segundo plano (frontend)
+
+O store `background-tasks-store` (Zustand + persist) centraliza o estado da UI para:
+
+| Tarefa | Backend | Sincronização |
+|--------|---------|---------------|
+| Nova auditoria | Job assíncrono (`POST /audit/jobs/audit-run`) | Polling `GET /audit/jobs/:id` a cada 2,5s |
+| Remediação (individual/lote) | Job assíncrono | Idem |
+| Sync Threat Intel | HTTP síncrono (`POST /threat-intel/sync`) | Estado local até a requisição concluir |
+
+- **Banner** (`BackgroundTasksBanner`) e **sidebar** exibem tarefas `running` em qualquer rota do dashboard.
+- **Reidratação única** do persist evita perder tarefas ativas ao trocar de página.
+- Ao recarregar a página, jobs de auditoria/remediação são reassociados via `GET /audit/jobs?status=running`.
+
+> Endpoints síncronos `POST /audit/run` permanecem para CLI. Ver também fluxo legado abaixo.
+
+## Fluxo de auditoria (síncrono — legado)
 
 ```mermaid
 sequenceDiagram
@@ -229,4 +272,8 @@ BackEnd/data/audits/
     └── findings/
         ├── {findingId}.md
         └── {findingId}.pdf
+
+BackEnd/data/jobs/
+└── {jobId}/
+    └── job.json         # fila assíncrona (audit, remediação)
 ```

@@ -40,6 +40,14 @@ npm run users:create -- \
 
 `POST /auth/users` (admin autenticado)
 
+## Oracle Cloud (Always Free)
+
+Deploy gratuito em VM Ampere A1 com Docker Compose — guia completo passo a passo:
+
+**[docs/deployment-oracle-cloud.md](./deployment-oracle-cloud.md)**
+
+Arquivos: `docker-compose.oracle.yml`, `.env.oracle.example`, `scripts/oracle-cloud/`.
+
 ## Docker Compose
 
 ```bash

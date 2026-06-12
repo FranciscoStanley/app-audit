@@ -9,6 +9,7 @@
     { "key": "accessToken", "value": "" },
     { "key": "auditId", "value": "" },
     { "key": "findingId", "value": "" },
+    { "key": "jobId", "value": "" },
     { "key": "adminEmail", "value": "" },
     { "key": "adminPassword", "value": "" }
   ],
@@ -80,7 +81,7 @@
         },
         {
           "name": "List Users (admin)",
-          "request": { "method": "GET", "url": "{{baseUrl}}/v1/auth/users" }
+          "request": { "method": "GET", "url": "{{baseUrl}}/v1/auth/users?page=1&pageSize=20" }
         },
         {
           "name": "Create User (admin)",
@@ -93,12 +94,71 @@
             },
             "url": "{{baseUrl}}/v1/auth/users"
           }
+        },
+        {
+          "name": "Update User (admin)",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Francisco Stanley Rodrigues Albuquerque\",\n  \"role\": \"admin\"\n}"
+            },
+            "url": "{{baseUrl}}/v1/auth/users/{{userId}}"
+          }
         }
       ]
     },
     {
       "name": "Audit",
       "item": [
+        {
+          "name": "Enqueue Audit Job (async)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 202) {",
+                  "  const json = pm.response.json();",
+                  "  if (json.jobId) pm.collectionVariables.set('jobId', json.jobId);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/v1/audit/jobs/audit-run"
+          }
+        },
+        {
+          "name": "Get Job Status",
+          "request": { "method": "GET", "url": "{{baseUrl}}/v1/audit/jobs/{{jobId}}" }
+        },
+        {
+          "name": "List Jobs (running)",
+          "request": { "method": "GET", "url": "{{baseUrl}}/v1/audit/jobs?page=1&pageSize=20&status=running" }
+        },
+        {
+          "name": "Enqueue Remediation Job",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"findingId\": \"{{findingId}}\"\n}" },
+            "url": "{{baseUrl}}/v1/audit/jobs/remediation"
+          }
+        },
+        {
+          "name": "Enqueue Remediation All Job",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"auditId\": \"{{auditId}}\"\n}" },
+            "url": "{{baseUrl}}/v1/audit/jobs/remediation-all"
+          }
+        },
         {
           "name": "Run Audit",
           "event": [
@@ -122,7 +182,7 @@
         },
         {
           "name": "List Reports",
-          "request": { "method": "GET", "url": "{{baseUrl}}/v1/audit/reports" }
+          "request": { "method": "GET", "url": "{{baseUrl}}/v1/audit/reports?page=1&pageSize=20" }
         },
         {
           "name": "Get Report",
@@ -152,7 +212,7 @@
               }
             }
           ],
-          "request": { "method": "GET", "url": "{{baseUrl}}/v1/audit/reports/{{auditId}}/findings" }
+          "request": { "method": "GET", "url": "{{baseUrl}}/v1/audit/reports/{{auditId}}/findings?page=1&pageSize=20" }
         },
         {
           "name": "Download Finding Markdown",
@@ -195,7 +255,7 @@
         },
         {
           "name": "List Packages",
-          "request": { "method": "GET", "url": "{{baseUrl}}/v1/threat-intel/packages" }
+          "request": { "method": "GET", "url": "{{baseUrl}}/v1/threat-intel/packages?page=1&pageSize=20" }
         },
         {
           "name": "Check Package",

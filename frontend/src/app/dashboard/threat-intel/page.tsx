@@ -1,8 +1,13 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { RefreshCw } from 'lucide-react';
 import { api } from '@/lib/api';
+import {
+  syncThreatIntelInBackground,
+  THREAT_INTEL_TASK_ID,
+  useBackgroundTasksStore,
+} from '@/stores/background-tasks-store';
 import { useAuthStore } from '@/stores/auth-store';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
@@ -11,25 +16,28 @@ import { formatDate } from '@/lib/utils';
 export default function ThreatIntelPage() {
   const token = useAuthStore((s) => s.token);
   const canSync = useAuthStore((s) => s.can('threat-intel:sync'));
+  const syncTask = useBackgroundTasksStore((s) => s.tasks[THREAT_INTEL_TASK_ID]);
+  const syncing = syncTask?.status === 'running';
   const [status, setStatus] = useState<Record<string, unknown> | null>(null);
-  const [syncing, setSyncing] = useState(false);
 
-  async function load() {
+  const load = useCallback(async () => {
     if (!token) return;
     setStatus((await api.threatIntelStatus(token)) as Record<string, unknown>);
-  }
+  }, [token]);
 
-  useEffect(() => { load(); }, [token]);
+  useEffect(() => {
+    void load();
+  }, [load]);
 
-  async function sync() {
-    if (!token) return;
-    setSyncing(true);
-    try {
-      await api.syncThreatIntel(token);
-      await load();
-    } finally {
-      setSyncing(false);
+  useEffect(() => {
+    if (syncTask?.status === 'success') {
+      void load();
     }
+  }, [syncTask?.status, load]);
+
+  function sync() {
+    if (!token || syncing) return;
+    void syncThreatIntelInBackground(token);
   }
 
   return (
@@ -46,6 +54,16 @@ export default function ThreatIntelPage() {
           </Button>
         )}
       </div>
+
+      {syncing && (
+        <p className="text-sm text-amber-400">
+          Sincronização em andamento — você pode navegar livremente; o progresso aparece no banner superior.
+        </p>
+      )}
+
+      {syncTask?.status === 'error' && (
+        <p className="text-sm text-red-400">{syncTask.error ?? 'Falha na sincronização'}</p>
+      )}
 
       {status && (
         <div className="grid gap-4 md:grid-cols-2">

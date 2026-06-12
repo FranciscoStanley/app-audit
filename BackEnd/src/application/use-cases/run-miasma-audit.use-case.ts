@@ -1,8 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import {
-  MIASMA_ATTACK_START_DATE,
-  MIASMA_SOURCE_URL,
-} from '../../domain/constants/miasma-threat.constants';
+import { MIASMA_SOURCE_URL } from '../../domain/constants/miasma-threat.constants';
 import {
   AuditReport,
   ImmediateAction,
@@ -21,6 +18,11 @@ import { SyncThreatIntelligenceUseCase } from './sync-threat-intelligence.use-ca
 export interface RunMiasmaAuditInput {
   userId: string;
   saveReportPath?: string;
+  onProgress?: (progress: {
+    scanned: number;
+    total: number;
+    currentRepo?: string;
+  }) => void | Promise<void>;
 }
 
 export interface RunMiasmaAuditOutput {
@@ -48,8 +50,10 @@ export class RunMiasmaAuditUseCase {
   async execute(input: RunMiasmaAuditInput): Promise<RunMiasmaAuditOutput> {
     await this.syncThreatIntel
       .execute()
-      .catch((err) =>
-        this.logger.warn(`Sync threat intel ignorado: ${err.message}`),
+      .catch((err: unknown) =>
+        this.logger.warn(
+          `Sync threat intel ignorado: ${err instanceof Error ? err.message : String(err)}`,
+        ),
       );
 
     const token = await this.githubTokens.requireForAudit(input.userId);
@@ -68,6 +72,11 @@ export class RunMiasmaAuditUseCase {
       try {
         const scan = await scanner.scan(repo);
         scans.push(scan);
+        await input.onProgress?.({
+          scanned: scans.length,
+          total: repositories.length,
+          currentRepo: repo.fullName,
+        });
         if (scan.isAffected) {
           this.logger.warn(
             `AFETADO: ${repo.fullName} (${scan.findings.length} achados)`,

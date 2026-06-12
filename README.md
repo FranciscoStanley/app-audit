@@ -94,7 +94,7 @@ docker compose up -d --build
 
 Atalhos npm: `npm run docker:up` · `npm run docker:stop` · `npm run docker:restart`
 
-Detalhes: [docs/deployment.md](./docs/deployment.md)
+Detalhes: [docs/deployment.md](./docs/deployment.md) · **Oracle Cloud (free):** [docs/deployment-oracle-cloud.md](./docs/deployment-oracle-cloud.md)
 
 ## Desenvolvimento local (sem Docker)
 
@@ -117,7 +117,7 @@ Capturar de tela das interfaces (dados de demonstração). Galeria completa: [do
 
 ### Login
 
-Autenticação por e-mail/senha e **Entrar com GitHub** (OAuth).
+Autenticação por e-mail/senha (com aceite de Termos e Privacidade) e **Entrar com GitHub** (OAuth).
 
 ![Tela de login](./docs/screenshots/01-login.png)
 
@@ -127,48 +127,67 @@ Modal exibido antes do redirect ao GitHub: finalidades, permissões OAuth e dire
 
 ![Consentimento LGPD](./docs/screenshots/01b-consentimento-lgpd.png)
 
+### Termo de Uso e Privacidade
+
+Páginas legais públicas com conteúdo LGPD completo (OAuth, remediação, direitos do titular).
+
+![Termo de Uso](./docs/screenshots/09-termos.png) ![Política de Privacidade](./docs/screenshots/10-privacidade.png)
+
 ### Dashboard
 
-Métricas da última auditoria: repositórios, vulnerabilidades, pacotes monitorados e veredito.
+Card de conta GitHub conectada, métricas da última auditoria (repositórios, vulnerabilidades, pacotes monitorados, veredito) e atalhos para relatório.
 
 ![Dashboard](./docs/screenshots/02-dashboard.png)
 
 ### Auditorias
 
-Histórico de varredura, status da conexão GitHub e nova auditoria em todos os repositórios.
+Histórico paginado, status da conexão GitHub (desconectar/revogar consentimento) e **Nova auditoria**. Varreduras, remediações e sync de Threat Intel **continuam em segundo plano** — você pode navegar entre telas enquanto o job executa; o banner no topo e a sidebar exibem progresso.
 
 ![Auditorias](./docs/screenshots/03-auditorias.png)
 
 ### Detalhe da auditoria
 
-Relatório Markdown, download PDF e vulnerabilidades por repositório.
+Relatório Markdown, download PDF/MD e vulnerabilidades paginadas por repositório.
 
 ![Detalhe da auditoria](./docs/screenshots/04-detalhe-auditoria.png)
 
 ## Remediação automática
 
-- **Individual:** botão *Resolver* → *Aplicar correção* no card da vulnerabilidade
-- **Em lote:** botão *Corrigir todas (N)* na página Vulnerabilidades
+- **Individual:** botão *Resolver* → *Aplicar correção* no card da vulnerabilidade (job assíncrono)
+- **Em lote:** botão *Corrigir todas (N)* na página Vulnerabilidades (job assíncrono)
+- **Segundo plano:** banner global + indicador na sidebar; polling automático (auditoria/remediação) ou estado persistido no Zustand (Threat Intel sync)
 - **Dependabot:** alertas GitHub detectados na auditoria com tag `[Dependabot]`
 - **PR automático:** quando `main` é branch protegida
 
 ### Vulnerabilidades
 
-Todas as categorias detectadas (Secrets, Supply Chain, CI/CD, Dependabot) com filtros e remediação automática.
+Todas as categorias detectadas (Secrets, Supply Chain, CI/CD, Dependabot) com filtros, paginação e remediação automática em lote.
 
 ![Vulnerabilidades](./docs/screenshots/05-vulnerabilidades.png)
 
 ### Remediação automática
 
-Plano de remediação expandido, botão *Corrigir todas* e resultado com passos aplicados / link de PR.
+Plano de remediação expandido, passos automatizados e botão *Aplicar correção* (job assíncrono).
 
 ![Remediação automática](./docs/screenshots/07-remediacao.png)
 
+### Consentimento de remediação
+
+Modal na primeira remediação (individual ou em lote): ações autorizadas, riscos e aceites LGPD.
+
+![Consentimento remediação](./docs/screenshots/11-remediacao-consentimento.png)
+
 ### Threat Intelligence
 
-Sincronização com GitHub Advisories e OpenSourceMalware.
+Sincronização com GitHub Advisories e OpenSourceMalware (pacotes, repositórios baseline, fontes habilitadas). A UI mantém o estado de sync em segundo plano via `background-tasks-store`.
 
 ![Threat Intelligence](./docs/screenshots/06-threat-intel.png)
+
+### Administração
+
+Gestão de usuários e papéis RBAC — editar cadastro existente (nome, permissão/papel, senha) e criar novos usuários. Visível apenas para `admin`.
+
+![Administração](./docs/screenshots/08-administracao.png)
 
 Para regenerar as capturas de tela: `npm run docs:screenshots` (frontend em `http://localhost:3001`).
 

@@ -22,8 +22,13 @@
     "docker:restart": "docker compose stop && docker compose up -d --build",
     "docker:down": "docker compose down",
     "docker:logs": "docker compose logs -f",
+    "docker:oracle": "docker compose -f docker-compose.oracle.yml up -d --build",
+    "oracle:bootstrap": "bash scripts/oracle-cloud/01-bootstrap-vm.sh",
+    "oracle:deploy": "bash scripts/oracle-cloud/02-deploy-app.sh",
+    "oracle:health": "bash scripts/oracle-cloud/03-health-check.sh",
     "security:scan": "node scripts/check-secrets.mjs",
     "docs:screenshots": "node scripts/capture-screenshots.mjs",
+    "users:update": "npm run users:update -w BackEnd",
     "setup:oauth": "node scripts/setup-github-oauth.mjs"
   },
   "devDependencies": {

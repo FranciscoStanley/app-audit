@@ -74,7 +74,7 @@ async function main() {
   console.log(`Usuário criado: ${email} (${role})`);
 }
 
-main().catch((err) => {
-  console.error(err.message);
+main().catch((err: unknown) => {
+  console.error(err instanceof Error ? err.message : String(err));
   process.exit(1);
 });

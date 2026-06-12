@@ -37,10 +37,11 @@ export class GhCliGitHubAdapter implements GitHubRepositoryPort {
       fullName: String(raw.full_name),
       isPrivate: Boolean(raw.private),
       url: String(raw.html_url),
-      language: raw.language ? String(raw.language) : null,
+      language: typeof raw.language === 'string' ? raw.language : null,
       topics: Array.isArray(raw.topics) ? raw.topics.map(String) : [],
       updatedAt: String(raw.updated_at),
-      defaultBranch: String(raw.default_branch ?? 'main'),
+      defaultBranch:
+        typeof raw.default_branch === 'string' ? raw.default_branch : 'main',
     }));
   }
 

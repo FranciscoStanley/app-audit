@@ -18,3 +18,33 @@ body {
   color: var(--foreground);
   min-height: 100vh;
 }
+
+/* react-toastify — tema escuro alinhado ao dashboard */
+.app-audit-toast-container {
+  --toastify-color-dark: #0f1424;
+  --toastify-text-color-dark: #e8ecf4;
+  --toastify-color-progress-dark: #7c3aed;
+  z-index: 9999;
+}
+
+.app-audit-toast {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  font-size: 0.875rem;
+  line-height: 1.45;
+  white-space: pre-line;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+}
+
+.Toastify__toast--warning.app-audit-toast {
+  border-color: rgba(245, 158, 11, 0.35);
+  background: linear-gradient(135deg, #1a1508 0%, #0f1424 100%);
+}
+
+.Toastify__toast--error.app-audit-toast {
+  border-color: rgba(239, 68, 68, 0.35);
+}
+
+.Toastify__toast--success.app-audit-toast {
+  border-color: rgba(16, 185, 129, 0.35);
+}

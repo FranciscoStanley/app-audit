@@ -1,17 +1,25 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Play, ExternalLink, AlertTriangle } from 'lucide-react';
 import { GitHubIcon } from '@/components/icons/github-icon';
 import { GitHubOAuthConsentModal } from '@/components/auth/github-oauth-consent-modal';
-import { api, type GitHubStatus } from '@/lib/api';
+import { api, type AuditReportSummary, type GitHubStatus, type PaginationMeta } from '@/lib/api';
+import {
+  AUDIT_TASK_ID,
+  runAuditInBackground,
+  useBackgroundTasksStore,
+} from '@/stores/background-tasks-store';
 import { useAuthStore } from '@/stores/auth-store';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Pagination } from '@/components/ui/pagination';
 import { formatDate } from '@/lib/utils';
+
+const PAGE_SIZE = 10;
 
 export default function AuditsPage() {
   const router = useRouter();
@@ -19,8 +27,11 @@ export default function AuditsPage() {
   const token = useAuthStore((s) => s.token);
   const setUser = useAuthStore((s) => s.setUser);
   const canRun = useAuthStore((s) => s.can('audit:run'));
-  const [reports, setReports] = useState<Array<{ id: string; createdAt: string; report: { verdict: string; githubUsername: string; totalVulnerabilities: number } }>>([]);
-  const [running, setRunning] = useState(false);
+  const [reports, setReports] = useState<AuditReportSummary[]>([]);
+  const [meta, setMeta] = useState<PaginationMeta | null>(null);
+  const [page, setPage] = useState(1);
+  const auditTask = useBackgroundTasksStore((s) => s.tasks[AUDIT_TASK_ID]);
+  const running = auditTask?.status === 'running';
   const [github, setGithub] = useState<GitHubStatus | null>(null);
   const [auditError, setAuditError] = useState('');
   const [consentOpen, setConsentOpen] = useState(false);
@@ -28,37 +39,41 @@ export default function AuditsPage() {
   const [loaded, setLoaded] = useState(false);
   const autostartDone = useRef(false);
 
-  async function load() {
+  const load = useCallback(async (targetPage = page) => {
     if (!token) return [];
-    const data = await api.listReports(token);
-    setReports(data as typeof reports);
-    return data;
-  }
+    const result = await api.listReports(token, { page: targetPage, pageSize: PAGE_SIZE });
+    setReports(result.data);
+    setMeta(result.meta);
+    return result.data;
+  }, [token, page]);
+
+  const runAudit = useCallback(async () => {
+    if (!token || running) return;
+    setAuditError('');
+    void runAuditInBackground(token);
+  }, [token, running]);
 
   useEffect(() => {
     if (!token) return;
     setLoaded(false);
     Promise.all([
-      load(),
+      load(page),
       api.githubStatus(token).then(setGithub).catch(() => null),
       api.me(token).then(setUser).catch(() => null),
     ]).finally(() => setLoaded(true));
-  }, [token, setUser]);
+  }, [token, setUser, page, load]);
 
-  async function runAudit() {
+  useEffect(() => {
     if (!token) return;
-    setRunning(true);
-    setAuditError('');
-    try {
-      await api.runAudit(token);
-      await load();
-      await api.me(token).then(setUser).catch(() => null);
-    } catch (e) {
-      setAuditError(e instanceof Error ? e.message : 'Falha ao executar auditoria');
-    } finally {
-      setRunning(false);
+    if (auditTask?.status === 'success') {
+      setPage(1);
+      void load(1);
+      void api.me(token).then(setUser).catch(() => null);
     }
-  }
+    if (auditTask?.status === 'error') {
+      setAuditError(auditTask.error ?? 'Falha ao executar auditoria');
+    }
+  }, [auditTask?.status, auditTask?.error, token, setUser, load]);
 
   useEffect(() => {
     if (autostartDone.current) return;
@@ -66,14 +81,25 @@ export default function AuditsPage() {
     if (!loaded || !token || !canRun || !github?.connected || running) return;
 
     router.replace('/dashboard/audits');
-    if (reports.length > 0) {
+    if (reports.length > 0 || (meta?.total ?? 0) > 0) {
       autostartDone.current = true;
       return;
     }
 
     autostartDone.current = true;
     void runAudit();
-  }, [searchParams, loaded, token, canRun, github, reports.length, running, router]);
+  }, [
+    searchParams,
+    loaded,
+    token,
+    canRun,
+    github,
+    reports.length,
+    meta?.total,
+    running,
+    router,
+    runAudit,
+  ]);
 
   async function disconnectGitHub() {
     if (!token) return;
@@ -152,11 +178,13 @@ export default function AuditsPage() {
           <Card key={r.id}>
             <CardContent className="flex items-center justify-between py-4">
               <div>
-                <p className="font-medium text-white">@{r.report.githubUsername}</p>
-                <p className="text-sm text-slate-500">{formatDate(r.createdAt)} · {r.report.totalVulnerabilities} vulnerabilidades</p>
+                <p className="font-medium text-white">@{r.githubUsername}</p>
+                <p className="text-sm text-slate-500">
+                  {formatDate(r.createdAt)} · {r.totalVulnerabilities} vulnerabilidades · {r.repositoryCount} repos
+                </p>
               </div>
               <div className="flex items-center gap-3">
-                <Badge variant={r.report.verdict === 'not_affected' ? 'success' : 'critical'}>{r.report.verdict}</Badge>
+                <Badge variant={r.verdict === 'not_affected' ? 'success' : 'critical'}>{r.verdict}</Badge>
                 <Link href={`/dashboard/audits/${r.id}`}>
                   <Button variant="secondary">
                     <ExternalLink className="h-4 w-4" />
@@ -187,6 +215,8 @@ export default function AuditsPage() {
           </Card>
         )}
       </div>
+
+      {meta && <Pagination meta={meta} onPageChange={setPage} />}
     </div>
   );
 }

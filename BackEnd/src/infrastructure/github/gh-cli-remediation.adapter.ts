@@ -5,6 +5,7 @@ import {
   DependabotAlert,
   GitHubRemediationPort,
 } from '../../domain/ports/github-remediation.port';
+import { sanitizeGitError } from './git-error.util';
 
 const execFileAsync = promisify(execFile);
 
@@ -332,6 +333,49 @@ export class GhCliRemediationAdapter implements GitHubRemediationPort {
     }
   }
 
+  async waitForDependabotAlertsClosed(
+    owner: string,
+    repo: string,
+    alertNumbers: number[],
+    options?: { maxWaitMs?: number; intervalMs?: number },
+  ): Promise<{ closed: number[]; stillOpen: number[] }> {
+    const unique = [...new Set(alertNumbers)];
+    if (unique.length === 0) {
+      return { closed: [], stillOpen: [] };
+    }
+
+    const maxWaitMs = options?.maxWaitMs ?? 90_000;
+    const intervalMs = options?.intervalMs ?? 5_000;
+    const deadline = Date.now() + maxWaitMs;
+
+    const snapshot = async (): Promise<{
+      closed: number[];
+      stillOpen: number[];
+    }> => {
+      const open = await this.listDependabotAlerts(owner, repo);
+      const openSet = new Set(open.map((a) => a.number));
+      return {
+        closed: unique.filter((n) => !openSet.has(n)),
+        stillOpen: unique.filter((n) => openSet.has(n)),
+      };
+    };
+
+    let last = await snapshot();
+    if (last.stillOpen.length === 0) {
+      return last;
+    }
+
+    while (Date.now() < deadline) {
+      await new Promise((resolve) => setTimeout(resolve, intervalMs));
+      last = await snapshot();
+      if (last.stillOpen.length === 0) {
+        return last;
+      }
+    }
+
+    return last;
+  }
+
   async createSecurityIssue(
     owner: string,
     repo: string,
@@ -477,7 +521,11 @@ export class GhCliRemediationAdapter implements GitHubRemediationPort {
       });
     } catch (error: unknown) {
       const err = error as { stderr?: string; message?: string };
-      throw new Error(err.stderr?.trim() || err.message || 'gh command failed');
+      throw new Error(
+        sanitizeGitError(
+          err.stderr?.trim() || err.message || 'gh command failed',
+        ),
+      );
     }
   }
 }

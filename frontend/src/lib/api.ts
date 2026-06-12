@@ -15,6 +15,44 @@ export class ApiError extends Error {
   }
 }
 
+export interface PaginationMeta {
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
+  hasNextPage: boolean;
+  hasPreviousPage: boolean;
+}
+
+export interface PaginatedResponse<T> {
+  data: T[];
+  meta: PaginationMeta;
+}
+
+export interface AuditReportSummary {
+  id: string;
+  createdAt: string;
+  githubUsername: string;
+  verdict: string;
+  totalVulnerabilities: number;
+  repositoryCount: number;
+}
+
+export interface PaginationParams {
+  page?: number;
+  pageSize?: number;
+}
+
+function buildQuery(params: Record<string, string | number | boolean | undefined>): string {
+  const search = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value === undefined || value === '') continue;
+    search.set(key, String(value));
+  }
+  const qs = search.toString();
+  return qs ? `?${qs}` : '';
+}
+
 async function request<T>(path: string, options: RequestInit = {}, token?: string | null): Promise<T> {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -160,7 +198,46 @@ export const api = {
   runAudit: (token: string) =>
     request<{ report: unknown; auditId?: string }>('/audit/run?save=true', { method: 'POST' }, token),
 
-  listReports: (token: string) => request<Array<{ id: string; createdAt: string; report: unknown }>>('/audit/reports', {}, token),
+  enqueueAuditJob: (token: string) =>
+    request<{ jobId: string; status: string }>('/audit/jobs/audit-run', { method: 'POST' }, token),
+
+  enqueueRemediationJob: (token: string, findingId: string) =>
+    request<{ jobId: string; status: string }>(
+      '/audit/jobs/remediation',
+      { method: 'POST', body: JSON.stringify({ findingId }) },
+      token,
+    ),
+
+  enqueueRemediationAllJob: (token: string, auditId: string) =>
+    request<{ jobId: string; status: string }>(
+      '/audit/jobs/remediation-all',
+      { method: 'POST', body: JSON.stringify({ auditId }) },
+      token,
+    ),
+
+  getBackgroundJob: (token: string, jobId: string) =>
+    request<BackgroundJobResponse>(`/audit/jobs/${jobId}`, {}, token),
+
+  listBackgroundJobs: (
+    token: string,
+    params?: PaginationParams & { status?: BackgroundJobResponse['status'] },
+  ) =>
+    request<PaginatedResponse<BackgroundJobResponse>>(
+      `/audit/jobs${buildQuery({
+        page: params?.page,
+        pageSize: params?.pageSize,
+        status: params?.status,
+      })}`,
+      {},
+      token,
+    ),
+
+  listReports: (token: string, params?: PaginationParams) =>
+    request<PaginatedResponse<AuditReportSummary>>(
+      `/audit/reports${buildQuery({ page: params?.page, pageSize: params?.pageSize })}`,
+      {},
+      token,
+    ),
 
   getReport: (token: string, id: string) =>
     request<{ id: string; createdAt: string; report: AuditReport }>(`/audit/reports/${id}`, {}, token),
@@ -176,9 +253,23 @@ export const api = {
   downloadPdf: (token: string, id: string) =>
     `${API_URL}${apiPath(`/audit/reports/${id}/pdf`)}`,
 
-  listFindings: (token: string, auditId: string) =>
-    request<Array<ThreatFinding & { repository: string; auditId: string }>>(
-      `/audit/reports/${auditId}/findings`,
+  listFindings: (
+    token: string,
+    auditId: string,
+    params?: PaginationParams & {
+      category?: string;
+      severity?: string;
+      remediationAvailable?: boolean;
+    },
+  ) =>
+    request<PaginatedResponse<ThreatFinding & { repository: string; auditId: string }>>(
+      `/audit/reports/${auditId}/findings${buildQuery({
+        page: params?.page,
+        pageSize: params?.pageSize,
+        category: params?.category !== 'all' ? params?.category : undefined,
+        severity: params?.severity,
+        remediationAvailable: params?.remediationAvailable,
+      })}`,
       {},
       token,
     ),
@@ -213,13 +304,33 @@ export const api = {
       results: Array<{ findingId: string; message: string; success: boolean; pullRequestUrl?: string }>;
     }>(`/audit/reports/${auditId}/remediate-all`, { method: 'POST' }, token),
 
-  listUsers: (token: string) =>
-    request<Array<{ id: string; email: string; name: string; role: string }>>('/auth/users', {}, token),
+  listUsers: (token: string, params?: PaginationParams) =>
+    request<PaginatedResponse<{ id: string; email: string; name: string; role: string }>>(
+      `/auth/users${buildQuery({ page: params?.page, pageSize: params?.pageSize })}`,
+      {},
+      token,
+    ),
 
   createUser: (
     token: string,
     body: { email: string; password: string; name: string; role: string },
-  ) => request<{ id: string; email: string; name: string; role: string }>('/auth/users', { method: 'POST', body: JSON.stringify(body) }, token),
+  ) =>
+    request<{ id: string; email: string; name: string; role: string }>(
+      '/auth/users',
+      { method: 'POST', body: JSON.stringify(body) },
+      token,
+    ),
+
+  updateUser: (
+    token: string,
+    id: string,
+    body: { name?: string; role?: string; password?: string },
+  ) =>
+    request<{ id: string; email: string; name: string; role: string }>(
+      `/auth/users/${id}`,
+      { method: 'PATCH', body: JSON.stringify(body) },
+      token,
+    ),
 };
 
 export interface ThreatFinding {
@@ -277,4 +388,30 @@ export interface RemediationResult {
     lockfilesUpdated: string[];
     commitSha?: string;
   };
+  dependabot?: {
+    targetedAlertNumbers: number[];
+    closedAlertNumbers: number[];
+    stillOpenAlertNumbers: number[];
+  };
+}
+
+export interface BackgroundJobResponse {
+  id: string;
+  type: 'audit_run' | 'remediation_apply' | 'remediation_apply_all';
+  status: 'pending' | 'running' | 'completed' | 'failed';
+  label: string;
+  findingId?: string;
+  auditId?: string;
+  progress?: {
+    phase: string;
+    current: number;
+    total: number;
+    message?: string;
+  };
+  result?: Record<string, unknown>;
+  error?: string;
+  createdAt: string;
+  updatedAt: string;
+  startedAt?: string;
+  completedAt?: string;
 }

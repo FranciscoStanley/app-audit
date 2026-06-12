@@ -109,6 +109,19 @@ Troca o código de uso único por JWT (evita expor token na URL).
 
 Retorna o perfil do usuário autenticado (inclui `githubConnected`, `githubUsername`).
 
+### GET /v1/auth/users?page=1&pageSize=20
+
+**Permissão:** `users:manage` (admin)
+
+Lista usuários com paginação. Resposta:
+
+```json
+{
+  "data": [{ "id": "uuid", "email": "...", "name": "...", "role": "auditor" }],
+  "meta": { "page": 1, "pageSize": 20, "total": 3, "totalPages": 1, "hasNextPage": false, "hasPreviousPage": false }
+}
+```
+
 ### POST /v1/auth/users
 
 **Permissão:** `users:manage` (admin)
@@ -122,13 +135,70 @@ Retorna o perfil do usuário autenticado (inclui `githubConnected`, `githubUsern
 }
 ```
 
+### PATCH /v1/auth/users/:id
+
+**Permissão:** `users:manage` (admin) · Atualiza nome, papel e/ou senha (opcional).
+
+```json
+{
+  "name": "Francisco Stanley Rodrigues Albuquerque",
+  "role": "admin",
+  "password": "NovaSenhaForte12+"
+}
+```
+
+Campos omitidos permanecem inalterados. Não é permitido rebaixar o último administrador.
+
 ---
 
 ## Auditoria
 
+## Auditorias e jobs assíncronos
+
+### POST /v1/audit/jobs/audit-run
+
+Enfileira varredura completa (recomendado para UI e contas com muitos repositórios).
+
+**Permissão:** `audit:run` · **Resposta:** `202 Accepted`
+
+```json
+{ "jobId": "uuid", "status": "pending" }
+```
+
+### GET /v1/audit/jobs/:id
+
+Consulta status do job (polling). Inclui `progress` durante execução.
+
+```json
+{
+  "id": "uuid",
+  "type": "audit_run",
+  "status": "running",
+  "label": "Varredura de vulnerabilidades",
+  "progress": { "phase": "scanning", "current": 3, "total": 10, "message": "org/repo" },
+  "result": null,
+  "createdAt": "...",
+  "updatedAt": "..."
+}
+```
+
+Quando `status` = `completed`, `result` contém `auditId` (varredura) ou detalhes de remediação.
+
+### GET /v1/audit/jobs?page=1&pageSize=20&status=running
+
+Lista jobs do usuário autenticado (paginado). Query opcional: `status` (`pending`, `running`, `completed`, `failed`). `pageSize` máximo: **100**.
+
+### POST /v1/audit/jobs/remediation
+
+**Permissão:** `remediation:apply` · **Body:** `{ "findingId": "uuid" }` · **Resposta:** `202`
+
+### POST /v1/audit/jobs/remediation-all
+
+**Permissão:** `remediation:apply` · **Body:** `{ "auditId": "uuid" }` · **Resposta:** `202`
+
 ### POST /v1/audit/run?save=true
 
-Executa auditoria completa de todos os repositórios GitHub da conta autenticada no `gh`.
+Executa auditoria **de forma síncrona** (legado/CLI). Preferir `POST /audit/jobs/audit-run` na UI.
 
 **Permissão:** `audit:run`
 
@@ -141,9 +211,9 @@ Executa auditoria completa de todos os repositórios GitHub da conta autenticada
 }
 ```
 
-### GET /v1/audit/reports
+### GET /v1/audit/reports?page=1&pageSize=20
 
-Lista relatórios armazenados.
+Lista **resumos** de relatórios (sem payload completo). Campos em `data[]`: `id`, `createdAt`, `githubUsername`, `verdict`, `totalVulnerabilities`, `repositoryCount`.
 
 ### GET /v1/audit/reports/:id
 
@@ -157,9 +227,9 @@ Download do relatório consolidado em Markdown.
 
 Download do relatório consolidado em PDF.
 
-### GET /v1/audit/reports/:id/findings
+### GET /v1/audit/reports/:id/findings?page=1&pageSize=20
 
-Lista todas as vulnerabilidades do relatório.
+Lista vulnerabilidades do relatório (paginado). Filtros opcionais: `category`, `severity`, `remediationAvailable=true`.
 
 ### GET /v1/audit/reports/:id/findings/:findingId/markdown
 
@@ -178,7 +248,9 @@ Remediação **100% automática** via Git workspace + GitHub API:
 - Clone shallow do repositório, alterações locais, **regeneração de lockfile** (pnpm/npm/yarn/pip)
 - Commit único por vulnerabilidade
 - Push direto ao branch padrão ou **Pull Request automático** se branch protegida
-- Alertas Dependabot fechados após atualizar manifesto + lockfile
+- **Monorepo:** alertas Dependabot do mesmo pacote/GHSA corrigidos em todos os `package.json` num único commit
+- **Sincronização GitHub Security:** após push na branch padrão, aguarda até 90s e reporta quantos alertas Dependabot fecharam (`dependabot.closedAlertNumbers` na resposta)
+- Com PR aberta, alertas só fecham após **merge** na branch padrão (GitHub reavalia o lockfile)
 
 ### GET /v1/audit/remediation/consent
 
@@ -207,11 +279,11 @@ Retorna plano de remediação para a vulnerabilidade (todos os passos marcados c
 
 ### POST /v1/audit/remediation/:findingId/apply
 
-Aplica todos os passos automaticamente no repositório GitHub. **Exige consentimento de remediação registrado** (v1.1.0+). Requer token com escopo `repo` e `security_events` (Dependabot).
+Aplica remediação **de forma síncrona** (legado). Preferir `POST /audit/jobs/remediation` na UI.
 
 ### POST /v1/audit/reports/:id/remediate-all
 
-Aplica remediação automática em **todas** as vulnerabilidades remediativas do relatório (ex.: 47 alertas Dependabot).
+Aplica remediação em lote **de forma síncrona** (legado). Preferir `POST /audit/jobs/remediation-all` na UI.
 
 Resposta: `{ total, succeeded, failed, results[] }`
 
@@ -227,9 +299,9 @@ Status da base local de threat intel.
 
 Força sincronização com GitHub Advisories e OpenSourceMalware.
 
-### GET /v1/threat-intel/packages?ecosystem=npm
+### GET /v1/threat-intel/packages?page=1&pageSize=20&ecosystem=npm
 
-Lista pacotes comprometidos conhecidos.
+Lista pacotes comprometidos conhecidos (paginado). Filtro opcional: `ecosystem`.
 
 ### GET /v1/threat-intel/check
 

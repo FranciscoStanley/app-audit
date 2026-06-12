@@ -119,6 +119,7 @@ export class MiasmaRepositoryScanner {
         ...((packageJson.devDependencies as Record<string, string>) ?? {}),
       };
       for (const [dep, versionRange] of Object.entries(allDeps)) {
+        const resolvedVersion = this.extractVersion(versionRange) || '*';
         const localHit = this.threatStore.isPackageCompromised(dep, 'npm');
         if (localHit) {
           findings.push(
@@ -126,7 +127,11 @@ export class MiasmaRepositoryScanner {
               type: 'compromised_dependency',
               severity: localHit.severity === 'critical' ? 'critical' : 'high',
               message: `[${localHit.source}] Dependência npm comprometida: ${dep}`,
-              evidence: localHit.ghsaId ?? localHit.referenceUrl ?? dep,
+              evidence: this.formatNpmDependencyEvidence(
+                dep,
+                resolvedVersion,
+                localHit.ghsaId ?? 'threat-intel',
+              ),
               category: 'Dependency Vulnerabilities',
             }),
           );
@@ -138,7 +143,11 @@ export class MiasmaRepositoryScanner {
                 type: 'compromised_dependency',
                 severity: 'high',
                 message: `Pacote em escopo npm monitorado: ${dep}`,
-                evidence: scope,
+                evidence: this.formatNpmDependencyEvidence(
+                  dep,
+                  resolvedVersion,
+                  'scope',
+                ),
                 category: 'Dependency Vulnerabilities',
               }),
             );
@@ -156,7 +165,11 @@ export class MiasmaRepositoryScanner {
               type: 'compromised_dependency',
               severity: 'critical',
               message: `[OpenSourceMalware] Pacote npm malicioso: ${dep}`,
-              evidence: osmHit.osmUrl ?? dep,
+              evidence: this.formatNpmDependencyEvidence(
+                dep,
+                resolvedVersion,
+                'osm',
+              ),
               category: 'Dependency Vulnerabilities',
             }),
           );
@@ -179,7 +192,7 @@ export class MiasmaRepositoryScanner {
               type: 'compromised_dependency',
               severity: 'critical',
               message: `[${localHit.source}] Pacote PyPI comprometido: ${pkgName}${version ? `@${version}` : ''}`,
-              evidence: localHit.versionRange ?? pkgName,
+              evidence: `requirements.txt|${pkgName}|${version ?? '*'}|threat-intel`,
               category: 'Dependency Vulnerabilities',
             }),
           );
@@ -259,6 +272,14 @@ export class MiasmaRepositoryScanner {
     } catch {
       return null;
     }
+  }
+
+  private formatNpmDependencyEvidence(
+    packageName: string,
+    version: string,
+    source: string,
+  ): string {
+    return `package.json|${packageName}|${version}|${source}`;
   }
 
   private extractVersion(range: string): string | undefined {

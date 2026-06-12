@@ -1,0 +1,94 @@
+# Deploy Oracle Cloud — use com: docker compose -f docker-compose.oracle.yml up -d --build
+# Documentação: docs/deployment-oracle-cloud.md
+
+services:
+  backend:
+    image: ${BACKEND_IMAGE:-app-audit-backend:local}
+    build:
+      context: ./BackEnd
+      dockerfile: Dockerfile
+    container_name: app-audit-backend
+    ports:
+      - "${BACKEND_PORT:-3000}:3000"
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      CORS_ORIGIN: ${CORS_ORIGIN:?CORS_ORIGIN obrigatório}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET obrigatório}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-8h}
+      GITHUB_TOKEN: ${GITHUB_TOKEN:?GITHUB_TOKEN obrigatório}
+      OSM_API_TOKEN: ${OSM_API_TOKEN:-}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:?ADMIN_EMAIL obrigatório}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?ADMIN_PASSWORD obrigatório}
+      ADMIN_NAME: ${ADMIN_NAME:-Administrador}
+      SWAGGER_ENABLED: ${SWAGGER_ENABLED:-false}
+      GITHUB_OAUTH_CLIENT_ID: ${GITHUB_OAUTH_CLIENT_ID:-}
+      GITHUB_OAUTH_CLIENT_SECRET: ${GITHUB_OAUTH_CLIENT_SECRET:-}
+      GITHUB_OAUTH_CALLBACK_URL: ${GITHUB_OAUTH_CALLBACK_URL}
+      FRONTEND_URL: ${FRONTEND_URL}
+      THREAT_INTEL_REFRESH_HOURS: ${THREAT_INTEL_REFRESH_HOURS:-6}
+      THREAT_INTEL_SYNC_ON_STARTUP: ${THREAT_INTEL_SYNC_ON_STARTUP:-true}
+      GITHUB_ADVISORY_MAX_PAGES: ${GITHUB_ADVISORY_MAX_PAGES:-10}
+      DATA_CONTROLLER_NAME: ${DATA_CONTROLLER_NAME:-App Audit}
+      DATA_CONTROLLER_ADDRESS: ${DATA_CONTROLLER_ADDRESS:-}
+      PRIVACY_CONTACT_EMAIL: ${PRIVACY_CONTACT_EMAIL:-franciscothestanley@gmail.com}
+      DPO_CONTACT_EMAIL: ${DPO_CONTACT_EMAIL:-franciscothestanley@gmail.com}
+    volumes:
+      - audit-data:/app/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+
+  frontend:
+    image: ${FRONTEND_IMAGE:-app-audit-frontend:local}
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:?NEXT_PUBLIC_API_URL obrigatório}
+    container_name: app-audit-frontend
+    ports:
+      - "${FRONTEND_PORT:-3001}:3001"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3001').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+  caddy:
+    profiles: ["proxy"]
+    image: caddy:2-alpine
+    container_name: app-audit-caddy
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN:?DOMAIN obrigatório com profile proxy}
+      API_DOMAIN: ${API_DOMAIN:-api.${DOMAIN}}
+    volumes:
+      - ./infra/oracle-cloud/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      backend:
+        condition: service_healthy
+      frontend:
+        condition: service_started
+    restart: unless-stopped
+
+volumes:
+  audit-data:
+    name: app-audit-data
+  caddy-data:
+    name: app-audit-caddy-data
+  caddy-config:
+    name: app-audit-caddy-config

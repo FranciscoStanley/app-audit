@@ -12,7 +12,7 @@ const GITHUB_TOKEN = 'https://github.com/login/oauth/access_token';
 const GITHUB_USER = 'https://api.github.com/user';
 const GITHUB_EMAILS = 'https://api.github.com/user/emails';
 
-const SCOPES = ['read:user', 'user:email', 'repo'].join(' ');
+const SCOPES = ['read:user', 'user:email', 'repo', 'security_events'].join(' ');
 
 export interface GitHubProfile {
   id: string;
@@ -88,8 +88,8 @@ export class GitHubOAuthService {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        client_id: this.config.get('GITHUB_OAUTH_CLIENT_ID'),
-        client_secret: this.config.get('GITHUB_OAUTH_CLIENT_SECRET'),
+        client_id: this.config.get<string>('GITHUB_OAUTH_CLIENT_ID'),
+        client_secret: this.config.get<string>('GITHUB_OAUTH_CLIENT_SECRET'),
         code,
         redirect_uri: this.callbackUrl(),
       }),

@@ -4,6 +4,7 @@ import {
   access,
   mkdir,
   readFile,
+  readdir,
   rm,
   unlink,
   writeFile,
@@ -14,8 +15,8 @@ import {
   detectPackageManager,
   lockfileNames,
   readPackageManagerField,
-  type PackageManager,
 } from './package-manager.util';
+import { mapGitCloneFailure, sanitizeGitError } from './git-error.util';
 
 const execFileAsync = promisify(execFile);
 
@@ -42,18 +43,98 @@ export class RemediationGitWorkspace {
     await mkdir(this.workRoot, { recursive: true });
     const repoPath = join(this.workRoot, `${owner}-${repo}-${Date.now()}`);
 
+    await this.assertRepoCloneAccess(owner, repo);
     const defaultBranch = await this.getDefaultBranch(owner, repo);
 
-    await this.run('git', [
+    const strategies: Array<() => Promise<void>> = [
+      () => this.cloneViaGh(owner, repo, repoPath, defaultBranch),
+      () => this.cloneViaGitAuth(owner, repo, repoPath, defaultBranch),
+      () => this.cloneViaGitAuth(owner, repo, repoPath),
+    ];
+
+    let lastError: Error | undefined;
+    for (const strategy of strategies) {
+      await rm(repoPath, { recursive: true, force: true }).catch(
+        () => undefined,
+      );
+      try {
+        await strategy();
+        await this.configureGitIdentity(repoPath);
+        await this.configureGitAuth(repoPath, owner, repo);
+        await this.deepenClone(repoPath, defaultBranch);
+        return { repoPath, defaultBranch };
+      } catch (error) {
+        lastError = error as Error;
+        this.logger.warn(
+          `Estratégia de clone falhou (${owner}/${repo}): ${sanitizeGitError(lastError.message)}`,
+        );
+      }
+    }
+
+    throw new Error(
+      mapGitCloneFailure(
+        owner,
+        repo,
+        defaultBranch,
+        lastError ?? new Error('clone failed'),
+      ),
+    );
+  }
+
+  private async assertRepoCloneAccess(
+    owner: string,
+    repo: string,
+  ): Promise<void> {
+    try {
+      await this.runGh(['api', `repos/${owner}/${repo}`, '--jq', '.full_name']);
+    } catch {
+      throw new Error(
+        `Sem acesso ao repositório ${owner}/${repo}. Conecte o GitHub com escopo repo e, se for organização, autorize SSO em github.com/settings/tokens.`,
+      );
+    }
+  }
+
+  private async cloneViaGh(
+    owner: string,
+    repo: string,
+    repoPath: string,
+    branch: string,
+  ): Promise<void> {
+    await this.runGh([
+      'repo',
+      'clone',
+      `${owner}/${repo}`,
+      repoPath,
+      '--',
+      '--depth',
+      '1',
+      '--single-branch',
+      '--branch',
+      branch,
+    ]);
+  }
+
+  private async cloneViaGitAuth(
+    owner: string,
+    repo: string,
+    repoPath: string,
+    branch?: string,
+  ): Promise<void> {
+    const args = [
+      '-c',
+      `http.extraHeader=Authorization: Bearer ${this.accessToken}`,
       'clone',
       '--depth',
       '1',
-      '--branch',
-      defaultBranch,
-      `https://x-access-token:${this.accessToken}@github.com/${owner}/${repo}.git`,
-      repoPath,
-    ]);
+    ];
+    if (branch) {
+      args.push('--single-branch', '--branch', branch);
+    }
+    args.push(`https://github.com/${owner}/${repo}.git`, repoPath);
+    await this.run('git', args);
+  }
 
+  private async configureGitIdentity(repoPath: string): Promise<void> {
     await this.run(
       'git',
       ['config', 'user.email', 'security@app-audit.local'],
@@ -62,8 +143,35 @@ export class RemediationGitWorkspace {
     await this.run('git', ['config', 'user.name', 'App Audit Security Bot'], {
       cwd: repoPath,
     });
+  }
 
-    return { repoPath, defaultBranch };
+  /** Credenciais para fetch/push após clone (gh ou clone com header não persistem no remote). */
+  private async configureGitAuth(
+    repoPath: string,
+    owner: string,
+    repo: string,
+  ): Promise<void> {
+    const authHeader = `AUTHORIZATION: bearer ${this.accessToken}`;
+    await this.run(
+      'git',
+      ['config', 'http.https://github.com/.extraheader', authHeader],
+      { cwd: repoPath },
+    );
+    const authedUrl = `https://x-access-token:${this.accessToken}@github.com/${owner}/${repo}.git`;
+    await this.run('git', ['remote', 'set-url', 'origin', authedUrl], {
+      cwd: repoPath,
+    });
+  }
+
+  private async deepenClone(
+    repoPath: string,
+    defaultBranch: string,
+  ): Promise<void> {
+    await this.run(
+      'git',
+      ['fetch', 'origin', defaultBranch, '--deepen', '50'],
+      { cwd: repoPath, timeout: 120_000 },
+    ).catch(() => undefined);
   }
 
   async deleteFile(repoPath: string, relativePath: string): Promise<void> {
@@ -154,9 +262,11 @@ export class RemediationGitWorkspace {
       Record<string, string>
     >;
     const version =
-      targetVersion.startsWith('^') || targetVersion.startsWith('~')
-        ? targetVersion
-        : `^${targetVersion.replace(/^[\^~]/, '')}`;
+      targetVersion === 'latest'
+        ? await this.resolveLatestNpmVersion(packageName)
+        : targetVersion.startsWith('^') || targetVersion.startsWith('~')
+          ? targetVersion
+          : `^${targetVersion.replace(/^[\^~]/, '')}`;
 
     let updated = false;
     for (const field of [
@@ -182,7 +292,96 @@ export class RemediationGitWorkspace {
     manifestPath: string,
     packageName: string,
   ): Promise<void> {
+    const normalized = packageName.trim();
+    if (this.looksLikeInvalidPackageName(normalized)) {
+      throw new Error(
+        `Nome de pacote inválido (${normalized}). Reexecute a auditoria ou informe o nome correto do pacote.`,
+      );
+    }
+
+    const manifests =
+      manifestPath === 'package.json'
+        ? await this.findPackageManifests(repoPath)
+        : [manifestPath];
+
+    for (const manifest of manifests) {
+      if (await this.tryRemoveFromManifest(repoPath, manifest, normalized)) {
+        return;
+      }
+    }
+
+    throw new Error(
+      `Pacote ${normalized} não encontrado como dependência direta em package.json (pode ser dependência transitiva)`,
+    );
+  }
+
+  private looksLikeInvalidPackageName(name: string): boolean {
+    return name.includes('://') || name.includes('opensourcemalware.com');
+  }
+
+  private async findPackageManifests(repoPath: string): Promise<string[]> {
+    const manifests: string[] = [];
+    await this.collectPackageManifests(repoPath, repoPath, '', manifests);
+    return manifests.length > 0 ? manifests : ['package.json'];
+  }
+
+  private async collectPackageManifests(
+    repoPath: string,
+    currentDir: string,
+    relativeDir: string,
+    manifests: string[],
+  ): Promise<void> {
+    const manifestRelative = relativeDir
+      ? `${relativeDir.replace(/\\/g, '/')}/package.json`
+      : 'package.json';
+
+    try {
+      await access(join(currentDir, 'package.json'));
+      if (!manifests.includes(manifestRelative)) {
+        manifests.push(manifestRelative);
+      }
+    } catch {
+      // sem package.json neste diretório
+    }
+
+    let entries: Array<{ name: string; isDirectory: () => boolean }>;
+    try {
+      entries = await readdir(currentDir, { withFileTypes: true });
+    } catch {
+      return;
+    }
+
+    for (const entry of entries) {
+      if (!entry.isDirectory()) continue;
+      if (
+        ['node_modules', '.git', 'dist', 'build', '.next'].includes(entry.name)
+      ) {
+        continue;
+      }
+      const nextRelative = relativeDir
+        ? `${relativeDir}/${entry.name}`
+        : entry.name;
+      await this.collectPackageManifests(
+        repoPath,
+        join(currentDir, entry.name),
+        nextRelative,
+        manifests,
+      );
+    }
+  }
+
+  private async tryRemoveFromManifest(
+    repoPath: string,
+    manifestPath: string,
+    packageName: string,
+  ): Promise<boolean> {
     const fullPath = join(repoPath, manifestPath);
+    try {
+      await access(fullPath);
+    } catch {
+      return false;
+    }
+
     const pkg = JSON.parse(await readFile(fullPath, 'utf-8')) as Record<
       string,
       Record<string, string>
@@ -199,11 +398,9 @@ export class RemediationGitWorkspace {
         removed = true;
       }
     }
-    if (!removed)
-      throw new Error(
-        `Pacote ${packageName} não encontrado em ${manifestPath}`,
-      );
+    if (!removed) return false;
     await writeFile(fullPath, `${JSON.stringify(pkg, null, 2)}\n`, 'utf-8');
+    return true;
   }
 
   async regenerateLockfiles(
@@ -278,6 +475,32 @@ export class RemediationGitWorkspace {
     return updated;
   }
 
+  async resolveLatestNpmVersion(packageName: string): Promise<string> {
+    try {
+      const { stdout } = await this.run(
+        'npm',
+        [
+          'view',
+          packageName,
+          'version',
+          '--registry',
+          'https://registry.npmjs.org',
+        ],
+        { timeout: 60_000 },
+      );
+      const version = stdout.trim();
+      if (!version || version === 'undefined') return 'latest';
+      return version.startsWith('^') || version.startsWith('~')
+        ? version
+        : `^${version}`;
+    } catch (error) {
+      this.logger.warn(
+        `npm view falhou para ${packageName}: ${(error as Error).message}`,
+      );
+      return 'latest';
+    }
+  }
+
   async deliver(
     repoPath: string,
     owner: string,
@@ -298,15 +521,42 @@ export class RemediationGitWorkspace {
       };
     }
 
+    const branch = `security/app-audit-${Date.now()}`;
+    await this.run('git', ['checkout', '-b', branch], { cwd: repoPath });
     await this.run('git', ['add', '-A'], { cwd: repoPath });
+
+    const staged = await this.run('git', ['diff', '--cached', '--name-only'], {
+      cwd: repoPath,
+    });
+    if (!staged.stdout.trim()) {
+      return {
+        method: 'no_changes',
+        branch: defaultBranch,
+        lockfilesUpdated: [],
+      };
+    }
+
     await this.run('git', ['commit', '-m', commitMessage], { cwd: repoPath });
 
     const sha = (
       await this.run('git', ['rev-parse', 'HEAD'], { cwd: repoPath })
     ).stdout.trim();
 
+    const ahead = (
+      await this.run('git', ['rev-list', '--count', `${defaultBranch}..HEAD`], {
+        cwd: repoPath,
+      })
+    ).stdout.trim();
+    if (ahead === '0') {
+      return {
+        method: 'no_changes',
+        branch: defaultBranch,
+        lockfilesUpdated: [],
+      };
+    }
+
     try {
-      await this.run('git', ['push', 'origin', `HEAD:${defaultBranch}`], {
+      await this.run('git', ['push', 'origin', `${branch}:${defaultBranch}`], {
         cwd: repoPath,
         timeout: 120_000,
       });
@@ -322,12 +572,33 @@ export class RemediationGitWorkspace {
       );
     }
 
-    const branch = `security/app-audit-${Date.now()}`;
-    await this.run('git', ['checkout', '-b', branch], { cwd: repoPath });
-    await this.run('git', ['push', '-u', 'origin', branch], {
-      cwd: repoPath,
-      timeout: 120_000,
-    });
+    await this.pushBranchWithRetry(repoPath, branch);
+
+    const aheadOnRemote = await this.compareBranchesAhead(
+      owner,
+      repo,
+      defaultBranch,
+      branch,
+    );
+    if (aheadOnRemote === 0) {
+      const onBase = await this.isCommitOnBranch(
+        owner,
+        repo,
+        sha,
+        defaultBranch,
+      );
+      this.logger.warn(
+        onBase
+          ? `Branch ${branch} ≡ ${defaultBranch}; commit ${sha.slice(0, 7)} já na base.`
+          : `Branch ${branch} ≡ ${defaultBranch} após push; nenhum diff remoto.`,
+      );
+      return {
+        method: onBase ? 'direct_push' : 'no_changes',
+        branch: defaultBranch,
+        commitSha: sha,
+        lockfilesUpdated: [],
+      };
+    }
 
     const prUrl = await this.createPullRequest(
       owner,
@@ -337,6 +608,14 @@ export class RemediationGitWorkspace {
       prTitle,
       prBody,
     );
+    if (!prUrl) {
+      return {
+        method: 'no_changes',
+        branch: defaultBranch,
+        commitSha: sha,
+        lockfilesUpdated: [],
+      };
+    }
     return {
       method: 'pull_request',
       branch,
@@ -344,6 +623,46 @@ export class RemediationGitWorkspace {
       commitSha: sha,
       lockfilesUpdated: [],
     };
+  }
+
+  private async pushBranchWithRetry(
+    repoPath: string,
+    branch: string,
+  ): Promise<void> {
+    try {
+      await this.run('git', ['push', '-u', 'origin', branch], {
+        cwd: repoPath,
+        timeout: 120_000,
+      });
+    } catch (firstError) {
+      this.logger.warn(
+        `Push da branch falhou, tentando deepen/unshallow: ${(firstError as Error).message}`,
+      );
+      await this.run('git', ['fetch', 'origin', '--unshallow'], {
+        cwd: repoPath,
+        timeout: 120_000,
+      }).catch(() =>
+        this.run('git', ['fetch', 'origin', '--deepen', '50'], {
+          cwd: repoPath,
+          timeout: 120_000,
+        }).catch(() => undefined),
+      );
+      await this.run('git', ['push', '-u', 'origin', branch], {
+        cwd: repoPath,
+        timeout: 120_000,
+      });
+    }
+  }
+
+  private formatExecError(error: unknown): string {
+    if (!(error instanceof Error)) return sanitizeGitError(String(error));
+    const execErr = error as Error & { stderr?: string | Buffer };
+    const stderr = execErr.stderr
+      ? Buffer.isBuffer(execErr.stderr)
+        ? execErr.stderr.toString()
+        : execErr.stderr
+      : '';
+    return sanitizeGitError([error.message, stderr].filter(Boolean).join(' '));
   }
 
   async cleanup(repoPath: string): Promise<void> {
@@ -364,6 +683,52 @@ export class RemediationGitWorkspace {
     return stdout.trim() || 'main';
   }
 
+  private async compareBranchesAhead(
+    owner: string,
+    repo: string,
+    base: string,
+    head: string,
+  ): Promise<number> {
+    try {
+      const { stdout } = await this.runGh([
+        'api',
+        `repos/${owner}/${repo}/compare/${base}...${head}`,
+        '--jq',
+        '.ahead_by',
+      ]);
+      return Number.parseInt(stdout.trim(), 10) || 0;
+    } catch {
+      return -1;
+    }
+  }
+
+  private async isCommitOnBranch(
+    owner: string,
+    repo: string,
+    sha: string,
+    branch: string,
+  ): Promise<boolean> {
+    try {
+      const { stdout: branchSha } = await this.runGh([
+        'api',
+        `repos/${owner}/${repo}/git/ref/heads/${branch}`,
+        '--jq',
+        '.object.sha',
+      ]);
+      if (branchSha.trim() === sha) return true;
+      const { stdout: status } = await this.runGh([
+        'api',
+        `repos/${owner}/${repo}/compare/${sha}...${branch}`,
+        '--jq',
+        '.status',
+      ]);
+      const normalized = status.trim();
+      return normalized === 'behind' || normalized === 'identical';
+    } catch {
+      return false;
+    }
+  }
+
   private async createPullRequest(
     owner: string,
     repo: string,
@@ -371,22 +736,35 @@ export class RemediationGitWorkspace {
     base: string,
     title: string,
     body: string,
-  ): Promise<string> {
-    const { stdout } = await this.runGh([
-      'pr',
-      'create',
-      '--repo',
-      `${owner}/${repo}`,
-      '--head',
-      head,
-      '--base',
-      base,
-      '--title',
-      title,
-      '--body',
-      body,
-    ]);
-    return stdout.trim();
+  ): Promise<string | null> {
+    const ahead = await this.compareBranchesAhead(owner, repo, base, head);
+    if (ahead === 0) {
+      return null;
+    }
+
+    try {
+      const { stdout } = await this.runGh([
+        'pr',
+        'create',
+        '--repo',
+        `${owner}/${repo}`,
+        '--head',
+        head,
+        '--base',
+        base,
+        '--title',
+        title,
+        '--body',
+        body,
+      ]);
+      return stdout.trim();
+    } catch (prError) {
+      const msg = this.formatExecError(prError);
+      if (/No commits between/i.test(msg)) {
+        return null;
+      }
+      throw prError;
+    }
   }
 
   private async resolveActionSha(
@@ -443,12 +821,24 @@ export class RemediationGitWorkspace {
     opts: { cwd?: string; timeout?: number } = {},
   ): Promise<{ stdout: string; stderr: string }> {
     const env = { ...process.env, GITHUB_TOKEN: this.accessToken };
-    return execFileAsync(cmd, args, {
-      maxBuffer: 50 * 1024 * 1024,
-      windowsHide: true,
-      env,
-      cwd: opts.cwd,
-      timeout: opts.timeout ?? 120_000,
-    });
+    try {
+      return await execFileAsync(cmd, args, {
+        maxBuffer: 50 * 1024 * 1024,
+        windowsHide: true,
+        env,
+        cwd: opts.cwd,
+        timeout: opts.timeout ?? 120_000,
+      });
+    } catch (error: unknown) {
+      const err = error as Error & { stderr?: string | Buffer };
+      const stderr = err.stderr
+        ? Buffer.isBuffer(err.stderr)
+          ? err.stderr.toString()
+          : err.stderr
+        : '';
+      throw new Error(
+        sanitizeGitError([err.message, stderr].filter(Boolean).join(' ')),
+      );
+    }
   }
 }

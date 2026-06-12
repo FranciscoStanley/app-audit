@@ -8,7 +8,7 @@ Interface do App Audit — plataforma de auditoria de segurança para repositór
 
 ## Login
 
-Tela de autenticação com login por email/senha e opção **Entrar com GitHub** (OAuth).
+Tela de autenticação com **Entrar com GitHub** (OAuth), links para Termos e Privacidade, e login por e-mail/senha com **checkboxes obrigatórios** de Termo de Uso e Política de Privacidade (LGPD).
 
 ![Tela de login](./screenshots/01-login.png)
 
@@ -18,41 +18,65 @@ Modal de consentimento informado exibido antes do redirect ao GitHub: finalidade
 
 ![Consentimento LGPD](./screenshots/01b-consentimento-lgpd.png)
 
+## Termo de Uso
+
+Página legal pública (`/legal/termos`) com seções sobre serviço, GitHub OAuth, remediação automática, uso aceitável e contato.
+
+![Termo de Uso](./screenshots/09-termos.png)
+
+## Política de Privacidade
+
+Página legal pública (`/legal/privacidade`) com bases legais LGPD, dados tratados, retenção e direitos do titular.
+
+![Política de Privacidade](./screenshots/10-privacidade.png)
+
 ## Dashboard
 
-Visão geral com métricas da última auditoria: repositórios, vulnerabilidades, pacotes monitorados e veredito.
+Visão geral com card de **conta GitHub conectada** (OAuth ativo), métricas da última auditoria (repositórios, vulnerabilidades, pacotes monitorados, veredito) e atalhos para relatório e vulnerabilidades. Quando há tarefas em execução (varredura, remediação ou sync de Threat Intel), um **banner amarelo** no topo indica progresso; a sidebar exibe contador de jobs em execução.
 
 ![Dashboard](./screenshots/02-dashboard.png)
 
 ## Auditorias
 
-Histórico de varreduras, status da conexão GitHub e botão para executar nova auditoria em todos os repositórios.
+Histórico paginado de varreduras, status da conexão GitHub (com opção de desconectar/revogar consentimento) e botão **Nova auditoria**. A varredura roda como **job assíncrono** — é possível navegar para outras telas enquanto o banner exibe o andamento.
 
 ![Auditorias](./screenshots/03-auditorias.png)
 
 ## Detalhe da auditoria
 
-Relatório consolidado em Markdown, download PDF e lista de vulnerabilidades por repositório.
+Relatório consolidado em Markdown (com download PDF/MD), veredito e lista paginada de vulnerabilidades por repositório.
 
 ![Detalhe da auditoria](./screenshots/04-detalhe-auditoria.png)
 
 ## Vulnerabilidades
 
-Todas as categorias detectadas (Secrets, Supply Chain, CI/CD, Dependabot) com filtros por categoria e botão **Corrigir todas**.
+Todas as categorias detectadas na última auditoria (Secrets, Supply Chain, CI/CD, Dependabot) com filtros por categoria, paginação e botão **Corrigir todas (N)** para remediação em lote.
 
 ![Vulnerabilidades](./screenshots/05-vulnerabilidades.png)
 
 ## Remediação automática
 
-Plano de remediação, aplicação automática via Git workspace (manifesto + lockfile) e Pull Request quando o branch padrão é protegido.
+Plano de remediação expandido no card da vulnerabilidade, passos automatizados e botão **Aplicar correção** (job assíncrono).
 
 ![Remediação automática](./screenshots/07-remediacao.png)
 
+## Consentimento de remediação
+
+Modal exibido na **primeira** tentativa de remediação (individual ou em lote): ações autorizadas, riscos e checkboxes de aceite (Termos, Privacidade, remediação e ciência de riscos).
+
+![Consentimento remediação](./screenshots/11-remediacao-consentimento.png)
+
 ## Threat Intelligence
 
-Status da sincronização com GitHub Advisories e OpenSourceMalware.
+Status da sincronização com GitHub Advisories e OpenSourceMalware: última sync, pacotes monitorados, repositórios baseline e indicadores de fontes habilitadas. O botão **Sincronizar** usa o store global de tarefas — o estado persiste ao navegar entre menus (banner + sidebar).
 
 ![Threat Intelligence](./screenshots/06-threat-intel.png)
+
+## Administração
+
+Visível apenas para usuários com papel **admin**. Listagem paginada de usuários com botão **Editar** (nome, papel RBAC e senha opcional) e formulário para criar novos usuários.
+
+![Administração](./screenshots/08-administracao.png)
 
 ## Atualizar capturas
 

@@ -44,4 +44,10 @@ export interface RemediationResult {
   appliedSteps: string[];
   requiresManualSteps: string[];
   delivery?: DeliveryResult;
+  /** Sincronização com alertas Dependabot no GitHub (Security → Vulnerabilities) */
+  dependabot?: {
+    targetedAlertNumbers: number[];
+    closedAlertNumbers: number[];
+    stillOpenAlertNumbers: number[];
+  };
 }

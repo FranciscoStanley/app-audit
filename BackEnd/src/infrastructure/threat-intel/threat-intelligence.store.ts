@@ -18,6 +18,10 @@ import type {
   ThreatEcosystem,
   ThreatIntelStatus,
 } from '../../domain/entities/threat-intelligence.entity';
+import {
+  paginateArray,
+  type PaginatedResult,
+} from '../../domain/pagination/pagination';
 import type { ThreatIntelligenceStorePort } from '../../domain/ports/threat-intelligence.port';
 
 @Injectable()
@@ -44,6 +48,21 @@ export class ThreatIntelligenceStore
 
   getPackages(): CompromisedPackage[] {
     return Array.from(this.packages.values());
+  }
+
+  getPackagesPaginated(
+    page: number,
+    pageSize: number,
+    ecosystem?: string,
+  ): PaginatedResult<CompromisedPackage> {
+    let items = this.getPackages();
+    if (ecosystem) {
+      items = items.filter((p) => p.ecosystem === ecosystem);
+    }
+    items.sort((a, b) =>
+      `${a.ecosystem}:${a.name}`.localeCompare(`${b.ecosystem}:${b.name}`),
+    );
+    return paginateArray(items, page, pageSize);
   }
 
   getRepositories(): CompromisedRepository[] {

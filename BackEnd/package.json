@@ -22,7 +22,8 @@
     "audit:miasma": "ts-node -r tsconfig-paths/register src/cli/run-audit.ts",
     "threat-intel:sync": "ts-node -r tsconfig-paths/register src/cli/sync-threat-intel.ts",
     "setup": "ts-node -r tsconfig-paths/register src/cli/setup-env.ts",
-    "users:create": "ts-node -r tsconfig-paths/register src/cli/users-create.ts"
+    "users:create": "ts-node -r tsconfig-paths/register src/cli/users-create.ts",
+    "users:update": "ts-node -r tsconfig-paths/register src/cli/users-update.ts"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",

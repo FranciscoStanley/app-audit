@@ -3,7 +3,6 @@ import { AuthGuard } from '@nestjs/passport';
 import {
   ApiBearerAuth,
   ApiOperation,
-  ApiQuery,
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
@@ -18,6 +17,8 @@ import {
   SyncThreatIntelResponseDto,
   ThreatIntelStatusDto,
 } from './dto/threat-intel.dto';
+import { ListPackagesQueryDto } from './dto/list-packages-query.dto';
+import type { PaginatedResult } from '../../domain/pagination/pagination';
 
 @ApiTags('Threat Intelligence')
 @ApiBearerAuth()
@@ -48,15 +49,16 @@ export class ThreatIntelController {
 
   @Get('packages')
   @Permissions('threat-intel:read')
-  @ApiOperation({ summary: 'Listar pacotes comprometidos' })
-  @ApiQuery({ name: 'ecosystem', required: false })
-  @ApiResponse({ status: 200, type: [CompromisedPackageDto] })
+  @ApiOperation({ summary: 'Listar pacotes comprometidos (paginado)' })
+  @ApiResponse({
+    status: 200,
+    description: 'Lista paginada de pacotes',
+  })
   listPackages(
-    @Query('ecosystem') ecosystem?: string,
-  ): CompromisedPackageDto[] {
-    const packages = this.store.getPackages();
-    if (!ecosystem) return packages;
-    return packages.filter((p) => p.ecosystem === ecosystem);
+    @Query() query: ListPackagesQueryDto,
+  ): PaginatedResult<CompromisedPackageDto> {
+    const { page, pageSize } = query.toParams();
+    return this.store.getPackagesPaginated(page, pageSize, query.ecosystem);
   }
 
   @Get('check')

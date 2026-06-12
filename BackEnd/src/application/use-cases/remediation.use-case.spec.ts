@@ -16,10 +16,11 @@ describe('RemediationUseCase', () => {
     category: 'Secrets Exposure',
     remediationAvailable: true,
     repository: 'owner/repo',
+    auditId: 'audit-1',
   };
 
   let auditStore: jest.Mocked<
-    Pick<AuditReportStore, 'findFindingById' | 'getById'>
+    Pick<AuditReportStore, 'findFindingById' | 'getById' | 'removeFindings'>
   >;
   let githubTokens: jest.Mocked<
     Pick<GitHubTokenResolverService, 'requireForAudit'>
@@ -41,6 +42,7 @@ describe('RemediationUseCase', () => {
       | 'regenerateLockfiles'
       | 'deliver'
       | 'cleanup'
+      | 'resolveLatestNpmVersion'
     >
   >;
   let remediationConsent: jest.Mocked<
@@ -60,6 +62,9 @@ describe('RemediationUseCase', () => {
       removePackageFromManifest: jest.fn(),
       enableDependabotSecurityUpdates: jest.fn(),
       listDependabotAlerts: jest.fn().mockResolvedValue([]),
+      waitForDependabotAlertsClosed: jest
+        .fn()
+        .mockResolvedValue({ closed: [], stillOpen: [] }),
       createSecurityIssue: jest.fn(),
     };
 
@@ -74,6 +79,7 @@ describe('RemediationUseCase', () => {
       updatePackageVersion: jest.fn(),
       removePackage: jest.fn(),
       regenerateLockfiles: jest.fn().mockResolvedValue(['pnpm-lock.yaml']),
+      resolveLatestNpmVersion: jest.fn().mockResolvedValue('^0.15.1'),
       deliver: jest.fn().mockResolvedValue({
         method: 'direct_push',
         branch: 'main',
@@ -85,7 +91,22 @@ describe('RemediationUseCase', () => {
 
     auditStore = {
       findFindingById: jest.fn().mockResolvedValue(finding),
-      getById: jest.fn(),
+      getById: jest.fn().mockResolvedValue({
+        id: 'audit-1',
+        createdAt: '2026-01-01T00:00:00.000Z',
+        report: {
+          allRepositories: [
+            {
+              fullName: 'owner/repo',
+              findings: [finding],
+              vulnerabilityCount: 1,
+              isAffected: true,
+            },
+          ],
+        },
+        markdownPath: '/tmp/report.md',
+      }),
+      removeFindings: jest.fn().mockResolvedValue(1),
     };
 
     githubTokens = {
@@ -125,11 +146,64 @@ describe('RemediationUseCase', () => {
       '/tmp/repo',
       '.npmrc',
     );
-    expect(workspace.deliver).toHaveBeenCalled();
-    expect(github.createSecurityIssue).toHaveBeenCalled();
+    expect(workspace.deliver.mock.calls.length).toBeGreaterThan(0);
+    expect(github.createSecurityIssue.mock.calls.length).toBeGreaterThan(0);
     expect(workspace.cleanup).toHaveBeenCalledWith('/tmp/repo');
     expect(result.success).toBe(true);
     expect(result.delivery?.method).toBe('direct_push');
+    expect(auditStore.removeFindings).toHaveBeenCalledWith('audit-1', [
+      'finding-1',
+    ]);
+  });
+
+  it('considera sucesso quando issue de segurança falha por issues desabilitadas', async () => {
+    github.createSecurityIssue.mockRejectedValue(
+      new Error('gh: Issues has been disabled in this repository. (HTTP 410)'),
+    );
+
+    const result = await useCase.apply('finding-1', 'user-1');
+
+    expect(workspace.deliver.mock.calls.length).toBeGreaterThan(0);
+    expect(result.success).toBe(true);
+    expect(result.message).toContain('passo(s) manual(is) pendente(s)');
+    expect(result.requiresManualSteps).toHaveLength(1);
+    expect(result.requiresManualSteps[0]).toContain('Issues desabilitadas');
+  });
+
+  it('remove dependência comprometida quando evidence é URL OpenSourceMalware', async () => {
+    auditStore.findFindingById.mockResolvedValue({
+      ...finding,
+      type: 'compromised_dependency',
+      message: '[OpenSourceMalware] Pacote npm malicioso: axios',
+      evidence: 'https://opensourcemalware.com/npm/axios',
+    });
+
+    const result = await useCase.apply('finding-1', 'user-1');
+
+    expect(workspace.removePackage).toHaveBeenCalledWith(
+      '/tmp/repo',
+      'package.json',
+      'axios',
+    );
+    expect(workspace.deliver.mock.calls.length).toBeGreaterThan(0);
+    expect(result.success).toBe(true);
+  });
+
+  it('remove dependência com evidence estruturada package.json|pkg|ver|osm', async () => {
+    auditStore.findFindingById.mockResolvedValue({
+      ...finding,
+      type: 'compromised_dependency',
+      message: '[OpenSourceMalware] Pacote npm malicioso: axios',
+      evidence: 'package.json|axios|1.6.0|osm',
+    });
+
+    await useCase.apply('finding-1', 'user-1');
+
+    expect(workspace.removePackage).toHaveBeenCalledWith(
+      '/tmp/repo',
+      'package.json',
+      'axios',
+    );
   });
 
   it('corrige alerta dependabot com lockfile', async () => {
@@ -162,11 +236,81 @@ describe('RemediationUseCase', () => {
       'vitest',
       '3.0.5',
     );
-    expect(workspace.regenerateLockfiles).toHaveBeenCalledWith(
+    expect(workspace.regenerateLockfiles.mock.calls[0]).toEqual([
       '/tmp/repo',
       'frontend/package.json',
-    );
-    expect(github.enableDependabotSecurityUpdates).toHaveBeenCalled();
+    ]);
+    expect(
+      github.enableDependabotSecurityUpdates.mock.calls.length,
+    ).toBeGreaterThan(0);
     expect(result.success).toBe(true);
+  });
+
+  it('corrige alertas dependabot relacionados em monorepo num único commit', async () => {
+    auditStore.findFindingById.mockResolvedValue({
+      ...finding,
+      type: 'vulnerable_dependency',
+      message: '[Dependabot] vitest vulnerability',
+      evidence: 'services/a/package.json|vitest|3.0.5|dependabot-42',
+    });
+
+    github.listDependabotAlerts.mockResolvedValue([
+      {
+        number: 42,
+        state: 'open',
+        packageName: 'vitest',
+        manifestPath: 'services/a/package.json',
+        severity: 'critical',
+        summary: 'vitest vuln',
+        vulnerableVersionRange: '< 3.0.5',
+        patchedVersion: '3.0.5',
+        ghsaId: 'GHSA-xxxx',
+      },
+      {
+        number: 43,
+        state: 'open',
+        packageName: 'vitest',
+        manifestPath: 'services/b/package.json',
+        severity: 'critical',
+        summary: 'vitest vuln',
+        vulnerableVersionRange: '< 3.0.5',
+        patchedVersion: '3.0.5',
+        ghsaId: 'GHSA-xxxx',
+      },
+    ]);
+    github.waitForDependabotAlertsClosed.mockResolvedValue({
+      closed: [42, 43],
+      stillOpen: [],
+    });
+
+    const result = await useCase.apply('finding-1', 'user-1');
+
+    expect(workspace.updatePackageVersion).toHaveBeenCalledTimes(2);
+    expect(result.dependabot?.closedAlertNumbers).toEqual([42, 43]);
+    expect(
+      result.appliedSteps.some((s) => s.includes('Dependabot GitHub')),
+    ).toBe(true);
+  });
+
+  it('atualiza dependência 0.x instável para última versão no npm', async () => {
+    auditStore.findFindingById.mockResolvedValue({
+      ...finding,
+      type: 'vulnerable_dependency',
+      message:
+        'Dependência em versão inicial instável: class-validator@^0.14.0',
+      evidence: 'class-validator@^0.14.0',
+    });
+
+    await useCase.apply('finding-1', 'user-1');
+
+    expect(workspace.resolveLatestNpmVersion).toHaveBeenCalledWith(
+      'class-validator',
+    );
+    expect(workspace.updatePackageVersion).toHaveBeenCalledWith(
+      '/tmp/repo',
+      'package.json',
+      'class-validator',
+      '^0.15.1',
+    );
   });
 });

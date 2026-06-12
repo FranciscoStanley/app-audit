@@ -1,0 +1,30 @@
+---
+description: Usar .cursor (rules + skills) automaticamente em toda tarefa — sem pedir confirmação
+alwaysApply: true
+---
+
+# Workflow Cursor — automático
+
+> Índice: `.cursor/skills/README.md`
+
+## Comportamento obrigatório
+
+- **Sempre** consulte `.cursor/rules/` e `.cursor/skills/` relevantes **antes** de implementar, revisar ou responder.
+- **Nunca** peça ao usuário para "usar a skill" ou "seguir o .cursor" — aplique silenciosamente.
+- **Nunca** liste skills disponíveis como sugestão; leia e execute o workflow correto.
+- Ao iniciar uma tarefa, identifique a skill pelo escopo (backend, frontend, auth, scanners, docs/testes) e **leia o `SKILL.md` completo** quando aplicável.
+
+## Ordem de consulta
+
+1. Rule específica do arquivo (`globs` em `.cursor/rules/`)
+2. Skill orquestradora: `.cursor/skills/app-audit-development/SKILL.md`
+3. Skill de domínio: `app-audit-backend`, `app-audit-frontend`, `app-audit-auth-rbac`, `app-audit-security-scan`
+4. Ao alterar funcionalidade: `.cursor/skills/change-sync-docs-tests/SKILL.md` (obrigatório antes de concluir)
+5. Execução local: `.cursor/skills/auto-dev-approve/SKILL.md`
+
+## Ao concluir implementações
+
+- Rodar `npm test` na raiz quando a change-sync exigir
+- Não commitar/pushar sem pedido explícito do usuário
+
+**Autor:** Francisco Stanley Rodrigues Albuquerque

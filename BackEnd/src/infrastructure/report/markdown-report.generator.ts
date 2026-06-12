@@ -1,6 +1,5 @@
 import { Injectable } from '@nestjs/common';
 import {
-  MIASMA_ATTACK_START_DATE,
   MIASMA_C2_DOMAINS,
   MIASMA_SOURCE_URL,
 } from '../../domain/constants/miasma-threat.constants';

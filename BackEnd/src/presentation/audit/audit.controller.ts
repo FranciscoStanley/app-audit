@@ -2,6 +2,8 @@ import {
   Body,
   Controller,
   Get,
+  HttpCode,
+  HttpStatus,
   NotFoundException,
   Param,
   Post,
@@ -19,10 +21,12 @@ import {
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
+import { SkipThrottle } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
 import { access, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { RunMiasmaAuditUseCase } from '../../application/use-cases/run-miasma-audit.use-case';
+import { BackgroundJobUseCase } from '../../application/use-cases/background-job.use-case';
 import { RemediationUseCase } from '../../application/use-cases/remediation.use-case';
 import { RemediationConsentUseCase } from '../../application/use-cases/remediation-consent.use-case';
 import { RemediationConsentAcceptDto } from '../auth/dto/auth.dto';
@@ -33,6 +37,20 @@ import { AuditReportStore } from '../../infrastructure/storage/audit-report.stor
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { Permissions } from '../auth/decorators/permissions.decorator';
 import { AuditRunResponseDto } from './dto/audit-report-response.dto';
+import { BackgroundJob } from '../../domain/entities/background-job.entity';
+import {
+  BackgroundJobResponseDto,
+  CreateBackgroundJobResponseDto,
+  CreateRemediationAllJobDto,
+  CreateRemediationJobDto,
+  ListJobsQueryDto,
+} from './dto/background-job.dto';
+import { PaginationQueryDto } from '../common/dto/pagination-query.dto';
+import {
+  AuditReportSummaryDto,
+  ListFindingsQueryDto,
+} from './dto/audit-list.dto';
+import type { PaginatedResult } from '../../domain/pagination/pagination';
 
 @ApiTags('Security Audit')
 @ApiBearerAuth()
@@ -41,12 +59,115 @@ import { AuditRunResponseDto } from './dto/audit-report-response.dto';
 export class AuditController {
   constructor(
     private readonly auditUseCase: RunMiasmaAuditUseCase,
+    private readonly backgroundJobs: BackgroundJobUseCase,
     private readonly auditStore: AuditReportStore,
     private readonly pdfGenerator: PdfReportGenerator,
     private readonly vulnerabilityReportGenerator: VulnerabilityReportGenerator,
     private readonly remediation: RemediationUseCase,
     private readonly remediationConsent: RemediationConsentUseCase,
   ) {}
+
+  @Post('jobs/audit-run')
+  @SkipThrottle()
+  @HttpCode(HttpStatus.ACCEPTED)
+  @Permissions('audit:run')
+  @ApiOperation({
+    summary: 'Enfileirar varredura de segurança (execução assíncrona)',
+  })
+  @ApiResponse({ status: 202, type: CreateBackgroundJobResponseDto })
+  async enqueueAuditRun(
+    @CurrentUser() user: { id: string },
+  ): Promise<CreateBackgroundJobResponseDto> {
+    const job = await this.backgroundJobs.createAuditJob(user.id);
+    return { jobId: job.id, status: job.status };
+  }
+
+  @Post('jobs/remediation')
+  @SkipThrottle()
+  @HttpCode(HttpStatus.ACCEPTED)
+  @Permissions('remediation:apply')
+  @ApiOperation({
+    summary: 'Enfileirar remediação de uma vulnerabilidade (assíncrona)',
+  })
+  @ApiResponse({ status: 202, type: CreateBackgroundJobResponseDto })
+  async enqueueRemediation(
+    @CurrentUser() user: { id: string },
+    @Body() dto: CreateRemediationJobDto,
+  ): Promise<CreateBackgroundJobResponseDto> {
+    const job = await this.backgroundJobs.createRemediationJob(
+      user.id,
+      dto.findingId,
+    );
+    return { jobId: job.id, status: job.status };
+  }
+
+  @Post('jobs/remediation-all')
+  @SkipThrottle()
+  @HttpCode(HttpStatus.ACCEPTED)
+  @Permissions('remediation:apply')
+  @ApiOperation({
+    summary: 'Enfileirar remediação em lote (assíncrona)',
+  })
+  @ApiResponse({ status: 202, type: CreateBackgroundJobResponseDto })
+  async enqueueRemediationAll(
+    @CurrentUser() user: { id: string },
+    @Body() dto: CreateRemediationAllJobDto,
+  ): Promise<CreateBackgroundJobResponseDto> {
+    const job = await this.backgroundJobs.createRemediationAllJob(
+      user.id,
+      dto.auditId,
+    );
+    return { jobId: job.id, status: job.status };
+  }
+
+  @Get('jobs')
+  @SkipThrottle()
+  @Permissions('audit:read')
+  @ApiOperation({
+    summary: 'Listar jobs assíncronos do usuário autenticado (paginado)',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Lista paginada de jobs',
+    schema: {
+      properties: {
+        data: {
+          type: 'array',
+          items: { $ref: '#/components/schemas/BackgroundJobResponseDto' },
+        },
+        meta: { $ref: '#/components/schemas/PaginationMetaDto' },
+      },
+    },
+  })
+  async listJobs(
+    @CurrentUser() user: { id: string },
+    @Query() query: ListJobsQueryDto,
+  ): Promise<PaginatedResult<BackgroundJobResponseDto>> {
+    const { page, pageSize } = query.toParams();
+    const result = await this.backgroundJobs.listJobs(
+      user.id,
+      page,
+      pageSize,
+      query.status,
+    );
+    return {
+      data: result.data.map((job) => this.toJobDto(job)),
+      meta: result.meta,
+    };
+  }
+
+  @Get('jobs/:id')
+  @SkipThrottle()
+  @Permissions('audit:read')
+  @ApiOperation({ summary: 'Status de um job assíncrono (polling)' })
+  @ApiResponse({ status: 200, type: BackgroundJobResponseDto })
+  async getJob(
+    @CurrentUser() user: { id: string },
+    @Param('id') id: string,
+  ): Promise<BackgroundJobResponseDto> {
+    const job = await this.backgroundJobs.getJob(user.id, id);
+    return this.toJobDto(job);
+  }
 
   @Post('run')
   @Permissions('audit:run')
@@ -83,9 +204,17 @@ export class AuditController {
 
   @Get('reports')
   @Permissions('audit:read')
-  @ApiOperation({ summary: 'Listar relatórios de auditoria' })
-  listReports() {
-    return this.auditStore.list();
+  @ApiOperation({ summary: 'Listar relatórios de auditoria (resumo paginado)' })
+  @ApiResponse({
+    status: 200,
+    description:
+      'Lista paginada de resumos — sem payload completo do relatório',
+  })
+  async listReports(
+    @Query() query: PaginationQueryDto,
+  ): Promise<PaginatedResult<AuditReportSummaryDto>> {
+    const { page, pageSize } = query.toParams();
+    return this.auditStore.listSummariesPaginated(page, pageSize);
   }
 
   @Get('reports/:id')
@@ -140,20 +269,22 @@ export class AuditController {
 
   @Get('reports/:id/findings')
   @Permissions('audit:read')
-  @ApiOperation({ summary: 'Listar vulnerabilidades de um relatório' })
-  async listFindings(@Param('id') id: string) {
+  @ApiOperation({
+    summary: 'Listar vulnerabilidades de um relatório (paginado)',
+  })
+  async listFindings(
+    @Param('id') id: string,
+    @Query() query: ListFindingsQueryDto,
+  ) {
     const stored = await this.auditStore.getById(id);
     if (!stored) throw new NotFoundException('Relatório não encontrado');
 
-    const repos =
-      stored.report.allRepositories ?? stored.report.affectedRepositories;
-    return repos.flatMap((repo) =>
-      repo.findings.map((f) => ({
-        ...f,
-        repository: repo.fullName,
-        auditId: id,
-      })),
-    );
+    const { page, pageSize } = query.toParams();
+    return this.auditStore.listFindingsPaginated(id, page, pageSize, {
+      category: query.category,
+      severity: query.severity,
+      remediationAvailable: query.remediationAvailable,
+    });
   }
 
   @Get('reports/:id/findings/:findingId/markdown')
@@ -288,5 +419,23 @@ export class AuditController {
 
   private findingFilenameSlug(auditId: string, findingId: string): string {
     return `vulnerability-${findingId.slice(0, 8)}`;
+  }
+
+  private toJobDto(job: BackgroundJob): BackgroundJobResponseDto {
+    return {
+      id: job.id,
+      type: job.type,
+      status: job.status,
+      label: job.label,
+      findingId: job.payload.findingId,
+      auditId: job.payload.auditId,
+      progress: job.progress,
+      result: job.result,
+      error: job.error,
+      createdAt: job.createdAt,
+      updatedAt: job.updatedAt,
+      startedAt: job.startedAt,
+      completedAt: job.completedAt,
+    };
   }
 }

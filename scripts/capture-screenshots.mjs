@@ -24,6 +24,15 @@ const mockUser = {
   githubUsername: 'demo-user',
 };
 
+const mockAdminUser = {
+  id: 'user-admin',
+  email: 'admin@empresa.com',
+  name: 'Admin Demo',
+  role: 'admin',
+  githubConnected: true,
+  githubUsername: 'demo-user',
+};
+
 const mockFinding = {
   id: 'finding-secrets-001',
   type: 'exposed_secret',
@@ -92,16 +101,22 @@ const mockMarkdown = `# Relatório de Auditoria — @demo-user
 Foram identificados achados críticos de exposição de secrets e riscos de supply chain em 3 repositórios.
 `;
 
-const mockReportsList = [
+const mockReportSummaries = [
   {
     id: AUDIT_ID,
     createdAt: '2026-06-10T14:30:00.000Z',
-    report: mockReport,
+    githubUsername: 'demo-user',
+    verdict: 'affected',
+    totalVulnerabilities: 7,
+    repositoryCount: 24,
   },
   {
     id: 'screenshot-demo-002',
     createdAt: '2026-06-03T09:15:00.000Z',
-    report: { ...mockReport, verdict: 'not_affected', totalVulnerabilities: 0 },
+    githubUsername: 'demo-user',
+    verdict: 'not_affected',
+    totalVulnerabilities: 0,
+    repositoryCount: 24,
   },
 ];
 
@@ -122,11 +137,75 @@ const mockFindings = [
 
 const mockThreatIntel = {
   lastSyncedAt: '2026-06-10T12:00:00.000Z',
+  nextSyncAt: '2026-06-11T12:00:00.000Z',
   totalPackages: 1842,
-  githubAdvisories: 156,
+  totalRepositories: 156,
+  githubAdvisoryEnabled: true,
   openSourceMalwareEnabled: true,
-  sources: ['GitHub Advisory Database', 'OpenSourceMalware'],
+  refreshIntervalHours: 24,
 };
+
+const mockUsers = [
+  mockAdminUser,
+  mockUser,
+  {
+    id: 'user-viewer',
+    email: 'viewer@empresa.com',
+    name: 'Viewer Demo',
+    role: 'viewer',
+  },
+];
+
+const mockRemediationConsent = {
+  accepted: true,
+  policyVersion: '1.0.0',
+  controllerName: 'App Audit',
+  contactEmail: 'franciscothestanley@gmail.com',
+  legalBasis: 'Art. 7º, I e V da LGPD — consentimento do titular para remediação automatizada.',
+  actions: [
+    {
+      action: 'clone',
+      title: 'Clone temporário de repositórios',
+      description: 'Clonar repositórios em workspace seguro para aplicar correções.',
+    },
+    {
+      action: 'modify',
+      title: 'Alteração de arquivos',
+      description: 'Modificar manifestos, lockfiles, workflows e .gitignore conforme o plano.',
+    },
+  ],
+  risks: [
+    'Alterações automatizadas podem exigir revisão manual antes do merge em produção.',
+    'Correções de dependências podem impactar builds ou testes.',
+  ],
+};
+
+const mockRemediationConsentPending = {
+  ...mockRemediationConsent,
+  accepted: false,
+};
+
+function paginate(items, page = 1, pageSize = 20) {
+  const total = items.length;
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const safePage = Math.min(Math.max(page, 1), totalPages);
+  const start = (safePage - 1) * pageSize;
+  return {
+    data: items.slice(start, start + pageSize),
+    meta: {
+      page: safePage,
+      pageSize,
+      total,
+      totalPages,
+      hasNextPage: safePage < totalPages,
+      hasPreviousPage: safePage > 1,
+    },
+  };
+}
+
+function apiPath(pathname) {
+  return pathname.startsWith('/v1') ? pathname.slice(3) : pathname;
+}
 
 function fulfillJson(route, data) {
   return route.fulfill({
@@ -142,9 +221,14 @@ function fulfillText(route, body, contentType = 'text/markdown; charset=utf-8') 
 
 function handleApiRoute(route) {
   const url = new URL(route.request().url());
-  const path = url.pathname;
+  const path = apiPath(url.pathname);
+  const page = Number(url.searchParams.get('page') ?? 1);
+  const pageSize = Number(url.searchParams.get('pageSize') ?? 20);
+  const category = url.searchParams.get('category');
+  const remediationAvailable = url.searchParams.get('remediationAvailable');
 
   if (path === '/auth/github/config') return fulfillJson(route, { enabled: true });
+  if (path === '/auth/me') return fulfillJson(route, mockUser);
   if (path === '/auth/github/consent') {
     return fulfillJson(route, {
       policyVersion: '1.0.0',
@@ -194,6 +278,15 @@ function handleApiRoute(route) {
       connectedAt: '2026-06-10T10:00:00.000Z',
     });
   }
+  if (path === '/auth/users' && route.request().method() === 'GET') {
+    return fulfillJson(route, paginate(mockUsers, page, pageSize));
+  }
+  if (path === '/audit/jobs' && route.request().method() === 'GET') {
+    return fulfillJson(route, paginate([], page, pageSize));
+  }
+  if (path === '/audit/remediation/consent') {
+    return fulfillJson(route, mockRemediationConsent);
+  }
   if (path === `/audit/remediation/${mockFinding.id}/preview`) {
     return fulfillJson(route, {
       findingId: mockFinding.id,
@@ -208,16 +301,27 @@ function handleApiRoute(route) {
   }
 
   if (path === '/audit/reports' && route.request().method() === 'GET') {
-    return fulfillJson(route, mockReportsList);
+    return fulfillJson(route, paginate(mockReportSummaries, page, pageSize));
   }
   if (path === `/audit/reports/${AUDIT_ID}`) {
-    return fulfillJson(route, { id: AUDIT_ID, createdAt: mockReportsList[0].createdAt, report: mockReport });
+    return fulfillJson(route, {
+      id: AUDIT_ID,
+      createdAt: mockReportSummaries[0].createdAt,
+      report: mockReport,
+    });
   }
   if (path === `/audit/reports/${AUDIT_ID}/markdown`) {
     return fulfillText(route, mockMarkdown);
   }
   if (path === `/audit/reports/${AUDIT_ID}/findings`) {
-    return fulfillJson(route, mockFindings);
+    let items = mockFindings;
+    if (category && category !== 'all') {
+      items = items.filter((f) => f.category === category);
+    }
+    if (remediationAvailable === 'true') {
+      items = items.filter((f) => f.remediationAvailable);
+    }
+    return fulfillJson(route, paginate(items, page, pageSize));
   }
   if (path === '/threat-intel/status') {
     return fulfillJson(route, mockThreatIntel);
@@ -226,42 +330,50 @@ function handleApiRoute(route) {
   return fulfillJson(route, {});
 }
 
-async function setupApiMocks(context) {
+async function setupApiMocks(context, { admin = false } = {}) {
   const apiHost = new URL(API_URL).host;
+  const handler = (route) => {
+    const path = apiPath(new URL(route.request().url()).pathname);
+    if (path === '/auth/me') {
+      return fulfillJson(route, admin ? mockAdminUser : mockUser);
+    }
+    return handleApiRoute(route);
+  };
+
   await context.route(
     (url) => url.hostname === new URL(API_URL).hostname && url.port === new URL(API_URL).port,
-    handleApiRoute,
+    handler,
   );
-  // Fallback para variações de URL (127.0.0.1 vs localhost)
-  await context.route(/\/auth\/|\/audit\/|\/threat-intel\//, (route) => {
+  await context.route(/\/v1\/(auth|audit|threat-intel)\//, (route) => {
     if (route.request().url().includes(apiHost) || route.request().url().includes('3000')) {
-      return handleApiRoute(route);
+      return handler(route);
     }
     return route.continue();
   });
 }
 
-const authStorageValue = JSON.stringify({
-  state: { token: 'screenshot-demo-token', user: mockUser },
-  version: 0,
-});
+function authStorageValue(user) {
+  return JSON.stringify({
+    state: { token: 'screenshot-demo-token', user },
+    version: 0,
+  });
+}
 
-async function seedAuth(page) {
-  await page.goto(`${BASE_URL}/login`, { waitUntil: 'domcontentloaded' });
-  await page.evaluate((value) => {
+async function seedAuthContext(context, user = mockUser) {
+  await context.addInitScript((value) => {
     localStorage.setItem('app-audit-auth', value);
-  }, authStorageValue);
+  }, authStorageValue(user));
 }
 
 async function capture(page, name, path, { waitFor, waitForExact } = {}) {
-  await page.goto(`${BASE_URL}${path}`, { waitUntil: 'networkidle' });
+  await page.goto(`${BASE_URL}${path}`, { waitUntil: 'domcontentloaded' });
   if (waitFor) {
     await page
       .getByRole('heading', { name: waitFor, exact: waitForExact ?? false })
       .first()
-      .waitFor({ timeout: 15_000 });
+      .waitFor({ timeout: 20_000 });
   }
-  await page.waitForTimeout(400);
+  await page.waitForTimeout(800);
   await page.screenshot({ path: resolve(OUT_DIR, `${name}.png`) });
   console.log(`  ✓ ${name}.png`);
 }
@@ -278,7 +390,7 @@ async function main() {
   const loginPage = await loginContext.newPage();
   await loginPage.goto(`${BASE_URL}/login`, { waitUntil: 'networkidle' });
   await loginPage.getByRole('heading', { name: 'App Audit' }).waitFor({ timeout: 10_000 });
-  await loginPage.waitForTimeout(800);
+  await loginPage.getByRole('button', { name: /Entrar com GitHub/i }).waitFor({ timeout: 10_000 });
   await loginPage.screenshot({ path: resolve(OUT_DIR, '01-login.png') });
   console.log('  ✓ 01-login.png');
 
@@ -292,11 +404,21 @@ async function main() {
 
   await loginContext.close();
 
-  // —— Telas autenticadas ——
+  // —— Páginas legais (públicas) ——
+  const legalContext = await browser.newContext({ viewport: VIEWPORT, colorScheme: 'dark' });
+  await setupApiMocks(legalContext);
+  const legalPage = await legalContext.newPage();
+  await capture(legalPage, '09-termos', '/legal/termos', { waitFor: 'Termo de Uso' });
+  await capture(legalPage, '10-privacidade', '/legal/privacidade', {
+    waitFor: 'Política de Privacidade',
+  });
+  await legalContext.close();
+
+  // —— Telas autenticadas (auditor) ——
   const authContext = await browser.newContext({ viewport: VIEWPORT, colorScheme: 'dark' });
   await setupApiMocks(authContext);
+  await seedAuthContext(authContext);
   const page = await authContext.newPage();
-  await seedAuth(page);
 
   await capture(page, '02-dashboard', '/dashboard', { waitFor: 'Dashboard' });
   await capture(page, '03-auditorias', '/dashboard/audits', { waitFor: 'Auditorias' });
@@ -307,7 +429,8 @@ async function main() {
   await capture(page, '05-vulnerabilidades', '/dashboard/vulnerabilities', { waitFor: 'Vulnerabilidades' });
 
   // Remediação: expandir plano no primeiro card com botão Resolver
-  await page.goto(`${BASE_URL}/dashboard/vulnerabilities`, { waitUntil: 'networkidle' });
+  await page.goto(`${BASE_URL}/dashboard/vulnerabilities`, { waitUntil: 'domcontentloaded' });
+  await page.getByRole('heading', { name: 'Vulnerabilidades' }).waitFor({ timeout: 20_000 });
   await page.getByRole('button', { name: /Resolver/i }).first().click();
   await page.waitForTimeout(600);
   await page.getByRole('button', { name: /Aplicar correção/i }).waitFor({ timeout: 10_000 });
@@ -315,9 +438,42 @@ async function main() {
   await page.screenshot({ path: resolve(OUT_DIR, '07-remediacao.png') });
   console.log('  ✓ 07-remediacao.png');
 
+  // Consentimento de remediação (primeira utilização)
+  await page.route(/\/v1\/audit\/remediation\/consent/, (route) => {
+    if (route.request().method() === 'GET') {
+      return fulfillJson(route, mockRemediationConsentPending);
+    }
+    return route.continue();
+  });
+  await page.goto(`${BASE_URL}/dashboard/vulnerabilities`, { waitUntil: 'domcontentloaded' });
+  await page.getByRole('heading', { name: 'Vulnerabilidades' }).waitFor({ timeout: 20_000 });
+  await page.getByRole('button', { name: /Corrigir todas/i }).click();
+  await page
+    .getByRole('heading', { name: 'Consentimento — Remediação automática' })
+    .waitFor({ timeout: 10_000 });
+  await page.waitForTimeout(500);
+  await page.screenshot({ path: resolve(OUT_DIR, '11-remediacao-consentimento.png') });
+  console.log('  ✓ 11-remediacao-consentimento.png');
+  await page.unroute(/\/v1\/audit\/remediation\/consent/);
+
   await capture(page, '06-threat-intel', '/dashboard/threat-intel', { waitFor: 'Threat Intelligence' });
 
   await authContext.close();
+
+  // —— Administração (admin) ——
+  const adminContext = await browser.newContext({ viewport: VIEWPORT, colorScheme: 'dark' });
+  await setupApiMocks(adminContext, { admin: true });
+  await seedAuthContext(adminContext, mockAdminUser);
+  const adminPage = await adminContext.newPage();
+  await adminPage.goto(`${BASE_URL}/dashboard/admin`, { waitUntil: 'domcontentloaded' });
+  await adminPage.getByRole('heading', { name: 'Administração' }).waitFor({ timeout: 20_000 });
+  await adminPage.getByRole('button', { name: /Editar Auditor Demo/i }).click();
+  await adminPage.getByText('Editando auditor@empresa.com').waitFor({ timeout: 10_000 });
+  await adminPage.waitForTimeout(500);
+  await adminPage.screenshot({ path: resolve(OUT_DIR, '08-administracao.png') });
+  console.log('  ✓ 08-administracao.png');
+  await adminContext.close();
+
   await browser.close();
   console.log('\nConcluído.');
 }

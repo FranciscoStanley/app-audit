@@ -1,16 +1,25 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { Play, Wrench } from 'lucide-react';
 import { RemediationConsentModal } from '@/components/auth/remediation-consent-modal';
-import { api, type ThreatFinding } from '@/lib/api';
+import { api, type PaginationMeta, type ThreatFinding } from '@/lib/api';
+import {
+  applyAllRemediationInBackground,
+  bulkRemediationTaskId,
+  type BulkRemediationTaskResult,
+  useBackgroundTasksStore,
+} from '@/stores/background-tasks-store';
 import { useRemediationConsent } from '@/hooks/use-remediation-consent';
 import { useAuthStore } from '@/stores/auth-store';
 import { VulnerabilityCard } from '@/components/audit/vulnerability-card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { Pagination } from '@/components/ui/pagination';
+
+const PAGE_SIZE = 20;
 
 export default function VulnerabilitiesPage() {
   const token = useAuthStore((s) => s.token);
@@ -18,58 +27,113 @@ export default function VulnerabilitiesPage() {
   const canRemediate = useAuthStore((s) => s.can('remediation:apply'));
   const { consentOpen, ensureConsent, onConsentAccepted, onConsentClose } = useRemediationConsent(token);
   const [findings, setFindings] = useState<Array<ThreatFinding & { repository: string; auditId: string }>>([]);
+  const [meta, setMeta] = useState<PaginationMeta | null>(null);
   const [auditId, setAuditId] = useState('');
   const [filter, setFilter] = useState('all');
+  const [page, setPage] = useState(1);
+  const [remediableTotal, setRemediableTotal] = useState(0);
   const [hasReports, setHasReports] = useState(true);
   const [loading, setLoading] = useState(true);
-  const [remediating, setRemediating] = useState(false);
-  const [bulkResult, setBulkResult] = useState<{ message: string; pullRequests: string[] } | null>(null);
+  const bulkTask = useBackgroundTasksStore((s) =>
+    auditId ? s.tasks[bulkRemediationTaskId(auditId)] : undefined,
+  );
+  const remediationTasks = useBackgroundTasksStore((s) => s.tasks);
+  const processedRemediationCompletions = useRef(new Set<string>());
+  const remediating = bulkTask?.status === 'running';
+  const bulkResult =
+    bulkTask?.status === 'success' || bulkTask?.status === 'warning' || bulkTask?.status === 'error'
+      ? {
+          message:
+            bulkTask.status === 'error'
+              ? (bulkTask.error ?? 'Falha na remediação em lote')
+              : bulkTask.result && 'message' in bulkTask.result
+                ? bulkTask.result.message
+                : (bulkTask.error ?? 'Remediação concluída'),
+          pullRequests:
+            bulkTask.result && 'pullRequests' in bulkTask.result
+              ? bulkTask.result.pullRequests
+              : [],
+        }
+      : null;
 
-  useEffect(() => {
+  const loadFindings = useCallback(async () => {
     if (!token) return;
     setLoading(true);
-    api
-      .listReports(token)
-      .then(async (reports) => {
-        if (!reports[0]) {
-          setHasReports(false);
-          setFindings([]);
-          return;
-        }
-        setHasReports(true);
-        setAuditId(reports[0].id);
-        const all = await api.listFindings(token, reports[0].id);
-        setFindings(all);
-      })
-      .finally(() => setLoading(false));
-  }, [token]);
+    try {
+      const reports = await api.listReports(token, { page: 1, pageSize: 1 });
+      if (!reports.data[0]) {
+        setHasReports(false);
+        setFindings([]);
+        setMeta(null);
+        return;
+      }
+      setHasReports(true);
+      const latestId = reports.data[0].id;
+      setAuditId(latestId);
 
-  const categories = ['all', ...new Set(findings.map((f) => f.category))];
-  const filtered = filter === 'all' ? findings : findings.filter((f) => f.category === filter);
-  const remediableCount = findings.filter((f) => f.remediationAvailable).length;
+      const reportDetail = await api.getReport(token, latestId);
+      const cats = new Set(
+        (reportDetail.report.allRepositories ?? reportDetail.report.affectedRepositories ?? [])
+          .flatMap((r) => r.findings.map((f) => f.category)),
+      );
+      setCategories(['all', ...cats]);
+
+      const [pageResult, remediableResult] = await Promise.all([
+        api.listFindings(token, latestId, {
+          page,
+          pageSize: PAGE_SIZE,
+          category: filter,
+        }),
+        api.listFindings(token, latestId, {
+          page: 1,
+          pageSize: 1,
+          remediationAvailable: true,
+        }),
+      ]);
+
+      setFindings(pageResult.data);
+      setMeta(pageResult.meta);
+      setRemediableTotal(remediableResult.meta.total);
+    } finally {
+      setLoading(false);
+    }
+  }, [token, page, filter]);
+
+  useEffect(() => {
+    void loadFindings();
+  }, [loadFindings]);
+
+  useEffect(() => {
+    let shouldRefresh = false;
+    for (const task of Object.values(remediationTasks)) {
+      if (
+        (task.type !== 'remediation-single' && task.type !== 'remediation-bulk') ||
+        (task.status !== 'success' && task.status !== 'error') ||
+        !task.completedAt
+      ) {
+        continue;
+      }
+      if (task.type === 'remediation-bulk' && task.metadata?.auditId !== auditId) {
+        continue;
+      }
+      const key = `${task.id}:${task.completedAt}`;
+      if (processedRemediationCompletions.current.has(key)) continue;
+      processedRemediationCompletions.current.add(key);
+      shouldRefresh = true;
+    }
+    if (shouldRefresh) void loadFindings();
+  }, [remediationTasks, auditId, loadFindings]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [filter]);
+
+  const [categories, setCategories] = useState<string[]>(['all']);
 
   async function handleRemediateAll() {
-    if (!token || !auditId) return;
+    if (!token || !auditId || remediating) return;
     await ensureConsent(async () => {
-      setRemediating(true);
-      setBulkResult(null);
-      try {
-        const result = await api.applyAllRemediation(token, auditId);
-        const pullRequests = result.results
-          .map((r) => r.pullRequestUrl)
-          .filter((url): url is string => Boolean(url));
-        setBulkResult({
-          message: `${result.succeeded}/${result.total} vulnerabilidades corrigidas automaticamente`,
-          pullRequests,
-        });
-      } catch (e) {
-        setBulkResult({
-          message: e instanceof Error ? e.message : 'Falha na remediação em lote',
-          pullRequests: [],
-        });
-      } finally {
-        setRemediating(false);
-      }
+      void applyAllRemediationInBackground(token, auditId, remediableTotal);
     });
   }
 
@@ -86,17 +150,27 @@ export default function VulnerabilitiesPage() {
           <h1 className="text-3xl font-bold text-white">Vulnerabilidades</h1>
           <p className="text-slate-400">Todas as categorias detectadas na última auditoria</p>
         </div>
-        {canRemediate && remediableCount > 0 && auditId && (
+        {canRemediate && remediableTotal > 0 && auditId && (
           <Button onClick={handleRemediateAll} loading={remediating}>
             <Wrench className="h-4 w-4" />
-            Corrigir todas ({remediableCount})
+            Corrigir todas ({remediableTotal})
           </Button>
         )}
       </div>
 
       {bulkResult && (
         <div className="space-y-1">
-          <p className="text-sm text-emerald-400">{bulkResult.message}</p>
+          <p
+            className={`text-sm ${
+              bulkTask?.status === 'error'
+                ? 'text-red-400'
+                : bulkTask?.status === 'warning'
+                  ? 'text-amber-400'
+                  : 'text-emerald-400'
+            }`}
+          >
+            {bulkResult.message}
+          </p>
           {bulkResult.pullRequests.map((url) => (
             <a key={url} href={url} target="_blank" rel="noopener noreferrer" className="block text-sm text-indigo-400 underline">
               {url}
@@ -130,13 +204,15 @@ export default function VulnerabilitiesPage() {
       )}
 
       <div className="space-y-3">
-        {filtered.map((f) => (
+        {findings.map((f) => (
           <VulnerabilityCard key={f.id} finding={f} repository={f.repository} auditId={auditId} />
         ))}
-        {hasReports && filtered.length === 0 && !loading && (
+        {hasReports && findings.length === 0 && !loading && (
           <p className="text-slate-400">Nenhuma vulnerabilidade nesta categoria.</p>
         )}
       </div>
+
+      {meta && <Pagination meta={meta} onPageChange={setPage} />}
     </div>
   );
 }

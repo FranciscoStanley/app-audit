@@ -1,0 +1,12 @@
+# Requer DOMAIN e API_DOMAIN no .env (profile proxy).
+# DNS: audit.seudominio.com e api.seudominio.com → IP público da VM.
+
+{$DOMAIN} {
+	encode gzip
+	reverse_proxy frontend:3001
+}
+
+{$API_DOMAIN} {
+	encode gzip
+	reverse_proxy backend:3000
+}
