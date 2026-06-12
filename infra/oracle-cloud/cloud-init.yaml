@@ -1,0 +1,34 @@
+#cloud-config
+# Cole em: Create Instance → Advanced options → Paste cloud config
+# Região: sa-saopaulo-1
+# Após o boot (~3 min), conecte via SSH e execute finalize-deploy (ver docs).
+
+package_update: true
+package_upgrade: true
+
+packages:
+  - ca-certificates
+  - curl
+  - git
+  - ufw
+
+runcmd:
+  - curl -fsSL https://get.docker.com | sh
+  - usermod -aG docker ubuntu
+  - ufw allow OpenSSH
+  - ufw allow 3000/tcp
+  - ufw allow 3001/tcp
+  - ufw allow 80/tcp
+  - ufw allow 443/tcp
+  - ufw --force enable
+  - mkdir -p /opt/app-audit
+  - chown ubuntu:ubuntu /opt/app-audit
+  - su - ubuntu -c "git clone https://github.com/FranciscoStanley/app-audit.git /opt/app-audit || (cd /opt/app-audit && git pull)"
+  - chmod +x /opt/app-audit/scripts/oracle-cloud/*.sh
+  - touch /var/log/app-audit-cloud-init.done
+
+final_message: |
+  App Audit cloud-init concluído.
+  Próximo passo (no seu PC):
+    scripts/oracle-cloud/push-env.ps1 -PublicIp SEU_IP
+  Ou na VM: bash /opt/app-audit/scripts/oracle-cloud/04-finalize-deploy.sh
