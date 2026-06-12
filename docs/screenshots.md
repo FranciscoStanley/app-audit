@@ -20,7 +20,7 @@ Modal de consentimento informado exibido antes do redirect ao GitHub: finalidade
 
 ## Dashboard
 
-Visão geral com métricas da última auditoria: repositórios, vulnerabilidades, pacotes monitorados e veredito. Quando há jobs em execução, um **banner amarelo** no topo indica progresso (varredura ou remediação).
+Visão geral com métricas da última auditoria: repositórios, vulnerabilidades, pacotes monitorados e veredito. Quando há tarefas em execução (varredura, remediação ou sync de Threat Intel), um **banner amarelo** no topo indica progresso.
 
 ![Dashboard](./screenshots/02-dashboard.png)
 
@@ -50,7 +50,7 @@ Plano de remediação, aplicação automática via Git workspace (manifesto + lo
 
 ## Threat Intelligence
 
-Status da sincronização com GitHub Advisories e OpenSourceMalware.
+Status da sincronização com GitHub Advisories e OpenSourceMalware. O botão **Sincronizar** usa o store global de tarefas — o estado persiste ao navegar entre menus (banner + sidebar).
 
 ![Threat Intelligence](./screenshots/06-threat-intel.png)
 

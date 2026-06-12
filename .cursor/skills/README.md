@@ -1,5 +1,7 @@
 # Skills — App Audit Monorepo
 
+> **Rule always-on:** [cursor-workflow](../rules/cursor-workflow.mdc) — o agente usa este índice e as skills **automaticamente**, sem pedir confirmação.
+
 | Skill | Escopo |
 |-------|--------|
 | [app-audit-development](./app-audit-development/SKILL.md) | Orquestrador geral |
@@ -12,6 +14,19 @@
 
 **Autor:** Francisco Stanley Rodrigues Albuquerque
 
-## Regra global
+## Rules (`.cursor/rules/`)
 
-Sempre que alterar funcionalidade, consulte **change-sync-docs-tests** antes de concluir a tarefa.
+| Rule | Escopo |
+|------|--------|
+| [cursor-workflow](../rules/cursor-workflow.mdc) | Workflow automático — consultar skills/rules sem pedir ao usuário |
+| [app-audit](../rules/app-audit.mdc) | Stack, camadas, convenções do monorepo |
+| [change-sync](../rules/change-sync.mdc) | Resumo: testes, Swagger e docs ao mudar features |
+| [auto-dev-approve](../rules/auto-dev-approve.mdc) | Auto-aprovar comandos; commits manuais |
+
+## Ordem de consulta (agente)
+
+1. Rule do arquivo (`globs`) → **app-audit-development** → skill de domínio
+2. Ao alterar funcionalidade: **change-sync-docs-tests** antes de concluir
+3. Execução local: **auto-dev-approve**
+
+Ver detalhes em [cursor-workflow](../rules/cursor-workflow.mdc).

@@ -5,23 +5,20 @@ import { Loader2, CheckCircle2, AlertCircle, X } from 'lucide-react';
 import {
   type BackgroundTask,
   selectVisibleTasks,
-  useBackgroundTasksHydrated,
   useBackgroundTasksStore,
 } from '@/stores/background-tasks-store';
 import { Button } from '@/components/ui/button';
 
 function taskHref(type: BackgroundTask['type']): string {
   if (type === 'audit') return '/dashboard/audits';
+  if (type === 'threat-intel-sync') return '/dashboard/threat-intel';
   return '/dashboard/vulnerabilities';
 }
 
 export function BackgroundTasksBanner() {
-  const hydrated = useBackgroundTasksHydrated();
   const tasks = useBackgroundTasksStore((s) => s.tasks);
   const dismissTask = useBackgroundTasksStore((s) => s.dismissTask);
   const clearCompleted = useBackgroundTasksStore((s) => s.clearCompleted);
-
-  if (!hydrated) return null;
 
   const visible = selectVisibleTasks(tasks);
   if (visible.length === 0) return null;
@@ -84,6 +81,9 @@ export function BackgroundTasksBanner() {
               )}
               {task.status === 'success' && task.type === 'remediation-single' && task.result && 'remediationResult' in task.result && (
                 <p className="text-emerald-200/80">{task.result.remediationResult.message}</p>
+              )}
+              {task.status === 'success' && task.type === 'threat-intel-sync' && (
+                <p className="text-emerald-200/80">Threat Intelligence sincronizada.</p>
               )}
               {task.status === 'error' && (
                 <p className="text-red-200/80">{task.error ?? 'Falha na operação'}</p>

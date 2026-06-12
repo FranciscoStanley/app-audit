@@ -138,6 +138,20 @@ sequenceDiagram
     F-->>U: Banner + dashboard atualizado
 ```
 
+## Tarefas em segundo plano (frontend)
+
+O store `background-tasks-store` (Zustand + persist) centraliza o estado da UI para:
+
+| Tarefa | Backend | Sincronização |
+|--------|---------|---------------|
+| Nova auditoria | Job assíncrono (`POST /audit/jobs/audit-run`) | Polling `GET /audit/jobs/:id` a cada 2,5s |
+| Remediação (individual/lote) | Job assíncrono | Idem |
+| Sync Threat Intel | HTTP síncrono (`POST /threat-intel/sync`) | Estado local até a requisição concluir |
+
+- **Banner** (`BackgroundTasksBanner`) e **sidebar** exibem tarefas `running` em qualquer rota do dashboard.
+- **Reidratação única** do persist evita perder tarefas ativas ao trocar de página.
+- Ao recarregar a página, jobs de auditoria/remediação são reassociados via `GET /audit/jobs?status=running`.
+
 > Endpoints síncronos `POST /audit/run` permanecem para CLI. Ver também fluxo legado abaixo.
 
 ## Fluxo de auditoria (síncrono — legado)

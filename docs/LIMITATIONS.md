@@ -30,7 +30,7 @@ Varreduras e remediações são enfileiradas via `POST /v1/audit/jobs/*`. O fron
 
 - **Single-node:** um processador in-process por instância; fila FIFO em disco
 - **Reinício:** jobs `running` são marcados como `failed` (não retomados automaticamente)
-- **UI:** banner global + sidebar; estado sobrevive navegação e recarga de página (via servidor)
+- **UI:** banner global + sidebar; estado sobrevive navegação e recarga (jobs via polling no servidor; Threat Intel sync via store Zustand persistido)
 
 Endpoints síncronos (`POST /audit/run`, etc.) permanecem para CLI e compatibilidade.
 

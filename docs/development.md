@@ -59,7 +59,7 @@ app-audit/
 │       ├── app/              # rotas Next.js
 │       ├── components/       # UI e audit
 │       ├── lib/              # api client
-│       └── stores/           # Zustand
+│       └── stores/           # Zustand (auth, background-tasks)
 ├── docs/                     # documentação do projeto
 └── .cursor/                  # rules e skills Cursor
 ```

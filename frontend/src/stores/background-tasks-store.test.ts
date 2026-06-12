@@ -2,8 +2,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   AUDIT_TASK_ID,
   bulkRemediationTaskId,
+  mergeTaskRecords,
   remediationTaskId,
   selectVisibleTasks,
+  syncThreatIntelInBackground,
+  THREAT_INTEL_TASK_ID,
   useBackgroundTasksStore,
 } from './background-tasks-store';
 
@@ -14,6 +17,7 @@ vi.mock('@/lib/api', () => ({
     enqueueRemediationAllJob: vi.fn(),
     getBackgroundJob: vi.fn(),
     listBackgroundJobs: vi.fn().mockResolvedValue({ data: [], meta: { page: 1, pageSize: 20, total: 0, totalPages: 0, hasNextPage: false, hasPreviousPage: false } }),
+    syncThreatIntel: vi.fn(),
     runAudit: vi.fn(),
     applyRemediation: vi.fn(),
     applyAllRemediation: vi.fn(),
@@ -120,5 +124,59 @@ describe('background-tasks-store', () => {
 
     dismissTask('done');
     expect(useBackgroundTasksStore.getState().tasks.done).toBeUndefined();
+  });
+
+  it('prefers in-memory running task over stale persisted state on merge', () => {
+    const merged = mergeTaskRecords(
+      {
+        [AUDIT_TASK_ID]: {
+          id: AUDIT_TASK_ID,
+          type: 'audit',
+          label: 'Stale',
+          status: 'success',
+          startedAt: '2026-01-01T00:00:00.000Z',
+        },
+      },
+      {
+        [AUDIT_TASK_ID]: {
+          id: AUDIT_TASK_ID,
+          serverJobId: 'job-1',
+          type: 'audit',
+          label: 'Live',
+          status: 'running',
+          startedAt: '2026-06-01T00:00:00.000Z',
+        },
+      },
+    );
+
+    expect(merged[AUDIT_TASK_ID]?.status).toBe('running');
+    expect(merged[AUDIT_TASK_ID]?.serverJobId).toBe('job-1');
+  });
+
+  it('exposes stable id for threat intel sync', () => {
+    expect(THREAT_INTEL_TASK_ID).toBe('threat-intel-sync');
+  });
+
+  it('runs threat intel sync in background and completes task', async () => {
+    const { api } = await import('@/lib/api');
+    vi.mocked(api.syncThreatIntel).mockResolvedValue({});
+
+    await syncThreatIntelInBackground('token');
+
+    const task = useBackgroundTasksStore.getState().tasks[THREAT_INTEL_TASK_ID];
+    expect(api.syncThreatIntel).toHaveBeenCalledWith('token');
+    expect(task?.status).toBe('success');
+    expect(task?.type).toBe('threat-intel-sync');
+  });
+
+  it('marks threat intel sync as error when API fails', async () => {
+    const { api } = await import('@/lib/api');
+    vi.mocked(api.syncThreatIntel).mockRejectedValue(new Error('timeout'));
+
+    await syncThreatIntelInBackground('token');
+
+    const task = useBackgroundTasksStore.getState().tasks[THREAT_INTEL_TASK_ID];
+    expect(task?.status).toBe('error');
+    expect(task?.error).toBe('timeout');
   });
 });

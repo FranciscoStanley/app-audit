@@ -10,7 +10,11 @@ import {
   type RemediationResult,
 } from '@/lib/api';
 
-export type BackgroundTaskType = 'audit' | 'remediation-single' | 'remediation-bulk';
+export type BackgroundTaskType =
+  | 'audit'
+  | 'remediation-single'
+  | 'remediation-bulk'
+  | 'threat-intel-sync';
 
 export type BackgroundTaskStatus = 'running' | 'success' | 'error';
 
@@ -79,6 +83,42 @@ export function bulkRemediationTaskId(auditId: string): string {
 }
 
 export const AUDIT_TASK_ID = 'audit-run';
+export const THREAT_INTEL_TASK_ID = 'threat-intel-sync';
+
+export function mergeTaskRecords(
+  persisted: Record<string, BackgroundTask>,
+  current: Record<string, BackgroundTask>,
+): Record<string, BackgroundTask> {
+  const ids = new Set([...Object.keys(persisted), ...Object.keys(current)]);
+  const merged: Record<string, BackgroundTask> = {};
+
+  for (const id of ids) {
+    const p = persisted[id];
+    const c = current[id];
+    if (!p) {
+      merged[id] = c!;
+      continue;
+    }
+    if (!c) {
+      merged[id] = p;
+      continue;
+    }
+
+    if (c.status === 'running' && p.status !== 'running') {
+      merged[id] = c;
+    } else if (p.status === 'running' && c.status !== 'running') {
+      merged[id] = p;
+    } else if (c.serverJobId && !p.serverJobId) {
+      merged[id] = c;
+    } else if (Date.parse(c.startedAt) >= Date.parse(p.startedAt)) {
+      merged[id] = c;
+    } else {
+      merged[id] = p;
+    }
+  }
+
+  return merged;
+}
 
 function mapServerStatus(
   status: BackgroundJobResponse['status'],
@@ -360,29 +400,55 @@ export const useBackgroundTasksStore = create<BackgroundTasksState>()(
       name: 'app-audit-background-tasks',
       skipHydration: true,
       merge: (persisted, current) => {
-        const merged = { ...current, ...(persisted as BackgroundTasksState) };
-        merged.tasks = normalizeStaleRunningTasks(merged.tasks ?? {});
-        merged.previewPlans = merged.previewPlans ?? {};
+        const p = persisted as Partial<BackgroundTasksState>;
+        const merged: BackgroundTasksState = {
+          ...current,
+          tasks: normalizeStaleRunningTasks(
+            mergeTaskRecords(p.tasks ?? {}, current.tasks ?? {}),
+          ),
+          previewPlans: { ...p.previewPlans, ...current.previewPlans },
+        };
         return merged;
       },
     },
   ),
 );
 
+let hydrationStarted = false;
+let hydrationFinished = false;
+const hydrationListeners = new Set<(value: boolean) => void>();
+
+function notifyHydrationListeners(): void {
+  hydrationFinished = true;
+  for (const listener of hydrationListeners) listener(true);
+}
+
+/** Reidrata o persist uma única vez — evita sobrescrever tarefas em execução ao navegar. */
 export function useBackgroundTasksHydrated(): boolean {
-  const [hydrated, setHydrated] = useState(false);
+  const [hydrated, setHydrated] = useState(hydrationFinished);
 
   useEffect(() => {
-    const unsub = useBackgroundTasksStore.persist.onFinishHydration(() => setHydrated(true));
-    const result = useBackgroundTasksStore.persist.rehydrate();
-    if (result instanceof Promise) {
-      void result.then(() => {
-        if (useBackgroundTasksStore.persist.hasHydrated()) setHydrated(true);
-      });
-    } else if (useBackgroundTasksStore.persist.hasHydrated()) {
-      setHydrated(true);
+    hydrationListeners.add(setHydrated);
+
+    if (!hydrationStarted) {
+      hydrationStarted = true;
+      const unsub = useBackgroundTasksStore.persist.onFinishHydration(notifyHydrationListeners);
+      const result = useBackgroundTasksStore.persist.rehydrate();
+      if (result instanceof Promise) {
+        void result.then(() => {
+          if (useBackgroundTasksStore.persist.hasHydrated()) notifyHydrationListeners();
+        });
+      } else if (useBackgroundTasksStore.persist.hasHydrated()) {
+        notifyHydrationListeners();
+      }
+      return () => {
+        unsub();
+        hydrationListeners.delete(setHydrated);
+      };
     }
-    return unsub;
+
+    if (hydrationFinished) setHydrated(true);
+    return () => hydrationListeners.delete(setHydrated);
   }, []);
 
   return hydrated;
@@ -481,6 +547,32 @@ export async function applyAllRemediationInBackground(
     useBackgroundTasksStore.getState().failTask(
       taskId,
       e instanceof Error ? e.message : 'Falha ao enfileirar remediação em lote',
+    );
+  }
+}
+
+export async function syncThreatIntelInBackground(token: string): Promise<void> {
+  const store = useBackgroundTasksStore.getState();
+  if (store.isRunning(THREAT_INTEL_TASK_ID)) return;
+
+  store.upsertTask({
+    id: THREAT_INTEL_TASK_ID,
+    type: 'threat-intel-sync',
+    label: 'Sincronização Threat Intelligence',
+    status: 'running',
+    startedAt: new Date().toISOString(),
+    error: undefined,
+    result: undefined,
+    completedAt: undefined,
+  });
+
+  try {
+    await api.syncThreatIntel(token);
+    useBackgroundTasksStore.getState().completeTask(THREAT_INTEL_TASK_ID);
+  } catch (e) {
+    useBackgroundTasksStore.getState().failTask(
+      THREAT_INTEL_TASK_ID,
+      e instanceof Error ? e.message : 'Falha na sincronização',
     );
   }
 }

@@ -29,8 +29,11 @@ frontend/src/
 
 ## Jobs em segundo plano
 
-- Varredura e remediação usam `POST /v1/audit/jobs/*` + polling em `GET /v1/audit/jobs/:id`
-- `background-tasks-store.ts` persiste estado local; `useBackgroundJobPolling` sincroniza com o servidor
+- Varredura, remediação e sync de Threat Intel usam store global (`background-tasks-store.ts`)
+- Auditoria/remediação: `POST /v1/audit/jobs/*` + polling em `GET /v1/audit/jobs/:id`
+- Threat Intel: `POST /v1/threat-intel/sync` via `syncThreatIntelInBackground` (estado no store)
+- `useBackgroundJobPolling` sincroniza jobs de auditoria/remediação com o servidor
+- Reidratação do persist ocorre **uma única vez** (evita perder tarefas ao navegar)
 - Banner global em `dashboard/layout.tsx`
 
 ## Comandos

@@ -135,7 +135,7 @@ Métricas da última auditoria: repositórios, vulnerabilidades, pacotes monitor
 
 ### Auditorias
 
-Histórico de varredura, status da conexão GitHub e nova auditoria em todos os repositórios. Varreduras e remediações **continuam em segundo plano** — você pode navegar entre telas enquanto o job executa; o banner no topo exibe progresso e status.
+Histórico de varredura, status da conexão GitHub e nova auditoria em todos os repositórios. Varreduras, remediações e sync de Threat Intel **continuam em segundo plano** — você pode navegar entre telas enquanto o job executa; o banner no topo exibe progresso e status.
 
 ![Auditorias](./docs/screenshots/03-auditorias.png)
 
@@ -149,7 +149,7 @@ Relatório Markdown, download PDF e vulnerabilidades por repositório.
 
 - **Individual:** botão *Resolver* → *Aplicar correção* no card da vulnerabilidade (job assíncrono)
 - **Em lote:** botão *Corrigir todas (N)* na página Vulnerabilidades (job assíncrono)
-- **Segundo plano:** banner global + indicador na sidebar; polling automático ao retornar ou recarregar a página
+- **Segundo plano:** banner global + indicador na sidebar; polling automático (auditoria/remediação) ou estado persistido no Zustand (Threat Intel sync)
 - **Dependabot:** alertas GitHub detectados na auditoria com tag `[Dependabot]`
 - **PR automático:** quando `main` é branch protegida
 
@@ -167,7 +167,7 @@ Plano de remediação expandido, botão *Corrigir todas* e resultado com passos 
 
 ### Threat Intelligence
 
-Sincronização com GitHub Advisories e OpenSourceMalware.
+Sincronização com GitHub Advisories e OpenSourceMalware. A UI mantém o estado de sync em segundo plano via `background-tasks-store` (mesmo banner e sidebar das auditorias).
 
 ![Threat Intelligence](./docs/screenshots/06-threat-intel.png)
 
