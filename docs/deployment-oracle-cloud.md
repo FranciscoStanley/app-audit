@@ -102,9 +102,27 @@ Login: `ADMIN_EMAIL` / `ADMIN_PASSWORD` do `.env` local.
 
 ---
 
-## Segurança
+## Segurança e Git
 
-- **Nunca** commite `.env`, `.env.oracle.local` ou chaves `.pem`
+Arquivos sensíveis da Oracle estão no `.gitignore` — **não commitar**:
+
+| Arquivo / pasta | Conteúdo |
+|-----------------|----------|
+| `.env` | `OCI_*`, `JWT_SECRET`, `GITHUB_TOKEN`, etc. |
+| `.env.oracle.local` | `.env` gerado para a VM |
+| `%USERPROFILE%\.oci\` | `config` + `oci_api_key.pem` (fora do repo; `.oci/` ignorado se copiado) |
+| `*.pem` / `oci_api_key*.pem` | Chaves privadas/públicas OCI |
+| `~/.ssh/id_ed25519_oracle` | Chave SSH da VM (fora do repo) |
+
+Pode commitar apenas templates: `.env.oracle.example`, `.env.docker.example`, `.env.production.example`.
+
+Antes de push:
+
+```powershell
+git status
+git check-ignore -v .env .env.oracle.local
+```
+
 - Em produção: `SWAGGER_ENABLED=false`
 - Atualize GitHub OAuth callback para `http://SEU_IP:3000/v1/auth/github/callback`
 

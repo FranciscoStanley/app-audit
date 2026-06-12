@@ -18,6 +18,18 @@ frontend/.env.local
 frontend/.env.production
 frontend/.env.development
 
+# Oracle Cloud / OCI — credenciais, chaves e artefatos de deploy
+# (config real fica em %USERPROFILE%\.oci\ — também não commitar se copiar para o repo)
+.oci/
+**/.oci/
+*.oci.pem
+oci_api_key.pem
+oci_api_key_public.pem
+.env.oracle.local
+**/app-audit-oracle-ip
+**/oci-network-ids.env
+**/oci-launch.err
+
 # Runtime data (usuários, tokens OAuth cifrados, relatórios de auditoria)
 BackEnd/data/
 data/
