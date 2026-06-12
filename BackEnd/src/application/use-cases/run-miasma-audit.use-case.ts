@@ -1,8 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import {
-  MIASMA_ATTACK_START_DATE,
-  MIASMA_SOURCE_URL,
-} from '../../domain/constants/miasma-threat.constants';
+import { MIASMA_SOURCE_URL } from '../../domain/constants/miasma-threat.constants';
 import {
   AuditReport,
   ImmediateAction,
@@ -53,8 +50,10 @@ export class RunMiasmaAuditUseCase {
   async execute(input: RunMiasmaAuditInput): Promise<RunMiasmaAuditOutput> {
     await this.syncThreatIntel
       .execute()
-      .catch((err) =>
-        this.logger.warn(`Sync threat intel ignorado: ${err.message}`),
+      .catch((err: unknown) =>
+        this.logger.warn(
+          `Sync threat intel ignorado: ${err instanceof Error ? err.message : String(err)}`,
+        ),
       );
 
     const token = await this.githubTokens.requireForAudit(input.userId);

@@ -29,12 +29,16 @@ export class ListFindingsQueryDto extends PaginationQueryDto {
   @IsString()
   category?: string;
 
-  @ApiPropertyOptional({ description: 'Filtrar por severidade (critical, high, medium, low)' })
+  @ApiPropertyOptional({
+    description: 'Filtrar por severidade (critical, high, medium, low)',
+  })
   @IsOptional()
   @IsString()
   severity?: string;
 
-  @ApiPropertyOptional({ description: 'Somente findings com remediação automática disponível' })
+  @ApiPropertyOptional({
+    description: 'Somente findings com remediação automática disponível',
+  })
   @IsOptional()
   @Transform(({ value }) => value === true || value === 'true' || value === '1')
   @IsBoolean()

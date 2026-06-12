@@ -132,8 +132,7 @@ export class AuditReportStore {
       const jsonPath = join(this.baseDir, id, 'report.json');
       const content = await readFile(jsonPath, 'utf-8');
       const parsed = JSON.parse(content) as AuditReport;
-      const repos =
-        parsed.allRepositories ?? parsed.affectedRepositories ?? [];
+      const repos = parsed.allRepositories ?? parsed.affectedRepositories ?? [];
       return {
         id,
         createdAt: parsed.auditedAt,

@@ -36,11 +36,13 @@ export class GitHubConsentUseCase {
   getConsentInfo() {
     return {
       policyVersion: GITHUB_OAUTH_POLICY_VERSION,
-      controllerName: this.config.get('DATA_CONTROLLER_NAME') ?? 'App Audit',
+      controllerName:
+        this.config.get<string>('DATA_CONTROLLER_NAME') ?? 'App Audit',
       contactEmail:
-        this.config.get('PRIVACY_CONTACT_EMAIL') ??
+        this.config.get<string>('PRIVACY_CONTACT_EMAIL') ??
         DEFAULT_PRIVACY_CONTACT_EMAIL,
-      controllerAddress: this.config.get('DATA_CONTROLLER_ADDRESS') ?? null,
+      controllerAddress:
+        this.config.get<string>('DATA_CONTROLLER_ADDRESS') ?? null,
       scopes: GITHUB_OAUTH_SCOPES,
       purposes: DATA_PROCESSING_PURPOSES,
       dataSubjectRights: DATA_SUBJECT_RIGHTS,
@@ -57,11 +59,12 @@ export class GitHubConsentUseCase {
       policyVersion: LEGAL_POLICY_VERSION,
       termsUrl: '/legal/termos',
       privacyUrl: '/legal/privacidade',
-      controllerName: this.config.get('DATA_CONTROLLER_NAME') ?? 'App Audit',
+      controllerName:
+        this.config.get<string>('DATA_CONTROLLER_NAME') ?? 'App Audit',
       contactEmail:
-        this.config.get('PRIVACY_CONTACT_EMAIL') ??
+        this.config.get<string>('PRIVACY_CONTACT_EMAIL') ??
         DEFAULT_PRIVACY_CONTACT_EMAIL,
-      dpoEmail: this.config.get('DPO_CONTACT_EMAIL') ?? null,
+      dpoEmail: this.config.get<string>('DPO_CONTACT_EMAIL') ?? null,
     };
   }
 

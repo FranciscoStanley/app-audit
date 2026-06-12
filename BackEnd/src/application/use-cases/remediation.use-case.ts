@@ -63,7 +63,9 @@ export class RemediationUseCase {
     const failed: string[] = [];
     const optionalFailed: string[] = [];
     let delivery: DeliveryResult | undefined;
-    const applyContext: RemediationApplyContext = { dependabotAlertNumbers: [] };
+    const applyContext: RemediationApplyContext = {
+      dependabotAlertNumbers: [],
+    };
 
     const workspaceSteps = plan.steps.filter(
       (s) => s.action && !API_ONLY_ACTIONS.has(s.action),
@@ -112,7 +114,9 @@ export class RemediationUseCase {
               ).manifestPath;
             }
           } catch (error) {
-            failed.push(`${step.title}: ${sanitizeGitError((error as Error).message)}`);
+            failed.push(
+              `${step.title}: ${sanitizeGitError((error as Error).message)}`,
+            );
           }
         }
 
@@ -130,7 +134,9 @@ export class RemediationUseCase {
               );
             }
           } catch (error) {
-            failed.push(`Regenerar lockfile: ${sanitizeGitError((error as Error).message)}`);
+            failed.push(
+              `Regenerar lockfile: ${sanitizeGitError((error as Error).message)}`,
+            );
           }
         }
 
@@ -271,7 +277,12 @@ export class RemediationUseCase {
   }
 
   private deduplicateFindings<
-    T extends { id: string; repository: string; evidence?: string; message: string },
+    T extends {
+      id: string;
+      repository: string;
+      evidence?: string;
+      message: string;
+    },
   >(findings: T[]): T[] {
     const seen = new Map<string, T>();
     for (const finding of findings) {
@@ -423,8 +434,9 @@ export class RemediationUseCase {
       }
 
       case 'update_dependency': {
-        let { packageName, version, manifestPath } =
-          this.parseDependencyEvidence(evidence, message);
+        const parsed = this.parseDependencyEvidence(evidence, message);
+        const { packageName, manifestPath } = parsed;
+        let { version } = parsed;
         if (
           this.isUnstableInitialVersion(version) ||
           /versão inicial instável/i.test(message)

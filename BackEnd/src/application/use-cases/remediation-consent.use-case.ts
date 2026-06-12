@@ -33,9 +33,10 @@ export class RemediationConsentUseCase {
     );
     return {
       policyVersion: REMEDIATION_CONSENT_POLICY_VERSION,
-      controllerName: this.config.get('DATA_CONTROLLER_NAME') ?? 'App Audit',
+      controllerName:
+        this.config.get<string>('DATA_CONTROLLER_NAME') ?? 'App Audit',
       contactEmail:
-        this.config.get('PRIVACY_CONTACT_EMAIL') ??
+        this.config.get<string>('PRIVACY_CONTACT_EMAIL') ??
         DEFAULT_PRIVACY_CONTACT_EMAIL,
       actions: REMEDIATION_ACTIONS,
       risks: REMEDIATION_RISKS,

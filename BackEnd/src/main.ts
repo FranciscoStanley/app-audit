@@ -1,6 +1,7 @@
 import { RequestMethod, ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import type { Express } from 'express';
 import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import helmet from 'helmet';
@@ -18,7 +19,7 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
   if (isProduction()) {
-    const express = app.getHttpAdapter().getInstance();
+    const express = app.getHttpAdapter().getInstance() as Express;
     express.set('trust proxy', 1);
   }
 
@@ -86,4 +87,4 @@ async function bootstrap() {
   }
 }
 
-bootstrap();
+void bootstrap();

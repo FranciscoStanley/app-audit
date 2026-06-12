@@ -40,17 +40,17 @@ export class UsersService implements OnModuleInit {
     }
   }
 
-  async findByEmail(email: string): Promise<User | undefined> {
+  findByEmail(email: string): User | undefined {
     return [...this.users.values()].find(
       (u) => u.email === email.toLowerCase(),
     );
   }
 
-  async findById(id: string): Promise<User | undefined> {
+  findById(id: string): User | undefined {
     return this.users.get(id);
   }
 
-  async findByGithubId(githubId: string): Promise<User | undefined> {
+  findByGithubId(githubId: string): User | undefined {
     return [...this.users.values()].find((u) => u.githubId === githubId);
   }
 
@@ -60,16 +60,18 @@ export class UsersService implements OnModuleInit {
   }
 
   listUsers(): Omit<User, 'passwordHash'>[] {
-    return [...this.users.values()].map(({ passwordHash: _, ...user }) => user);
+    return [...this.users.values()].map((user) => {
+      const { passwordHash, ...safe } = user;
+      void passwordHash;
+      return safe;
+    });
   }
 
   listUsersPaginated(
     page: number,
     pageSize: number,
   ): PaginatedResult<Omit<User, 'passwordHash'>> {
-    const all = this.listUsers().sort((a, b) =>
-      a.email.localeCompare(b.email),
-    );
+    const all = this.listUsers().sort((a, b) => a.email.localeCompare(b.email));
     return paginateArray(all, page, pageSize);
   }
 
@@ -80,7 +82,7 @@ export class UsersService implements OnModuleInit {
     role: UserRole;
   }): Promise<Omit<User, 'passwordHash'>> {
     const email = input.email.toLowerCase();
-    if (await this.findByEmail(email)) {
+    if (this.findByEmail(email)) {
       throw new ConflictException('Email já cadastrado');
     }
 
@@ -95,7 +97,8 @@ export class UsersService implements OnModuleInit {
 
     this.users.set(user.id, user);
     await this.persist();
-    const { passwordHash: _, ...safe } = user;
+    const { passwordHash, ...safe } = user;
+    void passwordHash;
     return safe;
   }
 
@@ -143,8 +146,8 @@ export class UsersService implements OnModuleInit {
     name: string;
   }): Promise<User> {
     const existing =
-      (await this.findByGithubId(profile.githubId)) ??
-      (await this.findByEmail(profile.email));
+      this.findByGithubId(profile.githubId) ??
+      this.findByEmail(profile.email);
 
     if (existing) {
       const updated: User = {

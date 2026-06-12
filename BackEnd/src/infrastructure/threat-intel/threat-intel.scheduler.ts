@@ -18,8 +18,10 @@ export class ThreatIntelScheduler implements OnModuleInit {
       this.logger.log('Sincronização inicial de threat intelligence...');
       await this.syncThreatIntel
         .execute()
-        .catch((err) =>
-          this.logger.warn(`Sync inicial falhou: ${err.message}`),
+        .catch((err: unknown) =>
+          this.logger.warn(
+            `Sync inicial falhou: ${err instanceof Error ? err.message : String(err)}`,
+          ),
         );
     }
   }

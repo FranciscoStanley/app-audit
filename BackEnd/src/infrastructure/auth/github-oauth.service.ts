@@ -88,8 +88,8 @@ export class GitHubOAuthService {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        client_id: this.config.get('GITHUB_OAUTH_CLIENT_ID'),
-        client_secret: this.config.get('GITHUB_OAUTH_CLIENT_SECRET'),
+        client_id: this.config.get<string>('GITHUB_OAUTH_CLIENT_ID'),
+        client_secret: this.config.get<string>('GITHUB_OAUTH_CLIENT_SECRET'),
         code,
         redirect_uri: this.callbackUrl(),
       }),

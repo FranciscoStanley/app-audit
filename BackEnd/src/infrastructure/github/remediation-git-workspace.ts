@@ -15,12 +15,8 @@ import {
   detectPackageManager,
   lockfileNames,
   readPackageManagerField,
-  type PackageManager,
 } from './package-manager.util';
-import {
-  mapGitCloneFailure,
-  sanitizeGitError,
-} from './git-error.util';
+import { mapGitCloneFailure, sanitizeGitError } from './git-error.util';
 
 const execFileAsync = promisify(execFile);
 
@@ -58,7 +54,9 @@ export class RemediationGitWorkspace {
 
     let lastError: Error | undefined;
     for (const strategy of strategies) {
-      await rm(repoPath, { recursive: true, force: true }).catch(() => undefined);
+      await rm(repoPath, { recursive: true, force: true }).catch(
+        () => undefined,
+      );
       try {
         await strategy();
         await this.configureGitIdentity(repoPath);
@@ -73,18 +71,21 @@ export class RemediationGitWorkspace {
     }
 
     throw new Error(
-      mapGitCloneFailure(owner, repo, defaultBranch, lastError ?? new Error('clone failed')),
+      mapGitCloneFailure(
+        owner,
+        repo,
+        defaultBranch,
+        lastError ?? new Error('clone failed'),
+      ),
     );
   }
 
-  private async assertRepoCloneAccess(owner: string, repo: string): Promise<void> {
+  private async assertRepoCloneAccess(
+    owner: string,
+    repo: string,
+  ): Promise<void> {
     try {
-      await this.runGh([
-        'api',
-        `repos/${owner}/${repo}`,
-        '--jq',
-        '.full_name',
-      ]);
+      await this.runGh(['api', `repos/${owner}/${repo}`, '--jq', '.full_name']);
     } catch {
       throw new Error(
         `Sem acesso ao repositório ${owner}/${repo}. Conecte o GitHub com escopo repo e, se for organização, autorize SSO em github.com/settings/tokens.`,
@@ -128,10 +129,7 @@ export class RemediationGitWorkspace {
     if (branch) {
       args.push('--single-branch', '--branch', branch);
     }
-    args.push(
-      `https://github.com/${owner}/${repo}.git`,
-      repoPath,
-    );
+    args.push(`https://github.com/${owner}/${repo}.git`, repoPath);
     await this.run('git', args);
   }
 
@@ -146,7 +144,10 @@ export class RemediationGitWorkspace {
     });
   }
 
-  private async deepenClone(repoPath: string, defaultBranch: string): Promise<void> {
+  private async deepenClone(
+    repoPath: string,
+    defaultBranch: string,
+  ): Promise<void> {
     await this.run(
       'git',
       ['fetch', 'origin', defaultBranch, '--deepen', '50'],
@@ -333,10 +334,14 @@ export class RemediationGitWorkspace {
 
     for (const entry of entries) {
       if (!entry.isDirectory()) continue;
-      if (['node_modules', '.git', 'dist', 'build', '.next'].includes(entry.name)) {
+      if (
+        ['node_modules', '.git', 'dist', 'build', '.next'].includes(entry.name)
+      ) {
         continue;
       }
-      const nextRelative = relativeDir ? `${relativeDir}/${entry.name}` : entry.name;
+      const nextRelative = relativeDir
+        ? `${relativeDir}/${entry.name}`
+        : entry.name;
       await this.collectPackageManifests(
         repoPath,
         join(currentDir, entry.name),
@@ -455,7 +460,13 @@ export class RemediationGitWorkspace {
     try {
       const { stdout } = await this.run(
         'npm',
-        ['view', packageName, 'version', '--registry', 'https://registry.npmjs.org'],
+        [
+          'view',
+          packageName,
+          'version',
+          '--registry',
+          'https://registry.npmjs.org',
+        ],
         { timeout: 60_000 },
       );
       const version = stdout.trim();

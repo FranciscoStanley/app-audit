@@ -1,5 +1,8 @@
 import { ApiProperty } from '@nestjs/swagger';
-import type { PaginatedResult, PaginationMeta } from '../../../domain/pagination/pagination';
+import type {
+  PaginatedResult,
+  PaginationMeta,
+} from '../../../domain/pagination/pagination';
 
 export class PaginationMetaDto implements PaginationMeta {
   @ApiProperty()
@@ -29,6 +32,8 @@ export class PaginatedResponseDto<T> {
   meta!: PaginationMetaDto;
 }
 
-export function toPaginatedDto<T>(result: PaginatedResult<T>): PaginatedResult<T> {
+export function toPaginatedDto<T>(
+  result: PaginatedResult<T>,
+): PaginatedResult<T> {
   return result;
 }

@@ -57,7 +57,10 @@ async function main() {
   console.log('  2. Adicione OSM_API_TOKEN (opcional) para OpenSourceMalware');
 }
 
-main().catch((err) => {
-  console.error('Setup falhou:', err.message);
+main().catch((err: unknown) => {
+  console.error(
+    'Setup falhou:',
+    err instanceof Error ? err.message : String(err),
+  );
   process.exit(1);
 });

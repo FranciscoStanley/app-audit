@@ -118,13 +118,18 @@ export class AuditController {
 
   @Get('jobs')
   @Permissions('audit:read')
-  @ApiOperation({ summary: 'Listar jobs assíncronos do usuário autenticado (paginado)' })
+  @ApiOperation({
+    summary: 'Listar jobs assíncronos do usuário autenticado (paginado)',
+  })
   @ApiResponse({
     status: 200,
     description: 'Lista paginada de jobs',
     schema: {
       properties: {
-        data: { type: 'array', items: { $ref: '#/components/schemas/BackgroundJobResponseDto' } },
+        data: {
+          type: 'array',
+          items: { $ref: '#/components/schemas/BackgroundJobResponseDto' },
+        },
         meta: { $ref: '#/components/schemas/PaginationMetaDto' },
       },
     },
@@ -196,7 +201,8 @@ export class AuditController {
   @ApiOperation({ summary: 'Listar relatórios de auditoria (resumo paginado)' })
   @ApiResponse({
     status: 200,
-    description: 'Lista paginada de resumos — sem payload completo do relatório',
+    description:
+      'Lista paginada de resumos — sem payload completo do relatório',
   })
   async listReports(
     @Query() query: PaginationQueryDto,
@@ -257,7 +263,9 @@ export class AuditController {
 
   @Get('reports/:id/findings')
   @Permissions('audit:read')
-  @ApiOperation({ summary: 'Listar vulnerabilidades de um relatório (paginado)' })
+  @ApiOperation({
+    summary: 'Listar vulnerabilidades de um relatório (paginado)',
+  })
   async listFindings(
     @Param('id') id: string,
     @Query() query: ListFindingsQueryDto,

@@ -348,7 +348,10 @@ export class GhCliRemediationAdapter implements GitHubRemediationPort {
     const intervalMs = options?.intervalMs ?? 5_000;
     const deadline = Date.now() + maxWaitMs;
 
-    const snapshot = async (): Promise<{ closed: number[]; stillOpen: number[] }> => {
+    const snapshot = async (): Promise<{
+      closed: number[];
+      stillOpen: number[];
+    }> => {
       const open = await this.listDependabotAlerts(owner, repo);
       const openSet = new Set(open.map((a) => a.number));
       return {
@@ -519,7 +522,9 @@ export class GhCliRemediationAdapter implements GitHubRemediationPort {
     } catch (error: unknown) {
       const err = error as { stderr?: string; message?: string };
       throw new Error(
-        sanitizeGitError(err.stderr?.trim() || err.message || 'gh command failed'),
+        sanitizeGitError(
+          err.stderr?.trim() || err.message || 'gh command failed',
+        ),
       );
     }
   }

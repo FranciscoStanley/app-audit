@@ -1,7 +1,4 @@
-import {
-  mapGitCloneFailure,
-  sanitizeGitError,
-} from './git-error.util';
+import { mapGitCloneFailure, sanitizeGitError } from './git-error.util';
 
 describe('git-error.util', () => {
   it('redacts tokens from error messages', () => {
@@ -13,9 +10,9 @@ describe('git-error.util', () => {
 
   it('maps repository not found', () => {
     const err = new Error('remote: Repository not found.');
-    expect(mapGitCloneFailure('brooklyn86', 'frontend-sistemaloja', 'main', err)).toMatch(
-      /não encontrado|permissão/i,
-    );
+    expect(
+      mapGitCloneFailure('brooklyn86', 'frontend-sistemaloja', 'main', err),
+    ).toMatch(/não encontrado|permissão/i);
   });
 
   it('maps SSO errors', () => {

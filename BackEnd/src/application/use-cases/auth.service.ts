@@ -37,7 +37,7 @@ export class AuthService {
     consent: ConsentAcknowledgments,
     meta?: { ip?: string; userAgent?: string },
   ) {
-    const user = await this.users.findByEmail(email);
+    const user = this.users.findByEmail(email);
     if (!user || !(await this.users.validatePassword(user, password))) {
       throw new UnauthorizedException('Credenciais inválidas');
     }
@@ -80,7 +80,7 @@ export class AuthService {
   }
 
   async validatePayload(payload: JwtPayload): Promise<AuthUserView> {
-    const user = await this.users.findById(payload.sub);
+    const user = this.users.findById(payload.sub);
     if (!user) throw new UnauthorizedException();
     return {
       id: user.id,

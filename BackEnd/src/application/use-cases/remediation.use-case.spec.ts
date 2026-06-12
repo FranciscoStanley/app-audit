@@ -78,9 +78,7 @@ describe('RemediationUseCase', () => {
       updatePackageVersion: jest.fn(),
       removePackage: jest.fn(),
       regenerateLockfiles: jest.fn().mockResolvedValue(['pnpm-lock.yaml']),
-      resolveLatestNpmVersion: jest
-        .fn()
-        .mockResolvedValue('^0.15.1'),
+      resolveLatestNpmVersion: jest.fn().mockResolvedValue('^0.15.1'),
       deliver: jest.fn().mockResolvedValue({
         method: 'direct_push',
         branch: 'main',
@@ -132,8 +130,8 @@ describe('RemediationUseCase', () => {
       '/tmp/repo',
       '.npmrc',
     );
-    expect(workspace.deliver).toHaveBeenCalled();
-    expect(github.createSecurityIssue).toHaveBeenCalled();
+    expect(workspace.deliver.mock.calls.length).toBeGreaterThan(0);
+    expect(github.createSecurityIssue.mock.calls.length).toBeGreaterThan(0);
     expect(workspace.cleanup).toHaveBeenCalledWith('/tmp/repo');
     expect(result.success).toBe(true);
     expect(result.delivery?.method).toBe('direct_push');
@@ -141,14 +139,12 @@ describe('RemediationUseCase', () => {
 
   it('considera sucesso quando issue de segurança falha por issues desabilitadas', async () => {
     github.createSecurityIssue.mockRejectedValue(
-      new Error(
-        'gh: Issues has been disabled in this repository. (HTTP 410)',
-      ),
+      new Error('gh: Issues has been disabled in this repository. (HTTP 410)'),
     );
 
     const result = await useCase.apply('finding-1', 'user-1');
 
-    expect(workspace.deliver).toHaveBeenCalled();
+    expect(workspace.deliver.mock.calls.length).toBeGreaterThan(0);
     expect(result.success).toBe(true);
     expect(result.message).toContain('passo(s) manual(is) pendente(s)');
     expect(result.requiresManualSteps).toHaveLength(1);
@@ -170,7 +166,7 @@ describe('RemediationUseCase', () => {
       'package.json',
       'axios',
     );
-    expect(workspace.deliver).toHaveBeenCalled();
+    expect(workspace.deliver.mock.calls.length).toBeGreaterThan(0);
     expect(result.success).toBe(true);
   });
 
@@ -221,11 +217,13 @@ describe('RemediationUseCase', () => {
       'vitest',
       '3.0.5',
     );
-    expect(workspace.regenerateLockfiles).toHaveBeenCalledWith(
+    expect(workspace.regenerateLockfiles.mock.calls[0]).toEqual([
       '/tmp/repo',
       'frontend/package.json',
+    ]);
+    expect(github.enableDependabotSecurityUpdates.mock.calls.length).toBeGreaterThan(
+      0,
     );
-    expect(github.enableDependabotSecurityUpdates).toHaveBeenCalled();
     expect(result.success).toBe(true);
   });
 
@@ -279,7 +277,8 @@ describe('RemediationUseCase', () => {
     auditStore.findFindingById.mockResolvedValue({
       ...finding,
       type: 'vulnerable_dependency',
-      message: 'Dependência em versão inicial instável: class-validator@^0.14.0',
+      message:
+        'Dependência em versão inicial instável: class-validator@^0.14.0',
       evidence: 'class-validator@^0.14.0',
     });
 

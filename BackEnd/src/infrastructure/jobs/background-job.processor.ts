@@ -75,7 +75,10 @@ export class BackgroundJobProcessor implements OnModuleInit {
           await this.runRemediationAllJob(running);
           break;
         default:
-          await this.jobStore.markFailed(job.id, `Tipo de job desconhecido: ${job.type}`);
+          await this.jobStore.markFailed(
+            job.id,
+            `Tipo de job desconhecido: ${String(job.type)}`,
+          );
       }
     } catch (error) {
       const message =

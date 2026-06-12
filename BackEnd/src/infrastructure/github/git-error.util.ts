@@ -10,7 +10,8 @@ export function sanitizeGitError(message: string): string {
   let out = message;
   for (const pattern of TOKEN_PATTERNS) {
     out = out.replace(pattern, (match) => {
-      if (match.toLowerCase().startsWith('x-access-token:')) return 'x-access-token:***@';
+      if (match.toLowerCase().startsWith('x-access-token:'))
+        return 'x-access-token:***@';
       if (match.toLowerCase().startsWith('bearer')) return 'Bearer ***';
       return '***';
     });

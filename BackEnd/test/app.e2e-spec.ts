@@ -49,7 +49,8 @@ describe('App Audit API (e2e)', () => {
       .get('/health')
       .expect(200)
       .expect((res) => {
-        expect(res.body.status).toBe('ok');
+        const body = res.body as { status: string };
+        expect(body.status).toBe('ok');
       });
   });
 
@@ -58,8 +59,9 @@ describe('App Audit API (e2e)', () => {
       .get('/health/ready')
       .expect(200)
       .expect((res) => {
-        expect(res.body.checks).toBeDefined();
-        expect(res.body.version).toBeDefined();
+        const body = res.body as { checks: unknown; version: unknown };
+        expect(body.checks).toBeDefined();
+        expect(body.version).toBeDefined();
       });
   });
 
@@ -68,8 +70,12 @@ describe('App Audit API (e2e)', () => {
       .get(`/${API_V1_PREFIX}/auth/legal/info`)
       .expect(200)
       .expect((res) => {
-        expect(res.body.policyVersion).toBeDefined();
-        expect(res.body.contactEmail).toBeDefined();
+        const body = res.body as {
+          policyVersion: unknown;
+          contactEmail: unknown;
+        };
+        expect(body.policyVersion).toBeDefined();
+        expect(body.contactEmail).toBeDefined();
       });
   });
 

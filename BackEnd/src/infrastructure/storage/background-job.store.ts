@@ -45,12 +45,19 @@ export class BackgroundJobStore {
   async save(job: BackgroundJob): Promise<void> {
     const dir = join(this.baseDir, job.id);
     await mkdir(dir, { recursive: true });
-    await writeFile(join(dir, 'job.json'), JSON.stringify(job, null, 2), 'utf-8');
+    await writeFile(
+      join(dir, 'job.json'),
+      JSON.stringify(job, null, 2),
+      'utf-8',
+    );
   }
 
   async getById(id: string): Promise<BackgroundJob | null> {
     try {
-      const content = await readFile(join(this.baseDir, id, 'job.json'), 'utf-8');
+      const content = await readFile(
+        join(this.baseDir, id, 'job.json'),
+        'utf-8',
+      );
       return JSON.parse(content) as BackgroundJob;
     } catch {
       return null;

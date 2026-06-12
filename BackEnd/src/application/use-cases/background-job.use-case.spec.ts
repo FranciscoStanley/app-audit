@@ -7,10 +7,7 @@ import { BackgroundJob } from '../../domain/entities/background-job.entity';
 describe('BackgroundJobUseCase', () => {
   let useCase: BackgroundJobUseCase;
   let jobStore: jest.Mocked<
-    Pick<
-      BackgroundJobStore,
-      'create' | 'getById' | 'listByUser'
-    >
+    Pick<BackgroundJobStore, 'create' | 'getById' | 'listByUser'>
   >;
   let processor: jest.Mocked<Pick<BackgroundJobProcessor, 'schedule'>>;
 
