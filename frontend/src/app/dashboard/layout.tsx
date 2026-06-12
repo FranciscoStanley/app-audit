@@ -19,7 +19,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     if (hydrated && !token) router.replace('/login');
   }, [hydrated, token, router]);
 
-  if (!hydrated || !tasksHydrated || !token) return null;
+  if (!hydrated || !tasksHydrated || !token) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#070a14] text-slate-400">
+        Carregando…
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen">

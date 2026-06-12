@@ -25,7 +25,8 @@ export default function GitHubCallbackPage() {
         const target = res.user.githubConnected
           ? '/dashboard/audits?autostart=1'
           : '/dashboard';
-        router.replace(target);
+        // Garante persistência no localStorage antes da navegação ao dashboard
+        queueMicrotask(() => router.replace(target));
       })
       .catch(() => setError('Falha ao validar sessão após login GitHub'));
   }, [params, router, setAuth]);

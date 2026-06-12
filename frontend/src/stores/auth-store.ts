@@ -50,15 +50,14 @@ export function useAuthHydrated(): boolean {
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
-    const unsub = useAuthStore.persist.onFinishHydration(() => setHydrated(true));
-    const result = useAuthStore.persist.rehydrate();
-    if (result instanceof Promise) {
-      void result.then(() => {
-        if (useAuthStore.persist.hasHydrated()) setHydrated(true);
-      });
-    } else if (useAuthStore.persist.hasHydrated()) {
+    // Login recente (OAuth ou email) — não sobrescrever sessão em memória com localStorage antigo
+    if (useAuthStore.getState().token) {
       setHydrated(true);
+      return;
     }
+
+    const unsub = useAuthStore.persist.onFinishHydration(() => setHydrated(true));
+    void Promise.resolve(useAuthStore.persist.rehydrate()).finally(() => setHydrated(true));
     return unsub;
   }, []);
 

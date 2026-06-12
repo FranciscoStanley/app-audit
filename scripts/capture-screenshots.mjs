@@ -333,10 +333,6 @@ function authStorageValue(user) {
 async function seedAuthContext(context, user = mockUser) {
   await context.addInitScript((value) => {
     localStorage.setItem('app-audit-auth', value);
-    localStorage.setItem(
-      'app-audit-background-tasks',
-      JSON.stringify({ state: { tasks: {}, previewPlans: {} }, version: 0 }),
-    );
   }, authStorageValue(user));
 }
 

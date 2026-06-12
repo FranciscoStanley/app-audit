@@ -3,6 +3,7 @@ import {
   AUDIT_TASK_ID,
   bulkRemediationTaskId,
   mergeTaskRecords,
+  rehydrateBackgroundTasksOnce,
   remediationTaskId,
   selectVisibleTasks,
   syncThreatIntelInBackground,
@@ -178,5 +179,10 @@ describe('background-tasks-store', () => {
     const task = useBackgroundTasksStore.getState().tasks[THREAT_INTEL_TASK_ID];
     expect(task?.status).toBe('error');
     expect(task?.error).toBe('timeout');
+  });
+
+  it('rehydrateBackgroundTasksOnce resolves even without persisted state', async () => {
+    localStorage.removeItem('app-audit-background-tasks');
+    await expect(rehydrateBackgroundTasksOnce()).resolves.toBeUndefined();
   });
 });

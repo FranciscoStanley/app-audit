@@ -401,56 +401,38 @@ export const useBackgroundTasksStore = create<BackgroundTasksState>()(
     {
       name: 'app-audit-background-tasks',
       skipHydration: true,
+      partialize: (state) => ({ tasks: state.tasks, previewPlans: state.previewPlans }),
       merge: (persisted, current) => {
-        const p = persisted as Partial<BackgroundTasksState>;
-        const merged: BackgroundTasksState = {
+        const p = persisted as Partial<Pick<BackgroundTasksState, 'tasks' | 'previewPlans'>>;
+        return {
           ...current,
           tasks: normalizeStaleRunningTasks(
             mergeTaskRecords(p.tasks ?? {}, current.tasks ?? {}),
           ),
-          previewPlans: { ...p.previewPlans, ...current.previewPlans },
+          previewPlans: { ...current.previewPlans, ...p.previewPlans },
         };
-        return merged;
       },
     },
   ),
 );
 
-let hydrationStarted = false;
-let hydrationFinished = false;
-const hydrationListeners = new Set<(value: boolean) => void>();
+let backgroundTasksRehydratePromise: Promise<void> | null = null;
 
-function notifyHydrationListeners(): void {
-  hydrationFinished = true;
-  for (const listener of hydrationListeners) listener(true);
+/** Reidrata o persist uma única vez por sessão do app. */
+export function rehydrateBackgroundTasksOnce(): Promise<void> {
+  if (!backgroundTasksRehydratePromise) {
+    backgroundTasksRehydratePromise = Promise.resolve(
+      useBackgroundTasksStore.persist.rehydrate(),
+    ).then(() => undefined);
+  }
+  return backgroundTasksRehydratePromise;
 }
 
-/** Reidrata o persist uma única vez — evita sobrescrever tarefas em execução ao navegar. */
 export function useBackgroundTasksHydrated(): boolean {
-  const [hydrated, setHydrated] = useState(hydrationFinished);
+  const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
-    hydrationListeners.add(setHydrated);
-
-    if (!hydrationStarted) {
-      hydrationStarted = true;
-      const unsub = useBackgroundTasksStore.persist.onFinishHydration(notifyHydrationListeners);
-      const result = useBackgroundTasksStore.persist.rehydrate();
-      if (result instanceof Promise) {
-        void result.then(() => {
-          if (useBackgroundTasksStore.persist.hasHydrated()) notifyHydrationListeners();
-        });
-      } else if (useBackgroundTasksStore.persist.hasHydrated()) {
-        notifyHydrationListeners();
-      }
-      return () => {
-        unsub();
-        hydrationListeners.delete(setHydrated);
-      };
-    }
-
-    if (hydrationFinished) setHydrated(true);
-    return () => hydrationListeners.delete(setHydrated);
+    void rehydrateBackgroundTasksOnce().finally(() => setHydrated(true));
   }, []);
 
   return hydrated;
