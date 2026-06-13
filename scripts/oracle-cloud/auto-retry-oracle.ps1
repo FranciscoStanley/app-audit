@@ -26,8 +26,9 @@ Set-Location $Root
 $env:Path = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" +
   [System.Environment]::GetEnvironmentVariable("Path", "User")
 $env:OCI_CLI_SUPPRESS_FILE_PERMISSIONS_WARNING = "True"
+$AppHost = if ($env:APP_HOST) { $env:APP_HOST } else { "app-audit" }
 
-# Carrega OCIDs do .env se existir
+# Carrega OCIDs do .env ou ~/.oci/config
 $envFile = Join-Path $Root ".env"
 if (Test-Path $envFile) {
   Get-Content $envFile | ForEach-Object {
@@ -36,6 +37,17 @@ if (Test-Path $envFile) {
       $v = $matches[2].Trim()
       if ($k -like "OCI_*") { Set-Item -Path "env:$k" -Value $v }
     }
+  }
+}
+
+$ociConfig = Join-Path $env:USERPROFILE ".oci\config"
+if (-not $env:OCI_TENANCY_OCID -and (Test-Path $ociConfig)) {
+  Get-Content $ociConfig | ForEach-Object {
+    if ($_ -match '^\s*tenancy=(.+)$') { $env:OCI_TENANCY_OCID = $matches[1].Trim() }
+    if ($_ -match '^\s*region=(.+)$') { $env:OCI_REGION = $matches[1].Trim() }
+  }
+  if ($env:OCI_TENANCY_OCID -and -not $env:OCI_COMPARTMENT_OCID) {
+    $env:OCI_COMPARTMENT_OCID = $env:OCI_TENANCY_OCID
   }
 }
 
@@ -78,7 +90,8 @@ Write-Log "Executando deploy remoto..."
 
 if ($LASTEXITCODE -eq 0) {
   New-Item -ItemType File -Path $SuccessFlag -Force | Out-Null
-  Write-Log "DEPLOY CONCLUÍDO: http://${publicIp}:3001"
+  Write-Log "DEPLOY CONCLUÍDO: http://${AppHost}:3001"
+  Write-Log "Adicione ao hosts: ${publicIp} ${AppHost}"
   # Remove tarefa agendada se existir
   Unregister-ScheduledTask -TaskName "AppAudit-Oracle-Retry" -Confirm:$false -ErrorAction SilentlyContinue
   exit 0

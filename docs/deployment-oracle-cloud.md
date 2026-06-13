@@ -114,10 +114,16 @@ Sua tenancy precisa **inscrever** a região antes da API funcionar:
 
 ## Verificação
 
+Adicione o IP da VM ao arquivo **hosts** (como administrador):
+
+```
+IP_DA_VM app-audit
+```
+
 | URL | Esperado |
 |-----|----------|
-| `http://IP:3000/health` | status ok |
-| `http://IP:3001` | login App Audit |
+| `http://app-audit:3000/health` | status ok |
+| `http://app-audit:3001` | login App Audit |
 
 Login: `ADMIN_EMAIL` / `ADMIN_PASSWORD` do `.env` local.
 
@@ -161,7 +167,7 @@ git check-ignore -v .env .env.oracle.local
 ```
 
 - Em produção: `SWAGGER_ENABLED=false`
-- Atualize GitHub OAuth callback para `http://SEU_IP:3000/v1/auth/github/callback`
+- Atualize GitHub OAuth callback para `http://app-audit:3000/v1/auth/github/callback` (e a entrada `IP app-audit` no hosts)
 
 ---
 

@@ -24,9 +24,13 @@ if (-not (Test-Path $SshKey)) {
   exit 1
 }
 
+$AppHost = if ($env:APP_HOST) { $env:APP_HOST } else { "app-audit" }
+
 $content = Get-Content $LocalEnv -Raw
-$content = $content -replace 'http://localhost:3001', "http://${PublicIp}:3001"
-$content = $content -replace 'http://localhost:3000', "http://${PublicIp}:3000"
+$content = $content -replace 'http://localhost:3001', "http://${AppHost}:3001"
+$content = $content -replace 'http://localhost:3000', "http://${AppHost}:3000"
+$content = $content -replace 'http://PUBLIC_IP:3001', "http://${AppHost}:3001"
+$content = $content -replace 'http://PUBLIC_IP:3000', "http://${AppHost}:3000"
 $content = $content -replace 'PUBLIC_IP', $PublicIp
 $content = $content -replace '(?m)^SWAGGER_ENABLED=.*', 'SWAGGER_ENABLED=false'
 
@@ -43,5 +47,8 @@ Remove-Item $tempEnv -Force -ErrorAction SilentlyContinue
 
 Write-Host ""
 Write-Host "Deploy solicitado. Acesse:"
-Write-Host "  Frontend: http://${PublicIp}:3001"
-Write-Host "  API:      http://${PublicIp}:3000/health"
+Write-Host "  Frontend: http://${AppHost}:3001"
+Write-Host "  API:      http://${AppHost}:3000/health"
+Write-Host ""
+Write-Host "Adicione ao hosts (como admin):"
+Write-Host "  ${PublicIp} ${AppHost}"

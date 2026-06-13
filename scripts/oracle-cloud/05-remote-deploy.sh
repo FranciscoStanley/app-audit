@@ -5,6 +5,7 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 PUBLIC_IP="${1:-${PUBLIC_IP:-}}"
+APP_HOST="${APP_HOST:-app-audit}"
 SSH_KEY="${OCI_SSH_KEY_FILE:-$HOME/.ssh/id_ed25519_oracle}"
 SSH_USER="${OCI_SSH_USER:-ubuntu}"
 REMOTE_DIR="/opt/app-audit"
@@ -54,7 +55,9 @@ cat <<EOF
 
 Deploy concluído.
 
-  Frontend: http://${PUBLIC_IP}:3001
-  API:      http://${PUBLIC_IP}:3000/health
+  Frontend: http://${APP_HOST}:3001
+  API:      http://${APP_HOST}:3000/health
+
+  Hosts: ${PUBLIC_IP} ${APP_HOST}
 
 EOF

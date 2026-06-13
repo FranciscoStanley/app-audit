@@ -29,7 +29,8 @@ list_subscribed_regions() {
 list_availability_domains() {
   local region=$1
   oci iam availability-domain list --compartment-id "$CID" --region "$region" --output json \
-    | python -c "import json,sys; [print(x['name'].strip()) for x in json.load(sys.stdin)['data']]"
+    | python -c "import json,sys; [print(x['name'].strip()) for x in json.load(sys.stdin)['data']]" \
+    | tr -d '\r'
 }
 
 load_network() {
@@ -41,7 +42,7 @@ load_network() {
     case "$line" in
       OCI_*=* ) export "$line" ;;
     esac
-  done < <(OCI_REGION="$region" bash "$SCRIPT_DIR/02-ensure-network.sh" 2>&1 | grep '^OCI_')
+  done < <(OCI_REGION="$region" bash "$SCRIPT_DIR/02-ensure-network.sh" 2>&1 | grep '^OCI_' | tr -d '\r')
   [[ -n "${OCI_SUBNET_ID:-}" && "$OCI_SUBNET_ID" != "null" ]]
 }
 
@@ -133,6 +134,7 @@ for REGION in $REGIONS; do
   fi
 
   mapfile -t AD_LIST < <(list_availability_domains "$REGION")
+  AD_LIST=("${AD_LIST[@]//$'\r'/}")
 
   for AD in "${AD_LIST[@]}"; do
     for shape_cfg in "${SHAPE_CONFIGS[@]}"; do
