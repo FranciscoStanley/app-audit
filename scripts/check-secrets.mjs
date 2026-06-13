@@ -23,6 +23,7 @@ const SECRET_PATTERNS = [
 
 const ALLOWLIST_PATHS = [
   /\.env\.example$/,
+  /\.env\.oracle\.example$/,
   /\.env\.docker\.example$/,
   /\.env\.production\.example$/,
   /token-cipher\.spec\.ts$/,
@@ -43,9 +44,22 @@ const ALLOWLIST_VALUES = [
   'test-secret-key-for-cipher-32chars!!',
 ];
 
+function isShellEnvPassthrough(line) {
+  const keys = ['JWT_SECRET', 'ADMIN_PASSWORD', 'GITHUB_OAUTH_CLIENT_SECRET', 'GITHUB_TOKEN'];
+  // ${VAR}, ${VAR:-}, ${VAR:?msg}, ${VAR:=x} — repasse shell, não secret literal
+  const shellRef = /^"?\$\{[A-Z_][A-Z0-9_]*(\:[-?=][^}]*)?\}"?$/;
+  for (const key of keys) {
+    const m = line.match(new RegExp(`^\\s*${key}\\s*=\\s*(.+)$`));
+    if (!m) continue;
+    if (shellRef.test(m[1].trim())) return true;
+  }
+  return false;
+}
+
 function isAllowlisted(filePath, line) {
   if (ALLOWLIST_PATHS.some((p) => p.test(filePath))) return true;
   if (ALLOWLIST_VALUES.some((v) => line.includes(v))) return true;
+  if (isShellEnvPassthrough(line)) return true;
   if (/JWT_SECRET=\s*$/.test(line)) return true;
   if (/GITHUB_TOKEN=\s*$/.test(line)) return true;
   if (/ADMIN_PASSWORD=\s*$/.test(line)) return true;
@@ -68,7 +82,8 @@ function scanFile(relPath) {
   const content = readFileSync(abs, 'utf-8');
   const hits = [];
 
-  for (const [i, line] of content.split('\n').entries()) {
+  for (const [i, rawLine] of content.split('\n').entries()) {
+    const line = rawLine.replace(/\r$/, '');
     if (isAllowlisted(relPath, line)) continue;
     for (const { name, re } of SECRET_PATTERNS) {
       if (re.test(line)) {
