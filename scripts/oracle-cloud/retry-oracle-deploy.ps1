@@ -10,12 +10,12 @@ $env:Path = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";
   [System.Environment]::GetEnvironmentVariable("Path", "User")
 $env:OCI_CLI_SUPPRESS_FILE_PERMISSIONS_WARNING = "True"
 
-Write-Host "==> Tentando criar VM Ampere A1 (pode falhar se sem capacidade)..."
-& $Bash "$Root/scripts/oracle-cloud/00b-launch-vm.sh"
+Write-Host "==> Tentando criar VM A1 (SP, Montreal, Toronto, Ashburn)..."
+& $Bash "$Root/scripts/oracle-cloud/00f-launch-multi-region.sh"
 if ($LASTEXITCODE -ne 0) {
   Write-Host ""
-  Write-Host "Sem capacidade A1 em sa-saopaulo-1. Tente novamente em horario de menor pico ou pelo Console Oracle."
-  Write-Host "Rede e credenciais ja estao prontas - so falta a VM."
+  Write-Host "Sem capacidade A1 nas regioes testadas."
+  Write-Host "Agende retry: .\scripts\oracle-cloud\schedule-oracle-retry.ps1"
   exit 1
 }
 

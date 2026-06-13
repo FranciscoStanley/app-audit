@@ -78,6 +78,40 @@ cd C:\Users\Stanley\Downloads\app-audit
 
 ---
 
+## Retry automático (sem capacidade A1)
+
+Quando `Out of host capacity` em São Paulo:
+
+```powershell
+cd C:\Users\Stanley\Downloads\app-audit
+
+# Uma tentativa agora (1 OCPU/6 GB e 2 OCPU/12 GB)
+.\scripts\oracle-cloud\retry-oracle-deploy.ps1
+
+# Agendar a cada 1 hora (7 dias) até conseguir VM + deploy
+.\scripts\oracle-cloud\schedule-oracle-retry.ps1
+
+# Ver log
+Get-Content .\logs\oracle-retry.log -Tail 30
+```
+
+### Tentar outra região (ex.: Canadá)
+
+Sua tenancy precisa **inscrever** a região antes da API funcionar:
+
+1. Console → canto superior direito → **Region Management**
+2. **Subscribe** → `ca-montreal-1` ou `ca-toronto-1`
+3. Aguarde status **READY**
+4. O script detecta regiões inscritas automaticamente — rode o retry de novo
+
+```powershell
+.\scripts\oracle-cloud\list-oci-regions.ps1
+```
+
+> **Não use** `VM.Standard.E2.1.Micro` para o app-audit (1 GB RAM — insuficiente para Docker + Chromium).
+
+---
+
 ## Verificação
 
 | URL | Esperado |
@@ -98,7 +132,10 @@ Login: `ADMIN_EMAIL` / `ADMIN_PASSWORD` do `.env` local.
 | `scripts/oracle-cloud/00-provision-free-vm.sh` | Cria VM via OCI CLI |
 | `scripts/oracle-cloud/04-prepare-oracle-env.sh` | Gera `.env.oracle.local` |
 | `scripts/oracle-cloud/05-remote-deploy.sh` | SSH + deploy |
-| `scripts/oracle-cloud/push-env.ps1` | Deploy via PowerShell |
+| `scripts/oracle-cloud/00f-launch-multi-region.sh` | VM A1 multi-região + shapes |
+| `scripts/oracle-cloud/auto-retry-oracle.ps1` | Retry + deploy automático |
+| `scripts/oracle-cloud/schedule-oracle-retry.ps1` | Agenda retry horário (Windows) |
+| `scripts/oracle-cloud/list-oci-regions.ps1` | Regiões inscritas + dica Canadá |
 
 ---
 
