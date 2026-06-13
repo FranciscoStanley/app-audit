@@ -5,6 +5,7 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 PUBLIC_IP="${PUBLIC_IP:-${1:-}}"
+APP_HOST="${APP_HOST:-app-audit}"
 SOURCE_ENV="${SOURCE_ENV:-$ROOT/.env}"
 OUT="${OUT:-$ROOT/.env.oracle.local}"
 
@@ -24,10 +25,10 @@ NODE_ENV=production
 BACKEND_PORT=3000
 FRONTEND_PORT=3001
 
-CORS_ORIGIN=http://${PUBLIC_IP}:3001
-NEXT_PUBLIC_API_URL=http://${PUBLIC_IP}:3000
-GITHUB_OAUTH_CALLBACK_URL=http://${PUBLIC_IP}:3000/v1/auth/github/callback
-FRONTEND_URL=http://${PUBLIC_IP}:3001
+CORS_ORIGIN=http://${APP_HOST}:3001
+NEXT_PUBLIC_API_URL=http://${APP_HOST}:3000
+GITHUB_OAUTH_CALLBACK_URL=http://${APP_HOST}:3000/v1/auth/github/callback
+FRONTEND_URL=http://${APP_HOST}:3001
 
 JWT_SECRET=${JWT_SECRET}
 JWT_EXPIRES_IN=${JWT_EXPIRES_IN:-8h}
@@ -54,5 +55,6 @@ DPO_CONTACT_EMAIL=${DPO_CONTACT_EMAIL:-}
 EOF
 
 echo "Arquivo gerado: $OUT"
-echo "URLs apontam para http://${PUBLIC_IP}:3000 e :3001"
+echo "URLs: http://${APP_HOST}:3001 (frontend) e http://${APP_HOST}:3000 (API)"
+echo "Hosts (Windows: C:\\Windows\\System32\\drivers\\etc\\hosts): ${PUBLIC_IP} ${APP_HOST}"
 echo "SWAGGER_ENABLED=false (produção)"

@@ -9,6 +9,18 @@ $Bash = "C:\Program Files\Git\bin\bash.exe"
 $env:Path = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" +
   [System.Environment]::GetEnvironmentVariable("Path", "User")
 $env:OCI_CLI_SUPPRESS_FILE_PERMISSIONS_WARNING = "True"
+$AppHost = if ($env:APP_HOST) { $env:APP_HOST } else { "app-audit" }
+
+$ociConfig = Join-Path $env:USERPROFILE ".oci\config"
+if (-not $env:OCI_TENANCY_OCID -and (Test-Path $ociConfig)) {
+  Get-Content $ociConfig | ForEach-Object {
+    if ($_ -match '^\s*tenancy=(.+)$') { $env:OCI_TENANCY_OCID = $matches[1].Trim() }
+    if ($_ -match '^\s*region=(.+)$') { $env:OCI_REGION = $matches[1].Trim() }
+  }
+  if ($env:OCI_TENANCY_OCID -and -not $env:OCI_COMPARTMENT_OCID) {
+    $env:OCI_COMPARTMENT_OCID = $env:OCI_TENANCY_OCID
+  }
+}
 
 Write-Host "==> Tentando criar VM A1 (SP, Montreal, Toronto, Ashburn)..."
 & $Bash "$Root/scripts/oracle-cloud/00f-launch-multi-region.sh"
@@ -28,5 +40,8 @@ $rootUnix = ($Root -replace '\\', '/')
 
 Write-Host ""
 Write-Host "App Audit online:"
-Write-Host ('  http://{0}:3001' -f $publicIp)
-Write-Host ('  http://{0}:3000/health' -f $publicIp)
+Write-Host ('  http://{0}:3001' -f $AppHost)
+Write-Host ('  http://{0}:3000/health' -f $AppHost)
+Write-Host ""
+Write-Host "Adicione ao hosts (como admin):"
+Write-Host ('  {0} {1}' -f $publicIp, $AppHost)

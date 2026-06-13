@@ -100,5 +100,7 @@ bash -lc "cd '$($ProjectRoot -replace '\\','/')' && bash scripts/oracle-cloud/05
 
 Write-Host ""
 Write-Host "Deploy concluído!"
-Write-Host "  Frontend: http://${publicIp}:3001"
-Write-Host "  API:      http://${publicIp}:3000/health"
+Write-Host "  Frontend: http://app-audit:3001"
+Write-Host "  API:      http://app-audit:3000/health"
+Write-Host ""
+Write-Host "Adicione ao hosts: ${publicIp} app-audit"
