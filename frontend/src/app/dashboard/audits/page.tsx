@@ -14,6 +14,7 @@ import {
 } from '@/lib/legal-consent-storage';
 import {
   AUDIT_TASK_ID,
+  resumeRunningTasks,
   runAuditInBackground,
   useBackgroundTasksStore,
 } from '@/stores/background-tasks-store';
@@ -62,6 +63,7 @@ export default function AuditsPage() {
   useEffect(() => {
     if (!token) return;
     setLoaded(false);
+    void resumeRunningTasks(token);
     Promise.all([
       load(page),
       api.githubStatus(token).then(setGithub).catch(() => null),

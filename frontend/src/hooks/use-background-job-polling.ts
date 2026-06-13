@@ -3,7 +3,7 @@
 import { useEffect, useRef } from 'react';
 import { useAuthStore } from '@/stores/auth-store';
 import {
-  pollServerJob,
+  rehydrateBackgroundTasksOnce,
   resumeRunningTasks,
   useBackgroundTasksStore,
 } from '@/stores/background-tasks-store';
@@ -17,6 +17,16 @@ export function useBackgroundJobPolling(): void {
     Object.values(s.tasks).some((t) => t.status === 'running'),
   );
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const bootstrappedRef = useRef(false);
+
+  useEffect(() => {
+    if (!token) return;
+
+    if (!bootstrappedRef.current) {
+      bootstrappedRef.current = true;
+      void rehydrateBackgroundTasksOnce().then(() => resumeRunningTasks(token));
+    }
+  }, [token]);
 
   useEffect(() => {
     if (!token || !hasRunning) return;
@@ -32,5 +42,3 @@ export function useBackgroundJobPolling(): void {
     };
   }, [token, hasRunning]);
 }
-
-export { pollServerJob };

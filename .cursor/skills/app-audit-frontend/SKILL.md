@@ -34,6 +34,7 @@ frontend/src/
 - Threat Intel: `POST /v1/threat-intel/sync` via `syncThreatIntelInBackground` (estado no store)
 - `useBackgroundJobPolling` sincroniza jobs de auditoria/remediação com o servidor
 - Reidratação do persist ocorre **uma única vez** (evita perder tarefas ao navegar)
+- `resumeRunningTasks` redescobre jobs ativos no servidor ao voltar à tela ou após falha de rede no polling
 - Banner global em `dashboard/layout.tsx`
 
 ## Comandos

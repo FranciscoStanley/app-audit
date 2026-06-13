@@ -260,6 +260,7 @@ export async function pollServerJob(
   token: string,
   taskId: string,
   serverJobId: string,
+  options?: { failOnError?: boolean },
 ): Promise<void> {
   const pollKey = `${taskId}:${serverJobId}`;
   if (activePolls.has(pollKey)) return;
@@ -269,47 +270,55 @@ export async function pollServerJob(
     const job = await api.getBackgroundJob(token, serverJobId);
     syncTaskFromJob(taskId, job);
   } catch (e) {
-    useBackgroundTasksStore.getState().failTask(
-      taskId,
-      e instanceof Error ? e.message : 'Falha ao consultar status do job',
-    );
+    if (options?.failOnError) {
+      useBackgroundTasksStore.getState().failTask(
+        taskId,
+        e instanceof Error ? e.message : 'Falha ao consultar status do job',
+      );
+    }
   } finally {
     activePolls.delete(pollKey);
   }
 }
 
-export async function resumeRunningTasks(token: string): Promise<void> {
-  const { tasks } = useBackgroundTasksStore.getState();
-  const running = Object.values(tasks).filter((t) => t.status === 'running');
-
-  if (running.length === 0) return;
-
-  const polledJobIds = new Set<string>();
-
-  for (const task of running) {
-    if (task.serverJobId) {
-      polledJobIds.add(task.serverJobId);
-      await pollServerJob(token, task.id, task.serverJobId);
-    }
-  }
-
-  const needsDiscovery = running.some((t) => !t.serverJobId);
-  if (!needsDiscovery) return;
-
+async function discoverServerJobs(token: string): Promise<void> {
   const serverJobs = [
     ...(await api.listBackgroundJobs(token, { status: 'running', pageSize: 100 })).data,
     ...(await api.listBackgroundJobs(token, { status: 'pending', pageSize: 100 })).data,
   ];
 
   for (const job of serverJobs) {
-    if (polledJobIds.has(job.id)) continue;
     const taskId = resolveTaskIdFromJob(job);
     if (!taskId) continue;
     syncTaskFromJob(taskId, job);
-    if (job.status === 'pending' || job.status === 'running') {
-      polledJobIds.add(job.id);
-      await pollServerJob(token, taskId, job.id);
-    }
+  }
+}
+
+export async function resumeRunningTasks(token: string): Promise<void> {
+  const running = Object.values(useBackgroundTasksStore.getState().tasks).filter(
+    (t) => t.status === 'running',
+  );
+
+  const shouldDiscover =
+    running.length === 0 || running.some((task) => !task.serverJobId);
+
+  if (shouldDiscover) {
+    await discoverServerJobs(token);
+  }
+
+  const active = Object.values(useBackgroundTasksStore.getState().tasks).filter(
+    (t) => t.status === 'running',
+  );
+
+  if (active.length === 0) return;
+
+  const polledJobIds = new Set<string>();
+
+  for (const task of active) {
+    if (!task.serverJobId) continue;
+    if (polledJobIds.has(task.serverJobId)) continue;
+    polledJobIds.add(task.serverJobId);
+    await pollServerJob(token, task.id, task.serverJobId);
   }
 }
 
@@ -487,8 +496,16 @@ export function useBackgroundTasksHydrated(): boolean {
 }
 
 export async function runAuditInBackground(token: string): Promise<void> {
+  await resumeRunningTasks(token);
+
   const store = useBackgroundTasksStore.getState();
-  if (store.isRunning(AUDIT_TASK_ID)) return;
+  if (store.isRunning(AUDIT_TASK_ID)) {
+    const task = store.tasks[AUDIT_TASK_ID];
+    if (task?.serverJobId) {
+      await pollServerJob(token, AUDIT_TASK_ID, task.serverJobId);
+    }
+    return;
+  }
 
   store.upsertTask({
     id: AUDIT_TASK_ID,
@@ -501,7 +518,7 @@ export async function runAuditInBackground(token: string): Promise<void> {
   try {
     const { jobId } = await api.enqueueAuditJob(token);
     store.upsertTask({
-      ...store.tasks[AUDIT_TASK_ID]!,
+      ...useBackgroundTasksStore.getState().tasks[AUDIT_TASK_ID]!,
       serverJobId: jobId,
     });
     await pollServerJob(token, AUDIT_TASK_ID, jobId);

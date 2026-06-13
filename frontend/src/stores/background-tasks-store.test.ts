@@ -27,8 +27,22 @@ vi.mock('@/lib/api', () => ({
 }));
 
 describe('background-tasks-store', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     useBackgroundTasksStore.setState({ tasks: {}, previewPlans: {} });
+    const { api } = await import('@/lib/api');
+    vi.mocked(api.getBackgroundJob).mockReset();
+    vi.mocked(api.listBackgroundJobs).mockReset();
+    vi.mocked(api.listBackgroundJobs).mockResolvedValue({
+      data: [],
+      meta: {
+        page: 1,
+        pageSize: 20,
+        total: 0,
+        totalPages: 0,
+        hasNextPage: false,
+        hasPreviousPage: false,
+      },
+    });
   });
 
   it('tracks running and completed audit task', () => {
@@ -182,14 +196,89 @@ describe('background-tasks-store', () => {
     expect(task?.error).toBe('timeout');
   });
 
-  it('resumeRunningTasks skips API when no running tasks', async () => {
+  it('resumeRunningTasks consulta servidor quando não há tarefas locais', async () => {
     const { api } = await import('@/lib/api');
     const { resumeRunningTasks } = await import('./background-tasks-store');
 
+    vi.mocked(api.listBackgroundJobs).mockResolvedValue({
+      data: [],
+      meta: {
+        page: 1,
+        pageSize: 100,
+        total: 0,
+        totalPages: 0,
+        hasNextPage: false,
+        hasPreviousPage: false,
+      },
+    });
+
     await resumeRunningTasks('token');
 
-    expect(api.listBackgroundJobs).not.toHaveBeenCalled();
+    expect(api.listBackgroundJobs).toHaveBeenCalled();
     expect(api.getBackgroundJob).not.toHaveBeenCalled();
+  });
+
+  it('resumeRunningTasks restaura auditoria ativa do servidor', async () => {
+    const { api } = await import('@/lib/api');
+    const { resumeRunningTasks } = await import('./background-tasks-store');
+
+    vi.mocked(api.listBackgroundJobs).mockImplementation(async (_token, params) => ({
+      data:
+        params?.status === 'running'
+          ? [
+              {
+                id: 'job-1',
+                type: 'audit_run',
+                status: 'running',
+                label: 'Varredura',
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+              },
+            ]
+          : [],
+      meta: {
+        page: 1,
+        pageSize: 100,
+        total: 1,
+        totalPages: 1,
+        hasNextPage: false,
+        hasPreviousPage: false,
+      },
+    }));
+
+    vi.mocked(api.getBackgroundJob).mockResolvedValue({
+      id: 'job-1',
+      type: 'audit_run',
+      status: 'running',
+      label: 'Varredura',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
+
+    await resumeRunningTasks('token');
+
+    expect(useBackgroundTasksStore.getState().tasks[AUDIT_TASK_ID]?.status).toBe('running');
+    expect(useBackgroundTasksStore.getState().tasks[AUDIT_TASK_ID]?.serverJobId).toBe('job-1');
+  });
+
+  it('pollServerJob mantém tarefa em execução em falha transitória de rede', async () => {
+    const { api } = await import('@/lib/api');
+    const { pollServerJob } = await import('./background-tasks-store');
+
+    useBackgroundTasksStore.getState().upsertTask({
+      id: AUDIT_TASK_ID,
+      serverJobId: 'job-1',
+      type: 'audit',
+      label: 'Varredura',
+      status: 'running',
+      startedAt: new Date().toISOString(),
+    });
+
+    vi.mocked(api.getBackgroundJob).mockRejectedValue(new Error('network'));
+
+    await pollServerJob('token', AUDIT_TASK_ID, 'job-1');
+
+    expect(useBackgroundTasksStore.getState().tasks[AUDIT_TASK_ID]?.status).toBe('running');
   });
 
   it('warnTask marca remediação parcial sem status success', () => {
@@ -254,6 +343,18 @@ describe('background-tasks-store', () => {
   it('resumeRunningTasks polls only known server jobs without duplicate list calls', async () => {
     const { api } = await import('@/lib/api');
     const { resumeRunningTasks } = await import('./background-tasks-store');
+
+    vi.mocked(api.listBackgroundJobs).mockResolvedValue({
+      data: [],
+      meta: {
+        page: 1,
+        pageSize: 100,
+        total: 0,
+        totalPages: 0,
+        hasNextPage: false,
+        hasPreviousPage: false,
+      },
+    });
 
     vi.mocked(api.getBackgroundJob).mockResolvedValue({
       id: 'job-1',
