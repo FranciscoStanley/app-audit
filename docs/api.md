@@ -14,7 +14,7 @@
 
 ## Autenticação
 
-Rotas públicas (sem JWT): `/health`, `/health/ready`, `/v1/auth/legal/info`, `/v1/auth/login/consent`, `/v1/auth/github/consent`, `POST /v1/auth/login`, `POST /v1/auth/github/consent/accept`, `POST /v1/auth/github/exchange`, `GET /v1/auth/github`, `GET /v1/auth/github/callback`, `GET /v1/auth/github/config`.
+Rotas públicas (sem JWT): `/health`, `/health/ready`, `/v1/auth/legal/info`, `/v1/auth/login/consent`, `/v1/auth/login/consent/required`, `/v1/auth/github/consent`, `POST /v1/auth/login`, `POST /v1/auth/github/consent/accept`, `POST /v1/auth/github/authorize`, `POST /v1/auth/github/exchange`, `GET /v1/auth/github`, `GET /v1/auth/github/callback`, `GET /v1/auth/github/config`.
 
 Demais rotas exigem header:
 
@@ -24,7 +24,7 @@ Authorization: Bearer <accessToken>
 
 ### POST /v1/auth/login
 
-Exige aceite do Termo de Uso e da Política de Privacidade (registrado em `data/consents.json`).
+Exige aceite do Termo de Uso e da Política de Privacidade **apenas no primeiro login** (registrado em `data/consents.json`). Logins seguintes do mesmo usuário não precisam reenviar `termsAccepted`/`privacyAccepted`.
 
 ```json
 // Request
@@ -34,7 +34,17 @@ Exige aceite do Termo de Uso e da Política de Privacidade (registrado em `data/
   "termsAccepted": true,
   "privacyAccepted": true
 }
+```
 
+### GET /v1/auth/login/consent/required?email=
+
+Verifica se o usuário ainda precisa aceitar termos no login.
+
+```json
+{ "required": false, "policyVersion": "1.1.0" }
+```
+
+```json
 // Response 200
 {
   "accessToken": "eyJhbG...",
@@ -62,6 +72,10 @@ Informações de consentimento LGPD para OAuth GitHub (escopos, terceiros, direi
 ### POST /v1/auth/github/consent/accept
 
 Registra aceite e retorna `authorizeUrl` para redirect ao GitHub.
+
+### POST /v1/auth/github/authorize
+
+Inicia OAuth GitHub sem modal quando o consentimento já foi aceito no dispositivo (retorna `authorizeUrl`).
 
 ### GET /v1/auth/github/config
 

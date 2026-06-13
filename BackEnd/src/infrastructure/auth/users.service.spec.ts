@@ -58,3 +58,61 @@ describe('UsersService.updateUser', () => {
     ).rejects.toBeInstanceOf(NotFoundException);
   });
 });
+
+describe('UsersService.upsertFromGitHub', () => {
+  let service: UsersService;
+  let store: UserStore;
+
+  beforeEach(async () => {
+    store = {
+      load: jest.fn().mockResolvedValue([]),
+      save: jest.fn().mockResolvedValue(undefined),
+    } as unknown as UserStore;
+
+    const config = {
+      get: jest.fn().mockReturnValue(undefined),
+    } as unknown as ConfigService;
+
+    service = new UsersService(store, config);
+    await service.onModuleInit();
+  });
+
+  it('cria usuário GitHub do proprietário como admin', async () => {
+    const user = await service.upsertFromGitHub({
+      githubId: '1',
+      githubUsername: 'FranciscoStanley',
+      email: 'franciscothestanley@gmail.com',
+      name: 'Francisco',
+    });
+
+    expect(user.role).toBe(UserRole.ADMIN);
+    expect(user.name).toBe('Francisco Stanley Rodrigues Albuquerque');
+  });
+
+  it('promove usuário existente do proprietário para admin', async () => {
+    await service.upsertFromGitHub({
+      githubId: '1',
+      githubUsername: 'FranciscoStanley',
+      email: 'franciscothestanley@gmail.com',
+      name: 'Francisco',
+    });
+
+    const auditor = await service.createUser({
+      email: 'auditor@empresa.com',
+      password: 'SenhaForte123!',
+      name: 'Auditor',
+      role: UserRole.AUDITOR,
+    });
+
+    expect(auditor.role).toBe(UserRole.AUDITOR);
+
+    const user = await service.upsertFromGitHub({
+      githubId: '1',
+      githubUsername: 'FranciscoStanley',
+      email: 'franciscothestanley@gmail.com',
+      name: 'Francisco',
+    });
+
+    expect(user.role).toBe(UserRole.ADMIN);
+  });
+});

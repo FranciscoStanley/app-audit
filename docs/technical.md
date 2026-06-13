@@ -125,7 +125,8 @@ Persistidos em `BackEnd/data/users.json`. Sem credenciais fixas.
 
 | Método | Uso |
 |--------|-----|
-| `ADMIN_EMAIL` + `ADMIN_PASSWORD` | Primeiro boot |
+| `ADMIN_EMAIL` + `ADMIN_PASSWORD` | Primeiro boot (default: Francisco Stanley Rodrigues Albuquerque) |
+| `ADMIN_GITHUB_USERNAME` | Login GitHub do proprietário recebe papel `admin` |
 | `npm run users:create` | CLI |
 | `POST /auth/users` | Admin autenticado |
 

@@ -22,11 +22,22 @@ export class LoginConsentUseCase {
     };
   }
 
+  getConsentRequiredStatus(required: boolean) {
+    return {
+      required,
+      policyVersion: LEGAL_POLICY_VERSION,
+    };
+  }
+
   async recordLoginConsent(
     userId: string,
     acknowledgments: ConsentAcknowledgments,
     meta: { ip?: string; userAgent?: string },
   ): Promise<void> {
+    if (!(await this.isConsentRequired(userId))) {
+      return;
+    }
+
     this.validateLoginAcknowledgments(acknowledgments);
     await this.consents.createCompleted(
       'email_login',
@@ -34,6 +45,11 @@ export class LoginConsentUseCase {
       acknowledgments,
       meta,
     );
+  }
+
+  async isConsentRequired(userId: string): Promise<boolean> {
+    const accepted = await this.consents.hasActiveConsent(userId, 'email_login');
+    return !accepted;
   }
 
   private validateLoginAcknowledgments(ack: ConsentAcknowledgments): void {

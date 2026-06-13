@@ -111,6 +111,38 @@ export class GitHubConsentUseCase {
     await this.consents.complete(consentId, userId, githubId);
   }
 
+  async isConsentRequired(userId: string): Promise<boolean> {
+    const accepted = await this.consents.hasActiveConsent(
+      userId,
+      'github_oauth',
+      GITHUB_OAUTH_POLICY_VERSION,
+    );
+    return !accepted;
+  }
+
+  async createAuthorizeUrl(meta: { ip?: string; userAgent?: string }) {
+    const acknowledgments: ConsentAcknowledgments = {
+      termsAccepted: true,
+      privacyAccepted: true,
+      dataProcessingAccepted: true,
+      scopesAcknowledged: true,
+    };
+
+    const scopes = GITHUB_OAUTH_SCOPES.map((s) => s.scope);
+    const record = await this.consents.createPending(
+      'github_oauth',
+      acknowledgments,
+      scopes,
+      meta,
+    );
+
+    return {
+      consentId: record.id,
+      policyVersion: record.policyVersion,
+      authorizeUrl: this.oauth.buildAuthorizeUrl(record.id),
+    };
+  }
+
   async revokeConsentForUser(userId: string): Promise<void> {
     await this.consents.revokeByUser(userId, 'github_oauth');
   }

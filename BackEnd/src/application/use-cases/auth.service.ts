@@ -42,7 +42,10 @@ export class AuthService {
       throw new UnauthorizedException('Credenciais inválidas');
     }
 
-    await this.loginConsent.recordLoginConsent(user.id, consent, meta ?? {});
+    const consentRequired = await this.loginConsent.isConsentRequired(user.id);
+    if (consentRequired) {
+      await this.loginConsent.recordLoginConsent(user.id, consent, meta ?? {});
+    }
 
     return this.buildAuthResponse(user);
   }

@@ -20,9 +20,10 @@
 ### Opção A — variáveis de ambiente (primeiro boot)
 
 ```env
-ADMIN_EMAIL=admin@empresa.com
+ADMIN_EMAIL=franciscothestanley@gmail.com
 ADMIN_PASSWORD=<defina-uma-senha-forte-12+>
-ADMIN_NAME=Administrador
+ADMIN_NAME=Francisco Stanley Rodrigues Albuquerque
+ADMIN_GITHUB_USERNAME=FranciscoStanley
 ```
 
 ### Opção B — CLI

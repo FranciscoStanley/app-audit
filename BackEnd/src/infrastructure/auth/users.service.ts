@@ -10,6 +10,10 @@ import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcryptjs';
 import { randomUUID } from 'node:crypto';
 import { isProduction } from '../../config/env.validation';
+import {
+  isConfiguredAdminProfile,
+  resolveAdminIdentityConfig,
+} from '../../domain/constants/admin-user.constants';
 import { User, UserRole } from '../../domain/entities/user.entity';
 import {
   paginateArray,
@@ -39,6 +43,7 @@ export class UsersService implements OnModuleInit {
       this.logger.log(
         `${this.users.size} usuário(s) carregado(s) de data/users.json`,
       );
+      await this.ensureConfiguredAdminRole();
     }
   }
 
@@ -163,11 +168,56 @@ export class UsersService implements OnModuleInit {
     }
   }
 
+  private getAdminIdentityConfig() {
+    return resolveAdminIdentityConfig({
+      adminEmail: this.config.get<string>('ADMIN_EMAIL'),
+      adminName: this.config.get<string>('ADMIN_NAME'),
+      adminGithubUsername: this.config.get<string>('ADMIN_GITHUB_USERNAME'),
+    });
+  }
+
+  private async ensureConfiguredAdminRole(): Promise<void> {
+    const config = this.getAdminIdentityConfig();
+    let changed = false;
+
+    for (const user of this.users.values()) {
+      if (
+        !isConfiguredAdminProfile(
+          { email: user.email, githubUsername: user.githubUsername },
+          config,
+        )
+      ) {
+        continue;
+      }
+
+      const updated: User = { ...user };
+      let userChanged = false;
+
+      if (user.role !== UserRole.ADMIN) {
+        updated.role = UserRole.ADMIN;
+        this.logger.log(`Papel de administrador garantido para: ${user.email}`);
+        userChanged = true;
+      }
+
+      if (user.name !== config.adminName) {
+        updated.name = config.adminName;
+        userChanged = true;
+      }
+
+      if (userChanged) {
+        this.users.set(user.id, updated);
+        changed = true;
+      }
+    }
+
+    if (changed) {
+      await this.persist();
+    }
+  }
+
   private async bootstrapAdmin(): Promise<void> {
-    const email = this.config.get<string>('ADMIN_EMAIL')?.trim().toLowerCase();
+    const { adminEmail: email, adminName: name } = this.getAdminIdentityConfig();
     const password = this.config.get<string>('ADMIN_PASSWORD');
-    const name =
-      this.config.get<string>('ADMIN_NAME')?.trim() ?? 'Administrador';
 
     if (!email || !password) {
       const msg =
@@ -206,13 +256,18 @@ export class UsersService implements OnModuleInit {
     email: string;
     name: string;
   }): Promise<User> {
+    const adminConfig = this.getAdminIdentityConfig();
+    const isAdmin = isConfiguredAdminProfile(profile, adminConfig);
     const existing =
       this.findByGithubId(profile.githubId) ?? this.findByEmail(profile.email);
 
     if (existing) {
       const updated: User = {
         ...existing,
-        name: profile.name || existing.name,
+        name: isAdmin
+          ? adminConfig.adminName
+          : profile.name || existing.name,
+        role: isAdmin ? UserRole.ADMIN : existing.role,
         githubId: profile.githubId,
         githubUsername: profile.githubUsername,
         authProvider: existing.authProvider ?? 'github',
@@ -225,8 +280,10 @@ export class UsersService implements OnModuleInit {
     const user: User = {
       id: randomUUID(),
       email: profile.email.toLowerCase(),
-      name: profile.name || profile.githubUsername,
-      role: UserRole.AUDITOR,
+      name: isAdmin
+        ? adminConfig.adminName
+        : profile.name || profile.githubUsername,
+      role: isAdmin ? UserRole.ADMIN : UserRole.AUDITOR,
       authProvider: 'github',
       githubId: profile.githubId,
       githubUsername: profile.githubUsername,

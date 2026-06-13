@@ -134,6 +134,11 @@ export const api = {
   loginConsentInfo: () =>
     request<{ policyVersion: string; legalBasis: string; purposes: string[] }>('/auth/login/consent'),
 
+  loginConsentRequired: (email: string) =>
+    request<{ required: boolean; policyVersion: string }>(
+      `/auth/login/consent/required?email=${encodeURIComponent(email)}`,
+    ),
+
   remediationConsentStatus: (token: string) =>
     request<RemediationConsentInfo>('/audit/remediation/consent', {}, token),
 
@@ -163,6 +168,12 @@ export const api = {
     request<{ consentId: string; policyVersion: string; authorizeUrl: string }>(
       '/auth/github/consent/accept',
       { method: 'POST', body: JSON.stringify(body) },
+    ),
+
+  githubAuthorize: () =>
+    request<{ consentId: string; policyVersion: string; authorizeUrl: string }>(
+      '/auth/github/authorize',
+      { method: 'POST', body: JSON.stringify({}) },
     ),
 
   disconnectGitHub: (token: string) =>

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { api } from '@/lib/api';
+import { rememberGitHubConsent } from '@/lib/legal-consent-storage';
 import { useAuthStore } from '@/stores/auth-store';
 
 export default function GitHubCallbackPage() {
@@ -21,6 +22,7 @@ export default function GitHubCallbackPage() {
     api
       .exchangeGitHubCode(code)
       .then((res) => {
+        void api.legalInfo().then((info) => rememberGitHubConsent(info.policyVersion));
         setAuth(res.accessToken, res.user);
         const target = res.user.githubConnected
           ? '/dashboard/audits?autostart=1'

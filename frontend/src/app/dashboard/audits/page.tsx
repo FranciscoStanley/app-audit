@@ -8,6 +8,11 @@ import { GitHubIcon } from '@/components/icons/github-icon';
 import { GitHubOAuthConsentModal } from '@/components/auth/github-oauth-consent-modal';
 import { api, type AuditReportSummary, type GitHubStatus, type PaginationMeta } from '@/lib/api';
 import {
+  clearGitHubConsent,
+  hasRememberedGitHubConsent,
+  rememberGitHubConsent,
+} from '@/lib/legal-consent-storage';
+import {
   AUDIT_TASK_ID,
   runAuditInBackground,
   useBackgroundTasksStore,
@@ -35,6 +40,7 @@ export default function AuditsPage() {
   const [github, setGithub] = useState<GitHubStatus | null>(null);
   const [auditError, setAuditError] = useState('');
   const [consentOpen, setConsentOpen] = useState(false);
+  const [connectingGithub, setConnectingGithub] = useState(false);
   const [disconnecting, setDisconnecting] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const autostartDone = useRef(false);
@@ -106,9 +112,26 @@ export default function AuditsPage() {
     setDisconnecting(true);
     try {
       await api.disconnectGitHub(token);
+      clearGitHubConsent();
       setGithub((g) => (g ? { ...g, connected: false, githubUsername: null } : g));
     } finally {
       setDisconnecting(false);
+    }
+  }
+
+  async function handleConnectGitHub() {
+    setConnectingGithub(true);
+    try {
+      const info = await api.legalInfo();
+      if (hasRememberedGitHubConsent(info.policyVersion)) {
+        const res = await api.githubAuthorize();
+        rememberGitHubConsent(res.policyVersion);
+        window.location.href = res.authorizeUrl;
+        return;
+      }
+      setConsentOpen(true);
+    } finally {
+      setConnectingGithub(false);
     }
   }
 
@@ -118,6 +141,7 @@ export default function AuditsPage() {
         open={consentOpen}
         onClose={() => setConsentOpen(false)}
         onAccepted={(url) => {
+          void api.legalInfo().then((info) => rememberGitHubConsent(info.policyVersion));
           setConsentOpen(false);
           window.location.href = url;
         }}
@@ -135,7 +159,7 @@ export default function AuditsPage() {
                 </p>
               </div>
             </div>
-            <Button variant="secondary" onClick={() => setConsentOpen(true)}>
+            <Button variant="secondary" loading={connectingGithub} onClick={() => void handleConnectGitHub()}>
               <GitHubIcon className="h-4 w-4" />
               Conectar GitHub
             </Button>

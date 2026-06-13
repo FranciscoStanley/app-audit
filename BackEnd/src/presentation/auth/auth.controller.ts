@@ -62,9 +62,10 @@ export class AuthController {
       dto.email,
       dto.password,
       {
-        termsAccepted: dto.termsAccepted,
-        privacyAccepted: dto.privacyAccepted,
-        dataProcessingAccepted: dto.termsAccepted && dto.privacyAccepted,
+        termsAccepted: dto.termsAccepted ?? false,
+        privacyAccepted: dto.privacyAccepted ?? false,
+        dataProcessingAccepted:
+          Boolean(dto.termsAccepted) && Boolean(dto.privacyAccepted),
       },
       { ip: req.ip, userAgent: req.headers['user-agent'] },
     );
@@ -86,6 +87,20 @@ export class AuthController {
   })
   loginConsentInfo() {
     return this.loginConsent.getLoginConsentInfo();
+  }
+
+  @Get('login/consent/required')
+  @SkipThrottle()
+  @ApiOperation({
+    summary: 'Verifica se o usuário ainda precisa aceitar termos no login',
+  })
+  async loginConsentRequired(@Query('email') email: string) {
+    const user = this.usersService.findByEmail(email?.trim() ?? '');
+    if (!user) {
+      return this.loginConsent.getConsentRequiredStatus(true);
+    }
+    const required = await this.loginConsent.isConsentRequired(user.id);
+    return this.loginConsent.getConsentRequiredStatus(required);
   }
 
   @Get('github/config')
@@ -120,6 +135,19 @@ export class AuthController {
         dataProcessingAccepted: dto.dataProcessingAccepted,
         scopesAcknowledged: dto.scopesAcknowledged,
       },
+      ip: req.ip,
+      userAgent: req.headers['user-agent'],
+    });
+  }
+
+  @Post('github/authorize')
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @ApiOperation({
+    summary:
+      'Iniciar OAuth GitHub sem modal (quando consentimento já foi aceito neste dispositivo)',
+  })
+  githubAuthorize(@Req() req: Request) {
+    return this.githubConsent.createAuthorizeUrl({
       ip: req.ip,
       userAgent: req.headers['user-agent'],
     });

@@ -1,7 +1,8 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsBoolean,
   IsEmail,
+  IsOptional,
   IsString,
   MaxLength,
   MinLength,
@@ -18,13 +19,15 @@ export class LoginDto {
   @MaxLength(128)
   password!: string;
 
-  @ApiProperty({ description: 'Aceite do Termo de Uso (LGPD)' })
+  @ApiPropertyOptional({ description: 'Aceite do Termo de Uso (LGPD)' })
+  @IsOptional()
   @IsBoolean()
-  termsAccepted!: boolean;
+  termsAccepted?: boolean;
 
-  @ApiProperty({ description: 'Aceite da Política de Privacidade (LGPD)' })
+  @ApiPropertyOptional({ description: 'Aceite da Política de Privacidade (LGPD)' })
+  @IsOptional()
   @IsBoolean()
-  privacyAccepted!: boolean;
+  privacyAccepted?: boolean;
 }
 
 export class GitHubConsentAcceptDto {
