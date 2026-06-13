@@ -13,3 +13,12 @@ updates:
         patterns:
           - 'next'
           - 'eslint-config-next'
+    ignore:
+      # ESLint 10 ainda incompatível com eslint-config-next / eslint-plugin-react
+      - dependency-name: eslint
+        update-types: [version-update:semver-major]
+      - dependency-name: '@eslint/js'
+        update-types: [version-update:semver-major]
+      # Pacotes já incluem tipos próprios — @types/* vira stub vazio
+      - dependency-name: '@types/bcryptjs'
+      - dependency-name: '@types/uuid'

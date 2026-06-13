@@ -63,11 +63,15 @@ async function main() {
     process.exit(1);
   }
 
-  const user = users[index]!;
+  const user = users[index];
 
   if (role && role !== user.role) {
     const adminCount = users.filter((u) => u.role === UserRole.ADMIN).length;
-    if (user.role === UserRole.ADMIN && role !== UserRole.ADMIN && adminCount <= 1) {
+    if (
+      user.role === UserRole.ADMIN &&
+      role !== UserRole.ADMIN &&
+      adminCount <= 1
+    ) {
       console.error('Não é possível rebaixar o último administrador.');
       process.exit(1);
     }

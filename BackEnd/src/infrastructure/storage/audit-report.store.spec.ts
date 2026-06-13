@@ -70,9 +70,14 @@ describe('AuditReportStore', () => {
         openSourceMalwareEnabled: false,
       },
     };
-    report.affectedRepositories = report.allRepositories.filter((r) => r.isAffected);
+    report.affectedRepositories = report.allRepositories.filter(
+      (r) => r.isAffected,
+    );
 
-    const dir = join((store as unknown as { baseDir: string }).baseDir, auditId);
+    const dir = join(
+      (store as unknown as { baseDir: string }).baseDir,
+      auditId,
+    );
     await mkdir(dir, { recursive: true });
     await writeFile(join(dir, 'report.json'), JSON.stringify(report, null, 2));
     await writeFile(join(dir, 'report.md'), '# report');
@@ -90,7 +95,11 @@ describe('AuditReportStore', () => {
 
     const raw = JSON.parse(
       await readFile(
-        join((store as unknown as { baseDir: string }).baseDir, auditId, 'report.json'),
+        join(
+          (store as unknown as { baseDir: string }).baseDir,
+          auditId,
+          'report.json',
+        ),
         'utf-8',
       ),
     ) as AuditReport;

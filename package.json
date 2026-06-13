@@ -34,5 +34,8 @@
   "devDependencies": {
     "concurrently": "^10.0.3",
     "playwright": "^1.52.0"
+  },
+  "overrides": {
+    "eslint": "9.39.4"
   }
 }

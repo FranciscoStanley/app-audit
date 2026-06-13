@@ -260,8 +260,7 @@ export class AuditReportStore {
 
     const remove = new Set(findingIds);
     const report = stored.report;
-    const repos =
-      report.allRepositories ?? report.affectedRepositories ?? [];
+    const repos = report.allRepositories ?? report.affectedRepositories ?? [];
 
     let removed = 0;
     for (const repo of repos) {
@@ -275,7 +274,8 @@ export class AuditReportStore {
     if (removed === 0) return 0;
 
     report.affectedRepositories = repos.filter((r) => r.isAffected);
-    report.cleanRepositories = repos.length - report.affectedRepositories.length;
+    report.cleanRepositories =
+      repos.length - report.affectedRepositories.length;
     report.totalVulnerabilities = repos.reduce(
       (sum, r) => sum + r.vulnerabilityCount,
       0,

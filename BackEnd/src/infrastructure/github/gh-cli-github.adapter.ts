@@ -159,7 +159,12 @@ export class GhCliGitHubAdapter implements GitHubRepositoryPort {
       });
     } catch (error: unknown) {
       const err = error as { stderr?: string; message?: string };
-      throw new Error(err.stderr?.trim() || err.message || 'gh command failed');
+      throw new Error(
+        err.stderr?.trim() || err.message || 'gh command failed',
+        {
+          cause: error,
+        },
+      );
     }
   }
 }

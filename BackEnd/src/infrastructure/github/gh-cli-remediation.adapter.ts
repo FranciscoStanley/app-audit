@@ -525,6 +525,7 @@ export class GhCliRemediationAdapter implements GitHubRemediationPort {
         sanitizeGitError(
           err.stderr?.trim() || err.message || 'gh command failed',
         ),
+        { cause: error },
       );
     }
   }

@@ -185,7 +185,7 @@ export class RemediationGitWorkspace {
   async ensureGitignoreEntry(repoPath: string, entry: string): Promise<void> {
     const gitignorePath = join(repoPath, '.gitignore');
     const normalized = entry.replace(/^\//, '').trim();
-    let content = '';
+    let content: string;
     try {
       content = await readFile(gitignorePath, 'utf-8');
     } catch {
@@ -838,6 +838,7 @@ export class RemediationGitWorkspace {
         : '';
       throw new Error(
         sanitizeGitError([err.message, stderr].filter(Boolean).join(' ')),
+        { cause: error },
       );
     }
   }

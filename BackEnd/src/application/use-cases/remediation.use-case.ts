@@ -323,9 +323,7 @@ export class RemediationUseCase {
 
     const idsToRemove = new Set<string>([finding.id]);
     const repos =
-      stored.report.allRepositories ??
-      stored.report.affectedRepositories ??
-      [];
+      stored.report.allRepositories ?? stored.report.affectedRepositories ?? [];
 
     for (const repo of repos) {
       if (repo.fullName !== finding.repository) continue;
