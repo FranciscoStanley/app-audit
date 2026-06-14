@@ -33,6 +33,7 @@ const ALLOWLIST_PATHS = [
   /\.gitleaks\.toml$/,
   /docs\/deployment\.md$/,
   /docs\/github-oauth-setup\.md$/,
+  /wiki\//,
   /setup-github-oauth\.mjs$/,
   /node_modules\//,
   /dist\//,
