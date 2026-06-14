@@ -40,6 +40,13 @@ try {
     cpSync(join(wikiSrc, name), join(tmp, name), { force: true });
   }
 
+  // Remove páginas órfãs do bootstrap manual (ex.: wiki-Home.md.md)
+  for (const name of readdirSync(tmp)) {
+    if (/^wiki-Home\.md/i.test(name)) {
+      rmSync(join(tmp, name), { force: true });
+    }
+  }
+
   execSync(`git -C "${tmp}" add -A`, { stdio: 'inherit' });
   const status = execSync(`git -C "${tmp}" status --porcelain`, { encoding: 'utf8' });
   if (!status.trim()) {

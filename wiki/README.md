@@ -23,4 +23,11 @@ Ou dispare o workflow **Sync Wiki** em Actions (recomendado na primeira publica�
 
 ## Primeira publicação
 
-Se o push local falhar com `Repository not found`, execute o workflow `.github/workflows/wiki-sync.yml` via GitHub Actions — ele cria o repositório wiki na primeira execução bem-sucedida.
+Se o push local falhar com `Repository not found`:
+
+1. Abra https://github.com/FranciscoStanley/app-audit/wiki/_new
+2. **Título:** `Home` (sem prefixo `wiki-`, sem `.md`)
+3. Cole o conteúdo de `wiki/Home.md` → **Save**
+4. Execute: `node scripts/publish-wiki.mjs`
+
+> **Não** crie páginas com título `wiki Home.md` — isso gera URL incorreta `/wiki/wiki-Home.md`.
