@@ -36,6 +36,7 @@ try {
   }
 
   for (const name of readdirSync(wikiSrc)) {
+    if (name === 'README.md') continue;
     cpSync(join(wikiSrc, name), join(tmp, name), { force: true });
   }
 
@@ -47,7 +48,24 @@ try {
   }
 
   execSync(`git -C "${tmp}" commit -m "docs(wiki): sync from app-audit/wiki"`, { stdio: 'inherit' });
-  execSync(`git -C "${tmp}" push -u origin ${branch}`, { stdio: 'inherit' });
+  try {
+    execSync(`git -C "${tmp}" push -u origin ${branch}`, { stdio: 'inherit' });
+  } catch {
+    try {
+      execSync(`git -C "${tmp}" branch -M main`, { stdio: 'pipe' });
+      execSync(`git -C "${tmp}" push -u origin main`, { stdio: 'inherit' });
+    } catch {
+      console.error(`
+Não foi possível publicar — o repositório wiki ainda não existe no GitHub.
+
+Bootstrap (uma vez):
+  1. Abra https://github.com/${owner}/${repo}/wiki/_new
+  2. Título: Home · cole o conteúdo de wiki/Home.md · Save
+  3. Execute novamente: node scripts/publish-wiki.mjs
+`);
+      process.exit(1);
+    }
+  }
   console.log(`\nWiki publicada: https://github.com/${owner}/${repo}/wiki`);
 } finally {
   rmSync(tmp, { recursive: true, force: true });
