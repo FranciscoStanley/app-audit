@@ -6,6 +6,7 @@ on:
     branches: [master]
     paths:
       - 'wiki/**'
+      - 'scripts/sync-wiki-ci.mjs'
       - '.github/workflows/wiki-sync.yml'
 
 permissions:
@@ -17,31 +18,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
       - name: Push wiki pages
         env:
-          WIKI_REMOTE: https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.wiki.git
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
-          TMP=$(mktemp -d)
-          if git clone "$WIKI_REMOTE" "$TMP" 2>/dev/null; then
-            echo "Wiki repo exists — updating"
-          else
-            echo "Initializing wiki repo"
-            git init "$TMP"
-            cd "$TMP"
-            git remote add origin "$WIKI_REMOTE"
-            cd -
-          fi
-
-          rsync -av --delete --exclude README.md ./wiki/ "$TMP/"
-          cd "$TMP"
-          git add -A
-          if git diff --staged --quiet; then
-            echo "Wiki already up to date"
-            exit 0
-          fi
-          git commit -m "docs(wiki): sync from ${{ github.sha }}"
-          git branch -M master
-          git push -u origin master
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_SHA: ${{ github.sha }}
+        run: node scripts/sync-wiki-ci.mjs
